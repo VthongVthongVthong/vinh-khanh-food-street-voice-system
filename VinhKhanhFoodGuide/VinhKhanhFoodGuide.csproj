@@ -1,0 +1,58 @@
+<Project Sdk="Microsoft.Maui.Sdk">
+	<PropertyGroup>
+		<TargetFrameworks>net8.0-android</TargetFrameworks>
+		<!-- Uncomment to also build the tizen app. You will need to install tizen by following this: https://github.com/Samsung/Tizen.NET -->
+		<!-- <TargetFrameworks>$(TargetFrameworks);net8.0-tizen</TargetFrameworks> -->
+		<OutputType>Exe</OutputType>
+		<UseMaui>true</UseMaui>
+		<SingleProject>true</SingleProject>
+
+		<!-- VisualStudio 2022 17.1 provides better macOS signing experience. If you are using Visual Studio 2022 17.0, you may need to adjust the condition accordingly. -->
+		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'macos'">13.5</SupportedOSPlatformIdentifier>
+		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">21.0</SupportedOSPlatformVersion>
+		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">14.2</SupportedOSPlatformVersion>
+		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">14.0</SupportedOSPlatformIdentifier>
+		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'tizen'">6.5</SupportedOSPlatformIdentifier>
+
+		<AssemblyName>VinhKhanhFoodGuide</AssemblyName>
+		<RootNamespace>VinhKhanhFoodGuide</RootNamespace>
+
+		<!-- Display name -->
+		<ApplicationTitle>Vinh Khanh Food Guide</ApplicationTitle>
+
+		<!-- App Identifier -->
+		<ApplicationId>com.vinhkhanh.foodguide</ApplicationId>
+
+		<!-- Versions -->
+		<ApplicationDisplayVersion>1</ApplicationDisplayVersion>
+		<ApplicationVersion>1</ApplicationVersion>
+
+		<!-- Android specific -->
+		<AndroidMinimumApiLevel>21</AndroidMinimumApiLevel>
+		<AndroidTargetApiLevel>34</AndroidTargetApiLevel>
+
+		<!-- Required permissions for Android -->
+		<AndroidUseAndroidX>true</AndroidUseAndroidX>
+
+		<ImplicitUsings>enable</ImplicitUsings>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<!-- SQLite -->
+		<PackageReference Include="sqlite-net-pcl" Version="1.8.116" />
+		<PackageReference Include="SQLitePCLRaw.provider.dynamic_cdecl" Version="2.1.7" />
+
+		<!-- MAUI Extensions -->
+		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- Include Resources -->
+		<MauiXaml Update="AppShell.xaml" />
+		<MauiXaml Update="App.xaml" />
+		<MauiXaml Update="Pages\HomePage.xaml" />
+		<MauiXaml Update="Pages\POIDetailPage.xaml" />
+		<MauiXaml Update="Pages\SettingsPage.xaml" />
+	</ItemGroup>
+
+</Project>

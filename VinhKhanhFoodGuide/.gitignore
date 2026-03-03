@@ -1,0 +1,73 @@
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio cache/options
+.vs/
+.vscode/
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# MAUI specific
+bin/
+obj/
+*.nuget.props
+*.nuget.targets
+
+# Android
+.gradle/
+local.properties
+*.apk
+*.aab
+*.zip
+
+# IDE
+.idea/
+*.iml
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+*.pdb
+
+# Build outputs
+*.ipa
+*.app
+*.exe
+*.dll
+*.so
+*.dylib
+
+# NuGet
+packages/
+.nuget/
+
+# Database
+*.db
+*.db-wal
+*.db-shm
+
+# Misc
+*.log
+*.stackdump
+*~
+.env
