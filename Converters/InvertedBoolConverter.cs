@@ -1,23 +1,22 @@
 using System.Globalization;
 using Microsoft.Maui.Controls;
 
-namespace VinhKhanhstreetfoods.Converters;
-
-public class InvertedBoolConverter : IValueConverter
+namespace VinhKhanhstreetfoods.Converters
 {
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    public class InvertedBoolConverter : IValueConverter
     {
-        if (value is bool b)
-            return !b;
+        public object? Convert(object? value, Type? targetType, object? parameter, CultureInfo? culture)
+        {
+            if (value is bool boolValue)
+                return !boolValue;
+            return false;
+        }
 
-        return false;
-    }
-
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-    {
-        if (value is bool b)
-            return !b;
-
-        return false;
+        public object? ConvertBack(object? value, Type? targetType, object? parameter, CultureInfo? culture)
+        {
+            if (value is bool boolValue)
+                return !boolValue;
+            return false;
+        }
     }
 }

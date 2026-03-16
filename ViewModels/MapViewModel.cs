@@ -17,7 +17,7 @@ namespace VinhKhanhstreetfoods.ViewModels
         private double _userLongitude;
         private string _statusMessage;
 
-        public event PropertyChangedEventHandler PropertyChanged;
+        public event PropertyChangedEventHandler? PropertyChanged;
 
         public MapViewModel(POIRepository poiRepository, MapService mapService, LocationService locationService)
         {

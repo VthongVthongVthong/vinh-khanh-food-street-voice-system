@@ -4,8 +4,7 @@ using VinhKhanhstreetfoods.Services;
 using VinhKhanhstreetfoods.ViewModels;
 using VinhKhanhstreetfoods.Views;
 using System.Diagnostics;
-using Microsoft.Maui;
-using Microsoft.Maui.Hosting;
+using ZXing.Net.Maui.Controls;
 
 namespace VinhKhanhstreetfoods
 {
@@ -18,6 +17,7 @@ namespace VinhKhanhstreetfoods
             builder
                 .UseMauiApp<App>()
                 .UseMauiCommunityToolkit()
+                .UseBarcodeReader()
                 .ConfigureFonts(fonts =>
                 {
                     fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");

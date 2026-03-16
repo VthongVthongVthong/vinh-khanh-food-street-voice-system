@@ -1,6 +1,8 @@
 ﻿using VinhKhanhstreetfoods;
 using VinhKhanhstreetfoods.Services;
 using System.Diagnostics;
+using Microsoft.Maui;
+using Microsoft.Maui.Controls;
 
 namespace VinhKhanhstreetfoods;
 
@@ -9,8 +11,12 @@ public partial class App : Application
     public App()
     {
         InitializeComponent();
+    }
 
-        MainPage = new AppShell();
+    protected override Window CreateWindow(IActivationState? activationState)
+    {
+        var appShell = new AppShell();
+        return new Window(appShell);
     }
 
     protected override async void OnStart()

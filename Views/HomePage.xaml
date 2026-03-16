@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:zxing="clr-namespace:ZXing.Net.Maui.Controls;assembly=ZXing.Net.Maui.Controls"
              x:Class="VinhKhanhstreetfoods.Views.HomePage"
              Title="Phố ẩm thực Vĩnh Khánh"
              BackgroundColor="#F8F8F8"
@@ -8,52 +9,81 @@
              xmlns:local="clr-namespace:VinhKhanhstreetfoods.ViewModels;assembly=VinhKhanhstreetfoods"
              xmlns:local2="clr-namespace:VinhKhanhstreetfoods.Models;assembly=VinhKhanhstreetfoods">
 
-    <Grid RowDefinitions="Auto,*,Auto" RowSpacing="0">
+    <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="0">
 
         <!-- Header -->
         <Grid BackgroundColor="White" Padding="12" ColumnSpacing="8" ColumnDefinitions="*,Auto">
             <StackLayout Grid.Column="0" Spacing="2">
-                <Label Text="Vĩnh Khánh Street" FontSize="18" FontAttributes="Bold" TextColor="#1a1a1a"/>
-                <Label Text="📍 Quận 4 - Âm thanh HD" FontSize="11" TextColor="#888"/>
+                <Label Text="Vĩnh Khánh Street" FontSize="18" FontAttributes="Bold" TextColor="#1a1a1a" />
+                <Label Text="📍 Quận 4 - Âm thanh HD" FontSize="11" TextColor="#888" />
             </StackLayout>
-            <Label Grid.Column="1" Text="🔔" FontSize="24" VerticalOptions="Center"/>
+            <Label Grid.Column="1" Text="🔔" FontSize="24" VerticalOptions="Center" />
         </Grid>
 
+        <!-- Search + QR actions -->
+        <Border Grid.Row="1"
+                Margin="12"
+                BackgroundColor="White"
+                StrokeThickness="0"
+                Padding="0">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="18" />
+            </Border.StrokeShape>
+            <Grid ColumnDefinitions="Auto,*,Auto" HeightRequest="48">
+                <Label Text="🔍"
+                       FontSize="18"
+                       VerticalOptions="Center"
+                       Margin="14,0" />
+                <Entry Grid.Column="1"
+                       Placeholder="Tìm kiếm địa điểm, món ăn..."
+                       Text="{Binding SearchText}"
+                       FontSize="14"
+                       PlaceholderColor="#9E9E9E"
+                       TextColor="#1a1a1a"
+                       ClearButtonVisibility="WhileEditing"
+                       BackgroundColor="Transparent"
+                       VerticalOptions="Center" />
+                <Button Grid.Column="2"
+                        Text="📱"
+                        FontSize="18"
+                        WidthRequest="48"
+                        HeightRequest="48"
+                        BackgroundColor="#1976D2"
+                        TextColor="White"
+                        CornerRadius="24"
+                        Padding="0"
+                        Clicked="OnQrButtonClicked"
+                        ToolTipProperties.Text="Quét mã QR" />
+            </Grid>
+        </Border>
+
         <!-- POI List -->
-        <CollectionView Grid.Row="1"
+        <CollectionView Grid.Row="2"
                         ItemsSource="{Binding NearbyPOIs}"
                         SelectionMode="Single"
                         SelectedItem="{Binding SelectedPOI, Mode=TwoWay}"
                         SelectionChangedCommand="{Binding OpenDetailCommand}"
                         SelectionChangedCommandParameter="{Binding SelectedPOI}"
                         BackgroundColor="#F8F8F8">
-
             <CollectionView.ItemsLayout>
-                <LinearItemsLayout Orientation="Vertical" ItemSpacing="8"/>
+                <LinearItemsLayout Orientation="Vertical" ItemSpacing="8" />
             </CollectionView.ItemsLayout>
-
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="local2:POI">
-                    <!-- ContentView thay Grid để dùng Padding -->
                     <ContentView Padding="12,8" Margin="12,0" BackgroundColor="White">
                         <Grid ColumnDefinitions="80,*" ColumnSpacing="12">
-
-                            <BoxView Grid.Column="0" Color="#E8E8E8" CornerRadius="4"/>
-
+                            <BoxView Grid.Column="0" Color="#E8E8E8" CornerRadius="4" />
                             <Grid Grid.Column="1" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="4">
-
                                 <StackLayout Grid.Row="0" Orientation="Horizontal" Spacing="6">
-                                    <Label Text="●" FontSize="10" TextColor="#DA1C5C"/>
-                                    <Label Text="Mở cửa" FontSize="9" TextColor="#DA1C5C" VerticalOptions="Center"/>
-                                    <Label Text="●" FontSize="10" TextColor="#4CAF50" Margin="6,0,0,0"/>
-                                    <Label Text="Còn chỗ" FontSize="9" TextColor="#4CAF50" VerticalOptions="Center"/>
+                                    <Label Text="●" FontSize="10" TextColor="#DA1C5C" />
+                                    <Label Text="Mở cửa" FontSize="9" TextColor="#DA1C5C" VerticalOptions="Center" />
+                                    <Label Text="●" FontSize="10" TextColor="#4CAF50" Margin="6,0,0,0" />
+                                    <Label Text="Còn chỗ" FontSize="9" TextColor="#4CAF50" VerticalOptions="Center" />
                                 </StackLayout>
-
-                                <Label Grid.Row="1" Text="{Binding Name}" FontSize="13" FontAttributes="Bold" TextColor="#1a1a1a" LineBreakMode="TailTruncation"/>
-                                <Label Grid.Row="2" Text="{Binding Address}" FontSize="10" TextColor="#888" LineBreakMode="TailTruncation"/>
-
+                                <Label Grid.Row="1" Text="{Binding Name}" FontSize="13" FontAttributes="Bold" TextColor="#1a1a1a" LineBreakMode="TailTruncation" />
+                                <Label Grid.Row="2" Text="{Binding Address}" FontSize="10" TextColor="#888" LineBreakMode="TailTruncation" />
                                 <Grid Grid.Row="3" ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                                    <Label Grid.Column="0" Text="{Binding DescriptionText}" FontSize="9" TextColor="#666" LineBreakMode="TailTruncation"/>
+                                    <Label Grid.Column="0" Text="{Binding DescriptionText}" FontSize="9" TextColor="#666" LineBreakMode="TailTruncation" />
                                     <Button Grid.Column="1"
                                             Text="📞"
                                             BackgroundColor="Transparent"
@@ -63,37 +93,35 @@
                                             Padding="4"
                                             WidthRequest="40"
                                             HeightRequest="30"
-                                            HorizontalOptions="End"/>
+                                            HorizontalOptions="End" />
                                 </Grid>
                             </Grid>
                         </Grid>
                     </ContentView>
                 </DataTemplate>
             </CollectionView.ItemTemplate>
-
             <CollectionView.EmptyViewTemplate>
                 <DataTemplate>
-                    <!-- ContentView thay Grid để dùng Padding -->
                     <ContentView Padding="20" HorizontalOptions="Center" VerticalOptions="Center">
                         <StackLayout Spacing="10">
-                            <Label Text="😕 Không có dữ liệu" FontSize="16" FontAttributes="Bold" TextColor="#888" HorizontalOptions="Center"/>
-                            <Label Text="Bật định vị để tải danh sách" FontSize="12" TextColor="#AAA" HorizontalOptions="Center"/>
+                            <Label Text="😕 Không có dữ liệu" FontSize="16" FontAttributes="Bold" TextColor="#888" HorizontalOptions="Center" />
+                            <Label Text="Bật định vị để tải danh sách" FontSize="12" TextColor="#AAA" HorizontalOptions="Center" />
                         </StackLayout>
                     </ContentView>
                 </DataTemplate>
             </CollectionView.EmptyViewTemplate>
         </CollectionView>
 
-        <ActivityIndicator Grid.Row="1"
+        <ActivityIndicator Grid.Row="2"
                            IsRunning="{Binding IsLoading}"
                            IsVisible="{Binding IsLoading}"
                            Color="#1976D2"
                            Scale="1.2"
                            VerticalOptions="Center"
-                           HorizontalOptions="Center"/>
+                           HorizontalOptions="Center" />
 
         <!-- Bottom Controls -->
-        <StackLayout Grid.Row="2" Spacing="8" Padding="12" BackgroundColor="White">
+        <StackLayout Grid.Row="3" Spacing="8" Padding="12" BackgroundColor="White">
             <Button Text="▶️ BẬT ĐỊNH VỊ"
                     Command="{Binding StartLocationServiceCommand}"
                     IsEnabled="{Binding IsLocationServiceRunning, Converter={StaticResource InvertedBoolConverter}}"
@@ -102,7 +130,7 @@
                     FontSize="13"
                     FontAttributes="Bold"
                     CornerRadius="8"
-                    Padding="12"/>
+                    Padding="12" />
             <Button Text="⏹️ TẮT ĐỊNH VỊ"
                     Command="{Binding StopLocationServiceCommand}"
                     IsEnabled="{Binding IsLocationServiceRunning}"
@@ -111,7 +139,56 @@
                     FontSize="13"
                     FontAttributes="Bold"
                     CornerRadius="8"
-                    Padding="12"/>
+                    Padding="12" />
         </StackLayout>
+
+        <!-- QR Scanner Overlay -->
+        <Grid x:Name="QrScannerOverlay"
+              Grid.RowSpan="4"
+              BackgroundColor="#AA000000"
+              IsVisible="False">
+            <Border Padding="20"
+                    BackgroundColor="White"
+                    WidthRequest="320"
+                    HeightRequest="460"
+                    HorizontalOptions="Center"
+                    VerticalOptions="Center"
+                    Stroke="#1976D2"
+                    StrokeThickness="3">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="28" />
+                </Border.StrokeShape>
+                <Border.Shadow>
+                    <Shadow Brush="#66000000" Offset="0,12" Radius="26" />
+                </Border.Shadow>
+
+                <Grid RowDefinitions="Auto,*" RowSpacing="12">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="Quét mã QR"
+                               FontAttributes="Bold"
+                               FontSize="20"
+                               TextColor="#1a1a1a"
+                               VerticalOptions="Center" />
+                        <Button Grid.Column="1"
+                                Text="✕"
+                                FontSize="18"
+                                WidthRequest="44"
+                                HeightRequest="44"
+                                BackgroundColor="#EEEEEE"
+                                TextColor="#1a1a1a"
+                                CornerRadius="22"
+                                Clicked="OnCloseScannerClicked" />
+                    </Grid>
+
+                    <zxing:CameraBarcodeReaderView x:Name="QrCameraView"
+                                                   Grid.Row="1"
+                                                   HorizontalOptions="Fill"
+                                                   VerticalOptions="Fill"
+                                                   CameraLocation="Rear"
+                                                   IsDetecting="False"
+                                                   BarcodesDetected="OnBarcodesDetected" />
+                </Grid>
+            </Border>
+        </Grid>
     </Grid>
 </ContentPage>

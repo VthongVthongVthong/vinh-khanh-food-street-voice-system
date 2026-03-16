@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
@@ -14,6 +15,7 @@ namespace VinhKhanhstreetfoods.ViewModels
         private readonly IPOIRepository _poiRepository;
         private readonly AudioManager _audioManager;
 
+        private readonly List<POI> _allPOIs = new();
         private ObservableCollection<POI> _nearbyPOIs;
         private string _statusMessage;
         private bool _isLocationServiceRunning;
@@ -21,6 +23,7 @@ namespace VinhKhanhstreetfoods.ViewModels
         private double _userLongitude;
         private POI? _selectedPOI;
         private bool _isLoading;
+        private string _searchText = string.Empty;
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -48,7 +51,6 @@ namespace VinhKhanhstreetfoods.ViewModels
             _audioManager.AudioStarted += OnAudioStarted;
             _audioManager.AudioCompleted += OnAudioCompleted;
 
-            // Load initial data
             _ = LoadInitialDataAsync();
         }
 
@@ -101,6 +103,20 @@ namespace VinhKhanhstreetfoods.ViewModels
             set { _isLoading = value; OnPropertyChanged(); }
         }
 
+        public string SearchText
+        {
+            get => _searchText;
+            set
+            {
+                if (_searchText == value)
+                    return;
+
+                _searchText = value;
+                OnPropertyChanged();
+                ApplyFilter();
+            }
+        }
+
         public ICommand StartLocationServiceCommand { get; }
         public ICommand StopLocationServiceCommand { get; }
         public ICommand OpenDetailCommand { get; }
@@ -113,7 +129,6 @@ namespace VinhKhanhstreetfoods.ViewModels
                 StatusMessage = "Đang tải dữ liệu...";
 
                 var allPOIs = await _poiRepository.GetActivePOIsAsync();
-
                 System.Diagnostics.Debug.WriteLine($"[HomeViewModel] Loaded {allPOIs.Count} active POIs from database");
 
                 if (allPOIs.Count == 0)
@@ -122,16 +137,10 @@ namespace VinhKhanhstreetfoods.ViewModels
                     return;
                 }
 
-                MainThread.BeginInvokeOnMainThread(() =>
-                {
-                    NearbyPOIs.Clear();
-                    foreach (var poi in allPOIs)
-                    {
-                        NearbyPOIs.Add(poi);
-                    }
-
-                    StatusMessage = $"Đã tải {allPOIs.Count} điểm của lãi. Nhấn START để bắt đầu.";
-                });
+                _allPOIs.Clear();
+                _allPOIs.AddRange(allPOIs);
+                ApplyFilter();
+                StatusMessage = $"Đã tải {allPOIs.Count} điểm của lãi. Nhấn START để bắt đầu.";
             }
             catch (Exception ex)
             {
@@ -142,6 +151,29 @@ namespace VinhKhanhstreetfoods.ViewModels
             {
                 IsLoading = false;
             }
+        }
+
+        private void ApplyFilter()
+        {
+            if (_allPOIs.Count == 0)
+                return;
+
+            var filtered = string.IsNullOrWhiteSpace(SearchText)
+                ? _allPOIs
+                : _allPOIs.Where(p =>
+                        (!string.IsNullOrEmpty(p.Name) && p.Name.Contains(SearchText, StringComparison.OrdinalIgnoreCase)) ||
+                        (!string.IsNullOrEmpty(p.DescriptionText) && p.DescriptionText.Contains(SearchText, StringComparison.OrdinalIgnoreCase)) ||
+                        (!string.IsNullOrEmpty(p.Address) && p.Address.Contains(SearchText, StringComparison.OrdinalIgnoreCase)))
+                    .ToList();
+
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                NearbyPOIs.Clear();
+                foreach (var poi in filtered)
+                {
+                    NearbyPOIs.Add(poi);
+                }
+            });
         }
 
         private async Task OpenDetailAsync(POI? poi)

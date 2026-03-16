@@ -5,7 +5,7 @@ namespace VinhKhanhstreetfoods.Services
 {
     public class LocationService
     {
-        private CancellationTokenSource _cancelTokenSource;
+        //private CancellationTokenSource _cancelTokenSource;
         private bool _isCheckingLocation;
         private Location _lastLocation;
         private DateTime _lastUpdateTime;
