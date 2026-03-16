@@ -15,6 +15,7 @@ namespace VinhKhanhstreetfoods.ViewModels
         private POI _selectedPOI;
         private double _userLatitude;
         private double _userLongitude;
+        private bool _isTracking;
         private string _statusMessage;
 
         public event PropertyChangedEventHandler? PropertyChanged;
@@ -27,11 +28,27 @@ namespace VinhKhanhstreetfoods.ViewModels
 
             AllPOIs = new ObservableCollection<POI>();
             StatusMessage = "Tải bản đồ...";
+            IsTracking = _locationService.IsTracking;
 
             OpenMapCommand = new Command(async () => await OpenMap());
             RefreshCommand = new Command(async () => await RefreshPOIs());
 
+            _locationService.LocationUpdated += OnLocationUpdated;
+            _locationService.TrackingStateChanged += OnTrackingStateChanged;
+
             _ = LoadPOIs();
+        }
+
+        private void OnTrackingStateChanged(object sender, bool isTracking)
+        {
+            IsTracking = isTracking;
+        }
+
+        private void OnLocationUpdated(object sender, Location location)
+        {
+            UserLatitude = location.Latitude;
+            UserLongitude = location.Longitude;
+            StatusMessage = $"Vị trí: {location.Latitude:F4}, {location.Longitude:F4}";
         }
 
         public ObservableCollection<POI> AllPOIs
@@ -56,6 +73,12 @@ namespace VinhKhanhstreetfoods.ViewModels
         {
             get => _userLongitude;
             set { _userLongitude = value; OnPropertyChanged(); }
+        }
+
+        public bool IsTracking
+        {
+            get => _isTracking;
+            set { _isTracking = value; OnPropertyChanged(); }
         }
 
         public string StatusMessage

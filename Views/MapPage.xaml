@@ -6,11 +6,11 @@
              BackgroundColor="#F5F6F8"
              NavigationPage.HasNavigationBar="False">
 
-    <ScrollView>
-        <StackLayout Spacing="15" Padding="15">
+    <ScrollView x:Name="MainScrollView">
+        <StackLayout x:Name="MainStackLayout" Spacing="15" Padding="15">
             
             <!-- Header -->
-            <Frame BackgroundColor="White" CornerRadius="12" Padding="15" HasShadow="False">
+            <Frame x:Name="HeaderFrame" BackgroundColor="White" CornerRadius="12" Padding="15" HasShadow="False">
                 <Grid ColumnDefinitions="Auto, *, Auto" VerticalOptions="Center">
                     <Image Source="map_icon.png" WidthRequest="30" HeightRequest="30" VerticalOptions="Center" Grid.Column="0" Margin="0,0,10,0" />
                     <!-- Using text symbols if images don't exist -->
@@ -28,7 +28,7 @@
             </Frame>
 
             <!-- Location Card -->
-            <Frame BackgroundColor="#E5F3FF" CornerRadius="12" Padding="10" HasShadow="False">
+            <Frame x:Name="LocationCardFrame" BackgroundColor="#E5F3FF" CornerRadius="12" Padding="10" HasShadow="False">
                 <Frame BackgroundColor="White" CornerRadius="12" Padding="10" HasShadow="False">
                     <Grid ColumnDefinitions="Auto, *, Auto" VerticalOptions="Center">
                         <Frame Grid.Column="0" BackgroundColor="#0079D3" CornerRadius="20" Padding="8" HasShadow="False" WidthRequest="40" HeightRequest="40" VerticalOptions="Center" HorizontalOptions="Center" Margin="0,0,10,0">
@@ -50,13 +50,14 @@
             </Frame>
 
             <!-- Map View -->
-            <Frame BackgroundColor="White"
-                   BorderColor="#E5E7EB"
-                   CornerRadius="15"
-                   Padding="0"
-                   HasShadow="False">
-                <WebView HeightRequest="350">
-                    <WebView.Source>
+            <Grid>
+                <Frame x:Name="MapFrame" BackgroundColor="White"
+                       BorderColor="#E5E7EB"
+                       CornerRadius="15"
+                       Padding="0"
+                       HasShadow="False">
+                    <WebView x:Name="MapWebView" HeightRequest="350">
+                        <WebView.Source>
                         <HtmlWebViewSource>
                             <HtmlWebViewSource.Html>
                                 <![CDATA[
@@ -82,11 +83,85 @@
                                     center: [106.700981,10.776530],
                                     zoom: 15
                                 });
-                                new mapboxgl.Marker({ color: '#0079D3' })
-                                    .setLngLat([106.700981,10.776530])
-                                    .addTo(map);
+                                
+                                let userMarker = null;
+                                let isLocationEnabled = false;
+
+                                function setTrackingState(isActive) {
+                                    isLocationEnabled = isActive;
+                                }
+
+                                function updateLocation(lat, lng) {
+                                    if (!userMarker) {
+                                        // Create marker for user location
+                                        userMarker = new mapboxgl.Marker({ color: '#FF0000' })
+                                            .setLngLat([lng, lat])
+                                            .addTo(map);
+                                            
+                                        // Smoothly pan map to new user location on first fix
+                                        map.flyTo({ 
+                                            center: [lng, lat], 
+                                            speed: 1.5,
+                                            zoom: 16
+                                        });
+                                    } else {
+                                        // Update existing marker
+                                        userMarker.setLngLat([lng, lat]);
+                                        
+                                        // Auto-pan only if we recently got our first lock, or tracking logic wants to force it.
+                                        // Normally you let users drag freely without fighting them. But flyTo is ok for now.
+                                        map.flyTo({ 
+                                            center: [lng, lat], 
+                                            speed: 1.5,
+                                            zoom: 16
+                                        });
+                                    }
+                                }
+                                
+                                function recenterMap() {
+                                    if (userMarker) {
+                                        map.flyTo({ 
+                                            center: userMarker.getLngLat(), 
+                                            speed: 1.5,
+                                            zoom: 16
+                                        });
+                                    }
+                                }
+                                
+                                class CustomGeolocateControl {
+                                    onAdd(map) {
+                                        this.map = map;
+                                        this.container = document.createElement('div');
+                                        this.container.className = 'mapboxgl-ctrl mapboxgl-ctrl-group';
+                                        
+                                        const btn = document.createElement('button');
+                                        btn.className = 'mapboxgl-ctrl-icon mapboxgl-ctrl-geolocate';
+                                        btn.id = 'auto-geolocate-btn';
+                                        btn.type = 'button';
+                                        btn.title = 'Vị trí của tôi';
+                                        btn.onclick = () => recenterMap();
+                                        
+                                        this.container.appendChild(btn);
+                                        return this.container;
+                                    }
+                                    onRemove() {
+                                        this.container.parentNode.removeChild(this.container);
+                                        this.map = undefined;
+                                    }
+                                }
+                                
                                 // Control
                                 map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
+                                map.addControl(new CustomGeolocateControl(), 'bottom-right');
+
+                                // Tự động center map mỗi 5 giây
+                                setInterval(() => {
+                                    if (!isLocationEnabled) return;
+                                    const btn = document.getElementById('auto-geolocate-btn');
+                                    if (btn && userMarker) {
+                                        btn.click();
+                                    }
+                                }, 5000);
                                 </script>
                                 </body>
                                 </html>
@@ -95,16 +170,31 @@
                         </HtmlWebViewSource>
                     </WebView.Source>
                 </WebView>
-            </Frame>
+                </Frame>
+                
+                <Button x:Name="ToggleFullScreenBtn"
+                        Text="⛶"
+                        FontSize="20"
+                        BackgroundColor="#AA000000"
+                        TextColor="White"
+                        CornerRadius="20"
+                        WidthRequest="40"
+                        HeightRequest="40"
+                        HorizontalOptions="End"
+                        VerticalOptions="Start"
+                        Margin="10"
+                        Padding="0"
+                        Clicked="OnToggleFullScreenClicked" />
+            </Grid>
 
             <!-- Nearby Restaurants Header -->
-            <Grid ColumnDefinitions="Auto, *, Auto" VerticalOptions="Center" Margin="0,10,0,0">
+            <Grid x:Name="NearbyHeaderGrid" ColumnDefinitions="Auto, *, Auto" VerticalOptions="Center" Margin="0,10,0,0">
                 <Label Text="🏪 Nhà hàng gần bạn" FontSize="18" FontAttributes="Bold" TextColor="#1F2937" Grid.Column="0" />
                 <Label Text="{Binding AllPOIs.Count, StringFormat='{0} địa điểm'}" FontSize="12" TextColor="#0079D3" Grid.Column="2" VerticalOptions="Center" />
             </Grid>
 
             <!-- Horizontal Collection of POIs -->
-            <CollectionView ItemsSource="{Binding AllPOIs}" ItemsLayout="HorizontalList" HeightRequest="260">
+            <CollectionView x:Name="POIsCollectionView" ItemsSource="{Binding AllPOIs}" ItemsLayout="HorizontalList" HeightRequest="260">
                 <CollectionView.ItemTemplate>
                     <DataTemplate>
                         <Frame BackgroundColor="White" CornerRadius="15" Padding="0" HasShadow="True" Margin="0,0,15,5" WidthRequest="220">
@@ -148,9 +238,9 @@
             </CollectionView>
 
             <!-- Stats -->
-            <Label Text="Thống kê khám phá" FontSize="18" FontAttributes="Bold" TextColor="#1F2937" Margin="0,10,0,0" />
+            <Label x:Name="StatsHeaderLabel" Text="Thống kê khám phá" FontSize="18" FontAttributes="Bold" TextColor="#1F2937" Margin="0,10,0,0" />
             
-            <Grid ColumnDefinitions="*, *" ColumnSpacing="15" Margin="0,0,0,20">
+            <Grid x:Name="StatsGrid" ColumnDefinitions="*, *" ColumnSpacing="15" Margin="0,0,0,20">
                 <!-- Explored Card -->
                 <Frame Grid.Column="0" BackgroundColor="#E6F4FC" CornerRadius="12" Padding="15" HasShadow="False">
                     <StackLayout Spacing="10">

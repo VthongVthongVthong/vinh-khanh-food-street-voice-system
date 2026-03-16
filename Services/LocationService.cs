@@ -10,7 +10,10 @@ namespace VinhKhanhstreetfoods.Services
         private Location _lastLocation;
         private DateTime _lastUpdateTime;
 
+        public bool IsTracking => _isCheckingLocation;
+
         public event EventHandler<Location> LocationUpdated;
+        public event EventHandler<bool> TrackingStateChanged;
 
         public async Task<PermissionStatus> CheckAndRequestLocationPermission()
         {
@@ -47,13 +50,17 @@ namespace VinhKhanhstreetfoods.Services
             try
             {
                 await Geolocation.StartListeningForegroundAsync(request);
+                TrackingStateChanged?.Invoke(this, true);
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Location listening error: {ex.Message}");
                 _isCheckingLocation = false;
+                TrackingStateChanged?.Invoke(this, false);
             }
         }
+
+        private DateTime _lastInvokeTime = DateTime.MinValue;
 
         private void Geolocation_LocationChanged(object sender, GeolocationLocationChangedEventArgs e)
         {
@@ -63,7 +70,12 @@ namespace VinhKhanhstreetfoods.Services
             // Calculate speed and adjust interval
             AdjustUpdateInterval(e.Location);
 
-            LocationUpdated?.Invoke(this, e.Location);
+            // Throttle events to avoid overload
+            if ((DateTime.Now - _lastInvokeTime).TotalSeconds >= 2)
+            {
+                _lastInvokeTime = DateTime.Now;
+                LocationUpdated?.Invoke(this, e.Location);
+            }
         }
 
         private void AdjustUpdateInterval(Location location)
@@ -90,6 +102,7 @@ namespace VinhKhanhstreetfoods.Services
             try
             {
                 Geolocation.LocationChanged -= Geolocation_LocationChanged;
+                Geolocation.StopListeningForeground();
             }
             catch
             {
@@ -97,6 +110,14 @@ namespace VinhKhanhstreetfoods.Services
             }
             
             _isCheckingLocation = false;
+            TrackingStateChanged?.Invoke(this, false);
+            
+            // Invoke one last time with the last location if we have it
+            if (_lastLocation != null)
+            {
+                LocationUpdated?.Invoke(this, _lastLocation);
+            }
+            
             await Task.CompletedTask;
         }
 
