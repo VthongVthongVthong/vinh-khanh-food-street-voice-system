@@ -1,0 +1,490 @@
+﻿@page "/"
+@using VinhKhanhstreetfoods.Components.Models
+@inject RestaurantService RestaurantService
+@inject NavigationManager NavigationManager
+
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        background-color: #f5f5f5;
+    }
+
+    .mobile-container {
+        max-width: 430px;
+        margin: 0 auto;
+        background: white;
+        min-height: 100vh;
+        position: relative;
+    }
+
+    .header {
+        padding: 20px;
+        background: white;
+        border-bottom: 1px solid #e0e0e0;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+    }
+
+    .header-title {
+        font-size: 28px;
+        font-weight: 700;
+        color: #000;
+    }
+
+    .header-location {
+        display: flex;
+        align-items: center;
+        font-size: 14px;
+        color: #999;
+        margin-top: 8px;
+        gap: 6px;
+    }
+
+    .header-icons {
+        display: flex;
+        gap: 12px;
+    }
+
+    .icon-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+    }
+
+    .icon-user {
+        background-color: #0099ff;
+        color: white;
+    }
+
+    .icon-notification {
+        background-color: #ff3333;
+        color: white;
+        font-size: 12px;
+        font-weight: bold;
+    }
+
+    .welcome-card {
+        margin: 16px;
+        padding: 20px;
+        background: #f9f9f9;
+        border-radius: 16px;
+        border: 1px solid #e0e0e0;
+    }
+
+    .welcome-text {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+
+    .chat-icon {
+        width: 28px;
+        height: 28px;
+        background-color: #0099ff;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        flex-shrink: 0;
+        font-size: 16px;
+    }
+
+    .welcome-content h3 {
+        font-size: 16px;
+        font-weight: 600;
+        color: #000;
+        margin-bottom: 4px;
+    }
+
+    .welcome-content p {
+        font-size: 13px;
+        color: #666;
+        line-height: 1.4;
+    }
+
+    .search-box {
+        margin: 16px;
+    }
+
+    .search-input {
+        width: 100%;
+        padding: 12px 16px;
+        border: 1px solid #e0e0e0;
+        border-radius: 24px;
+        font-size: 14px;
+        outline: none;
+        background: white;
+    }
+
+    .search-input::placeholder {
+        color: #999;
+    }
+
+    .language-tabs {
+        display: flex;
+        gap: 8px;
+        padding: 16px;
+        overflow-x: auto;
+        scroll-behavior: smooth;
+    }
+
+    .language-tabs::-webkit-scrollbar {
+        height: 4px;
+    }
+
+    .language-tab {
+        padding: 8px 16px;
+        border-radius: 20px;
+        border: none;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 600;
+        white-space: nowrap;
+        background: #f0f0f0;
+        color: #666;
+        transition: all 0.3s ease;
+    }
+
+    .language-tab.active {
+        background-color: #0099ff;
+        color: white;
+    }
+
+    .featured-card {
+        margin: 16px;
+        padding: 24px;
+        background: linear-gradient(135deg, #0099ff 0%, #0080d0 100%);
+        border-radius: 16px;
+        color: white;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .featured-content h2 {
+        font-size: 24px;
+        font-weight: 700;
+        margin-bottom: 8px;
+    }
+
+    .featured-content p {
+        font-size: 13px;
+        opacity: 0.9;
+        margin-bottom: 12px;
+    }
+
+    .featured-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        color: white;
+        text-decoration: none;
+        background: rgba(255,255,255,0.2);
+        padding: 6px 12px;
+        border-radius: 12px;
+        cursor: pointer;
+    }
+
+    .featured-icon {
+        font-size: 28px;
+        opacity: 0.3;
+    }
+
+    .restaurant-list {
+        padding: 0 16px 20px;
+    }
+
+    .restaurant-item {
+        margin-bottom: 16px;
+        border-radius: 12px;
+        overflow: hidden;
+        background: white;
+        border: 1px solid #e0e0e0;
+        cursor: pointer;
+        transition: box-shadow 0.3s ease;
+    }
+
+    .restaurant-item:hover {
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .restaurant-image {
+        width: 100%;
+        height: 200px;
+        background: #e0e0e0;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .restaurant-image img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .language-badge {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        background-color: #9c27b0;
+        color: white;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    .audio-badge {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        background-color: #4caf50;
+        color: white;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .restaurant-content {
+        padding: 16px;
+    }
+
+    .restaurant-name {
+        font-size: 18px;
+        font-weight: 700;
+        color: #000;
+        margin-bottom: 8px;
+    }
+
+    .restaurant-meta {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: #666;
+        margin-bottom: 12px;
+    }
+
+    .restaurant-desc {
+        font-size: 12px;
+        color: #999;
+        line-height: 1.4;
+        padding: 8px;
+        background: #f5f5f5;
+        border-radius: 8px;
+    }
+
+    .bottom-nav {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        max-width: 430px;
+        margin: 0 auto;
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+        background: white;
+        border-top: 1px solid #e0e0e0;
+        padding: 8px 0 16px;
+        height: 60px;
+    }
+
+    .nav-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        cursor: pointer;
+        color: #999;
+        text-decoration: none;
+        font-size: 12px;
+        transition: color 0.3s ease;
+    }
+
+    .nav-item.active {
+        color: #0099ff;
+    }
+
+    .nav-icon {
+        font-size: 24px;
+    }
+</style>
+
+<div class="mobile-container">
+    <!-- Header -->
+    <div class="header">
+        <div>
+            <div class="header-title">Vĩnh Khánh</div>
+            <div class="header-location">
+                <span>📍</span>
+                <span>Phố Ẩm Thực Huyện Thoại</span>
+            </div>
+        </div>
+        <div class="header-icons">
+            <button class="icon-btn icon-user">👤</button>
+            <button class="icon-btn icon-notification">1</button>
+        </div>
+    </div>
+
+    <!-- Welcome Card -->
+    <div class="welcome-card">
+        <div class="welcome-text">
+            <div class="chat-icon">💬</div>
+            <div class="welcome-content">
+                <h3>Chào mừng đến với hành trình ẩm thực!</h3>
+                <p>Khám phá hơn 50 nhà hàng đặc sắn trên phố ẩm thực nổi tiếng nhất Sài Gòn. Mỗi điểm đến là một câu chuyện vị giác đang chờ bạn khám phá.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search -->
+    <div class="search-box">
+        <input type="text" class="search-input" placeholder="Tìm kiếm nhà hàng, món ăn..." @bind="searchQuery" @oninput="OnSearchChanged" />
+    </div>
+
+    <!-- Language Tabs -->
+    <div class="language-tabs">
+        @foreach (var lang in languages)
+        {
+            <button class="language-tab @(selectedLanguage == lang.Code ? "active" : "")" 
+                    @onclick="@(() => SelectLanguage(lang.Code))">
+                @if (lang.Code == "vi") { <span>Tất cả</span> }
+                else if (lang.Code == "en") { <span>Việt Nam</span> }
+                else if (lang.Code == "ja") { <span>Quốc tế</span> }
+            </button>
+        }
+    </div>
+
+    <!-- Featured Card -->
+    <div class="featured-card">
+        <div class="featured-content">
+            <h2>Xem trên bản đồ</h2>
+            <p>Khám phá vị trí các nhà hàng và tính di chuyển</p>
+            <a href="#" class="featured-link">
+                <span>📍</span> <span>Có 10 điểm dừng</span>
+            </a>
+        </div>
+        <div class="featured-icon">🗺️</div>
+    </div>
+
+    <!-- Restaurant List -->
+    <div class="restaurant-list" style="padding-bottom: 100px;">
+        @if (filteredRestaurants != null && filteredRestaurants.Any())
+        {
+            @foreach (var restaurant in filteredRestaurants)
+            {
+                <div class="restaurant-item" @onclick="@(() => GoToRestaurant(restaurant.Id))">
+                    <div class="restaurant-image">
+                        @{
+                            var bannerImage = restaurant.Images?.FirstOrDefault(i => i.ImageType == "banner");
+                        }
+                        @if (bannerImage != null)
+                        {
+                            <img src="@bannerImage.ImageUrl" alt="@restaurant.Name" />
+                        }
+                        else
+                        {
+                            <div style="width: 100%; height: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);"></div>
+                        }
+                        <div class="language-badge">🎙️ Tiếng Việt</div>
+                        <div class="audio-badge">🎧 Có audio</div>
+                    </div>
+                    <div class="restaurant-content">
+                        <div class="restaurant-name">@restaurant.Name</div>
+                        <div class="restaurant-meta">
+                            <span>📍</span>
+                            <span>@restaurant.Address</span>
+                        </div>
+                        <div class="restaurant-desc">
+                            @restaurant.Description
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+        else
+        {
+            <div style="text-align: center; padding: 40px 20px; color: #999;">
+                <p>Không tìm thấy nhà hàng phù hợp</p>
+            </div>
+        }
+    </div>
+
+    <!-- Bottom Navigation -->
+    <div class="bottom-nav">
+        <a href="#" class="nav-item active">
+            <span class="nav-icon">🏠</span>
+            <span>Trang chủ</span>
+        </a>
+        <a href="#" class="nav-item">
+            <span class="nav-icon">🗺️</span>
+            <span>Bản đồ</span>
+        </a>
+        <a href="#" class="nav-item">
+            <span class="nav-icon">👤</span>
+            <span>Hộ sơ</span>
+        </a>
+    </div>
+</div>
+
+@code {
+    private List<Restaurant> restaurants;
+    private List<Restaurant> filteredRestaurants;
+    private List<Language> languages;
+    private string selectedLanguage = "vi";
+    private string searchQuery = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        restaurants = await RestaurantService.GetRestaurantsAsync();
+        languages = await RestaurantService.GetLanguagesAsync();
+        filteredRestaurants = restaurants;
+    }
+
+    private void OnSearchChanged(ChangeEventArgs e)
+    {
+        searchQuery = e.Value?.ToString() ?? "";
+        FilterRestaurants();
+    }
+
+    private void SelectLanguage(string languageCode)
+    {
+        selectedLanguage = languageCode;
+        FilterRestaurants();
+    }
+
+    private void FilterRestaurants()
+    {
+        filteredRestaurants = restaurants
+            .Where(r => string.IsNullOrEmpty(searchQuery) || 
+                   r.Name.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+                   r.Description.Contains(searchQuery, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+    }
+
+    private void GoToRestaurant(int restaurantId)
+    {
+        NavigationManager.NavigateTo($"/restaurant/{restaurantId}");
+    }
+}

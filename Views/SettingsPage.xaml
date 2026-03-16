@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="VinhKhanhstreetfoods.Views.SettingsPage"
+             Title="Cài Đặt"
+             BackgroundColor="#F5F5F5">
+
+    <ScrollView Padding="20">
+        <StackLayout Spacing="20">
+            
+            <!-- Header -->
+            <Label Text="⚙️ Cài Đặt Ứng Dụng" 
+                   FontSize="24" 
+                   FontAttributes="Bold"
+                   TextColor="#283845"
+                   HorizontalOptions="Center"/>
+
+            <!-- Language Section -->
+            <Frame BackgroundColor="White"
+                   BorderColor="#C9A36B"
+                   CornerRadius="15"
+                   Padding="15"
+                   HasShadow="True">
+                <StackLayout Spacing="10">
+                    <Label Text="🌐 Ngôn Ngữ" 
+                           FontSize="16" 
+                           FontAttributes="Bold"
+                           TextColor="#283845"/>
+
+                    <Label Text="Ngôn ngữ giao diện (hệ thống)"
+                           FontSize="12"
+                           TextColor="#666666"/>
+                    <Picker ItemsSource="{Binding LanguageOptions}"
+                            SelectedItem="{Binding SelectedAppLanguage}"
+                            ItemDisplayBinding="{Binding DisplayName}"
+                            TextColor="#283845"
+                            Title="Chọn ngôn ngữ giao diện"/>
+
+                    <Label Text="Ngôn ngữ thuyết minh"
+                           FontSize="12"
+                           TextColor="#666666"/>
+                    <Picker ItemsSource="{Binding LanguageOptions}"
+                            SelectedItem="{Binding SelectedNarrationLanguage}"
+                            ItemDisplayBinding="{Binding DisplayName}"
+                            TextColor="#283845"
+                            Title="Chọn ngôn ngữ thuyết minh"/>
+                </StackLayout>
+            </Frame>
+
+            <!-- Audio Settings -->
+            <Frame BackgroundColor="White"
+                   BorderColor="#C9A36B"
+                   CornerRadius="15"
+                   Padding="15"
+                   HasShadow="True">
+                <StackLayout Spacing="15">
+                    <Label Text="🔊 Cài Đặt Âm Thanh" 
+                           FontSize="16" 
+                           FontAttributes="Bold"
+                           TextColor="#283845"/>
+                    
+                    <StackLayout Orientation="Horizontal" Spacing="10">
+                        <Label Text="Bật Âm Thanh" 
+                               VerticalOptions="Center"
+                               FontSize="14"/>
+                        <Switch IsToggled="{Binding EnableAudio}"
+                                HorizontalOptions="EndAndExpand"/>
+                    </StackLayout>
+
+                    <StackLayout Orientation="Horizontal" Spacing="10">
+                        <Label Text="Tự Động Phát" 
+                               VerticalOptions="Center"
+                               FontSize="14"/>
+                        <Switch IsToggled="{Binding EnableAutoNarration}"
+                                HorizontalOptions="EndAndExpand"/>
+                    </StackLayout>
+                </StackLayout>
+            </Frame>
+
+            <!-- Cooldown Settings -->
+            <Frame BackgroundColor="White"
+                   BorderColor="#C9A36B"
+                   CornerRadius="15"
+                   Padding="15"
+                   HasShadow="True">
+                <StackLayout Spacing="10">
+                    <Label Text="⏲️ Thời Gian Chờ (phút)" 
+                           FontSize="16" 
+                           FontAttributes="Bold"
+                           TextColor="#283845"/>
+                    <Stepper Value="{Binding CooldownMinutes}"
+                             Minimum="1"
+                             Maximum="60"
+                             Increment="1"/>
+                    <Label Text="{Binding CooldownMinutes, StringFormat='Hiện tại: {0} phút'}" 
+                           FontSize="12"
+                           TextColor="#666666"
+                           HorizontalOptions="Center"/>
+                </StackLayout>
+            </Frame>
+
+            <!-- Trigger Radius Settings -->
+            <Frame BackgroundColor="White"
+                   BorderColor="#C9A36B"
+                   CornerRadius="15"
+                   Padding="15"
+                   HasShadow="True">
+                <StackLayout Spacing="10">
+                    <Label Text="📏 Bán Kính Kích Hoạt (mét)" 
+                           FontSize="16" 
+                           FontAttributes="Bold"
+                           TextColor="#283845"/>
+                    <Stepper Value="{Binding TriggerRadiusMeters}"
+                             Minimum="10"
+                             Maximum="100"
+                             Increment="5"/>
+                    <Label Text="{Binding TriggerRadiusMeters, StringFormat='Hiện tại: {0}m'}" 
+                           FontSize="12"
+                           TextColor="#666666"
+                           HorizontalOptions="Center"/>
+                </StackLayout>
+            </Frame>
+
+            <!-- Status -->
+            <Frame BackgroundColor="#283845"
+                   CornerRadius="10"
+                   Padding="10">
+                <Label Text="{Binding StatusMessage}" 
+                       TextColor="White" 
+                       FontSize="12"
+                       HorizontalOptions="Center"/>
+            </Frame>
+
+            <!-- Action Buttons -->
+            <StackLayout Spacing="10">
+                <Button Text="💾 Lưu Cài Đặt" 
+                        Command="{Binding SaveSettingsCommand}"
+                        BackgroundColor="#283845"
+                        TextColor="White"
+                        FontSize="14"
+                        FontAttributes="Bold"
+                        CornerRadius="10"
+                        Padding="15"/>
+                <Button Text="🔄 Đặt Lại Mặc Định" 
+                        Command="{Binding ResetSettingsCommand}"
+                        BackgroundColor="#C9A36B"
+                        TextColor="Black"
+                        FontSize="14"
+                        FontAttributes="Bold"
+                        CornerRadius="10"
+                        Padding="15"/>
+            </StackLayout>
+        </StackLayout>
+    </ScrollView>
+</ContentPage>

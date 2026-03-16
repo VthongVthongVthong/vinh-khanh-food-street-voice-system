@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="VinhKhanhstreetfoods.Views.POIDetailPage"
+             Title="Chi Tiết Địa Điểm"
+             BackgroundColor="#F5F5F5">
+
+    <ScrollView Padding="20">
+        <StackLayout Spacing="20">
+            
+            <!-- POI Header -->
+            <Frame BackgroundColor="#283845"
+                   CornerRadius="15"
+                   Padding="20"
+                   HasShadow="True">
+                <StackLayout Spacing="10">
+                    <Label Text="{Binding SelectedPOI.Name}" 
+                           FontSize="28" 
+                           FontAttributes="Bold"
+                           TextColor="White"/>
+                    <Label Text="{Binding SelectedPOI.DescriptionText}" 
+                           FontSize="14" 
+                           TextColor="#E8E8E8"
+                           LineBreakMode="WordWrap"/>
+                </StackLayout>
+            </Frame>
+
+            <!-- Images Section -->
+            <Frame BackgroundColor="White"
+                   BorderColor="#C9A36B"
+                   CornerRadius="15"
+                   Padding="15"
+                   HasShadow="True">
+                <StackLayout Spacing="10">
+                    <Label Text="📷 Hình Ảnh" 
+                           FontSize="16" 
+                           FontAttributes="Bold"
+                           TextColor="#283845"/>
+                    <CollectionView ItemsSource="{Binding SelectedPOI.ImageUrlList}">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <Label Text="📸 {Binding}" 
+                                       FontSize="12"
+                                       TextColor="#666666"/>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </StackLayout>
+            </Frame>
+
+            <!-- Details Section -->
+            <Frame BackgroundColor="White"
+                   BorderColor="#C9A36B"
+                   CornerRadius="15"
+                   Padding="15"
+                   HasShadow="True">
+                <StackLayout Spacing="10">
+                    <Label Text="ℹ️ Thông Tin Chi Tiết" 
+                           FontSize="16" 
+                           FontAttributes="Bold"
+                           TextColor="#283845"/>
+                    <StackLayout Padding="10" Spacing="8">
+                        <Label Text="{Binding SelectedPOI.Latitude, StringFormat='Vĩ độ: {0:F5}'}" 
+                               FontSize="12"/>
+                        <Label Text="{Binding SelectedPOI.Longitude, StringFormat='Kinh độ: {0:F5}'}" 
+                               FontSize="12"/>
+                        <Label Text="{Binding SelectedPOI.TriggerRadius, StringFormat='Bán kính kích hoạt: {0}m'}" 
+                               FontSize="12"/>
+                    </StackLayout>
+                </StackLayout>
+            </Frame>
+
+            <!-- Audio Section -->
+            <Frame BackgroundColor="White"
+                   BorderColor="#C9A36B"
+                   CornerRadius="15"
+                   Padding="15"
+                   HasShadow="True">
+                <StackLayout Spacing="10">
+                    <Label Text="🎙️ Âm Thanh Hướng Dẫn" 
+                           FontSize="16" 
+                           FontAttributes="Bold"
+                           TextColor="#283845"/>
+                    <Label Text="{Binding StatusMessage}" 
+                           FontSize="12" 
+                           TextColor="#666666"/>
+                </StackLayout>
+            </Frame>
+
+            <!-- Status -->
+            <Frame BackgroundColor="{Binding IsPlaying, Converter={StaticResource IsPlayingColorConverter}}"
+                   CornerRadius="10"
+                   Padding="10">
+                <Label Text="{Binding IsPlaying, StringFormat='Trạng thái: {0}'}" 
+                       TextColor="White" 
+                       FontSize="12"
+                       HorizontalOptions="Center"/>
+            </Frame>
+
+            <!-- Action Buttons -->
+            <StackLayout Spacing="10">
+                <Button Text="▶️ Phát Âm Thanh" 
+                        Command="{Binding PlayAudioCommand}"
+                        IsEnabled="{Binding IsPlaying, Converter={StaticResource InvertedBoolConverter}}"
+                        BackgroundColor="#283845"
+                        TextColor="White"
+                        FontSize="14"
+                        FontAttributes="Bold"
+                        CornerRadius="10"
+                        Padding="15"/>
+                <Button Text="⏹️ Dừng Âm Thanh" 
+                        Command="{Binding StopAudioCommand}"
+                        IsEnabled="{Binding IsPlaying}"
+                        BackgroundColor="#C9A36B"
+                        TextColor="Black"
+                        FontSize="14"
+                        FontAttributes="Bold"
+                        CornerRadius="10"
+                        Padding="15"/>
+                <Button Text="📍 Mở Bản Đồ" 
+                        Command="{Binding OpenMapCommand}"
+                        BackgroundColor="#666666"
+                        TextColor="White"
+                        FontSize="14"
+                        FontAttributes="Bold"
+                        CornerRadius="10"
+                        Padding="15"/>
+                <Button Text="📤 Chia Sẻ" 
+                        Command="{Binding ShareCommand}"
+                        BackgroundColor="#999999"
+                        TextColor="White"
+                        FontSize="14"
+                        FontAttributes="Bold"
+                        CornerRadius="10"
+                        Padding="15"/>
+            </StackLayout>
+        </StackLayout>
+    </ScrollView>
+</ContentPage>

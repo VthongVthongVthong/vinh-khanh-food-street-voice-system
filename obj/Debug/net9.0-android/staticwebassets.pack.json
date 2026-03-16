@@ -1,0 +1,45 @@
+{
+  "Files": [
+    {
+      "Id": "D:\\C#\\Restaurant\\v1.0\\obj\\Debug\\net9.0-android\\scopedcss\\bundle\\VinhKhanhstreetfoods.styles.css",
+      "PackagePath": "staticwebassets\\VinhKhanhstreetfoods.styles.css"
+    },
+    {
+      "Id": "D:\\C#\\Restaurant\\v1.0\\wwwroot\\css\\app.css",
+      "PackagePath": "staticwebassets\\css\\app.css"
+    },
+    {
+      "Id": "D:\\C#\\Restaurant\\v1.0\\wwwroot\\css\\bootstrap\\bootstrap.min.css",
+      "PackagePath": "staticwebassets\\css\\bootstrap\\bootstrap.min.css"
+    },
+    {
+      "Id": "D:\\C#\\Restaurant\\v1.0\\wwwroot\\css\\bootstrap\\bootstrap.min.css.map",
+      "PackagePath": "staticwebassets\\css\\bootstrap\\bootstrap.min.css.map"
+    },
+    {
+      "Id": "D:\\C#\\Restaurant\\v1.0\\wwwroot\\index.html",
+      "PackagePath": "staticwebassets\\index.html"
+    },
+    {
+      "Id": "obj\\Debug\\net9.0-android\\staticwebassets\\msbuild.VinhKhanhstreetfoods.Microsoft.AspNetCore.StaticWebAssetEndpoints.props",
+      "PackagePath": "build\\Microsoft.AspNetCore.StaticWebAssetEndpoints.props"
+    },
+    {
+      "Id": "obj\\Debug\\net9.0-android\\staticwebassets\\msbuild.VinhKhanhstreetfoods.Microsoft.AspNetCore.StaticWebAssets.props",
+      "PackagePath": "build\\Microsoft.AspNetCore.StaticWebAssets.props"
+    },
+    {
+      "Id": "obj\\Debug\\net9.0-android\\staticwebassets\\msbuild.build.VinhKhanhstreetfoods.props",
+      "PackagePath": "build\\VinhKhanhstreetfoods.props"
+    },
+    {
+      "Id": "obj\\Debug\\net9.0-android\\staticwebassets\\msbuild.buildMultiTargeting.VinhKhanhstreetfoods.props",
+      "PackagePath": "buildMultiTargeting\\VinhKhanhstreetfoods.props"
+    },
+    {
+      "Id": "obj\\Debug\\net9.0-android\\staticwebassets\\msbuild.buildTransitive.VinhKhanhstreetfoods.props",
+      "PackagePath": "buildTransitive\\VinhKhanhstreetfoods.props"
+    }
+  ],
+  "ElementsToRemove": []
+}

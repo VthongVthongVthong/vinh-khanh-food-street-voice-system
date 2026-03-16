@@ -1,0 +1,8 @@
+wwwroot\css\app.css
+wwwroot\css\bootstrap\bootstrap.min.css
+wwwroot\css\bootstrap\bootstrap.min.css.map
+wwwroot\index.html
+C:\Users\VIEN THONG\source\repos\VinhKhanhstreetfoods\wwwroot\css\app.css
+C:\Users\VIEN THONG\source\repos\VinhKhanhstreetfoods\wwwroot\css\bootstrap\bootstrap.min.css
+C:\Users\VIEN THONG\source\repos\VinhKhanhstreetfoods\wwwroot\css\bootstrap\bootstrap.min.css.map
+C:\Users\VIEN THONG\source\repos\VinhKhanhstreetfoods\wwwroot\index.html

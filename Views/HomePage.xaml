@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="VinhKhanhstreetfoods.Views.HomePage"
+             Title="Vĩnh Khánh - Âm Thanh Hướng Dẫn"
+             BackgroundColor="#F5F5F5">
+
+    <Grid RowDefinitions="Auto,*,Auto" Padding="20" RowSpacing="20">
+        
+        <!-- Header Section -->
+        <StackLayout Grid.Row="0" Spacing="10">
+            <Label Text="🎙️ Hướng Dẫn Âm Thanh Vĩnh Khánh" 
+                   FontSize="28" 
+                   FontAttributes="Bold"
+                   TextColor="#283845"
+                   HorizontalOptions="Center"/>
+            <Label Text="Khám phá ẩm thực ngon mỗi bước đi" 
+                   FontSize="14" 
+                   TextColor="Gray"
+                   HorizontalOptions="Center"/>
+        </StackLayout>
+
+        <!-- Main Content -->
+        <ScrollView Grid.Row="1">
+            <StackLayout Spacing="20">
+                
+                <!-- Status Section -->
+                <Frame BackgroundColor="White"
+                       BorderColor="#C9A36B"
+                       CornerRadius="15"
+                       Padding="15"
+                       HasShadow="True">
+                    <StackLayout Spacing="10">
+                        <Label Text="Trạng Thái" 
+                               FontSize="16" 
+                               FontAttributes="Bold"
+                               TextColor="#283845"/>
+                        <Label Text="{Binding StatusMessage}" 
+                               FontSize="14"
+                               TextColor="#666666"
+                               LineBreakMode="WordWrap"/>
+                    </StackLayout>
+                </Frame>
+
+                <!-- Location Section -->
+                <Frame BackgroundColor="White"
+                       BorderColor="#C9A36B"
+                       CornerRadius="15"
+                       Padding="15"
+                       HasShadow="True">
+                    <StackLayout Spacing="10">
+                        <Label Text="📍 Vị Trí Hiện Tại" 
+                               FontSize="16" 
+                               FontAttributes="Bold"
+                               TextColor="#283845"/>
+                        <Label Text="{Binding UserLatitude, StringFormat='Vĩ độ: {0:F5}'}" 
+                               FontSize="12"
+                               TextColor="#666666"/>
+                        <Label Text="{Binding UserLongitude, StringFormat='Kinh độ: {0:F5}'}" 
+                               FontSize="12"
+                               TextColor="#666666"/>
+                    </StackLayout>
+                </Frame>
+
+                <!-- Nearby POIs Section -->
+                <Frame BackgroundColor="White"
+                       BorderColor="#C9A36B"
+                       CornerRadius="15"
+                       Padding="15"
+                       HasShadow="True">
+                    <StackLayout Spacing="10">
+                        <Label Text="🍽️ Địa Điểm Gần Đây" 
+                               FontSize="16" 
+                               FontAttributes="Bold"
+                               TextColor="#283845"/>
+                        <CollectionView ItemsSource="{Binding NearbyPOIs}" 
+                                       SelectionMode="Single">
+                            <CollectionView.ItemTemplate>
+                                <DataTemplate>
+                                    <StackLayout Padding="10" Spacing="5">
+                                        <Label Text="{Binding Name}" 
+                                               FontSize="14" 
+                                               FontAttributes="Bold"
+                                               TextColor="#C9A36B"/>
+                                        <Label Text="{Binding DescriptionText}" 
+                                               FontSize="12" 
+                                               TextColor="#666666"
+                                               LineBreakMode="TailTruncation"/>
+                                    </StackLayout>
+                                </DataTemplate>
+                            </CollectionView.ItemTemplate>
+                        </CollectionView>
+                    </StackLayout>
+                </Frame>
+            </StackLayout>
+        </ScrollView>
+
+        <!-- Control Buttons -->
+        <StackLayout Grid.Row="2" Spacing="10">
+            <Button Text="▶️ Bật Định Vị" 
+                    Command="{Binding StartLocationServiceCommand}"
+                    IsEnabled="{Binding IsLocationServiceRunning, Converter={StaticResource InvertedBoolConverter}}"
+                    BackgroundColor="#283845"
+                    TextColor="White"
+                    FontSize="16"
+                    FontAttributes="Bold"
+                    CornerRadius="10"
+                    Padding="15"/>
+            <Button Text="⏹️ Tắt Định Vị" 
+                    Command="{Binding StopLocationServiceCommand}"
+                    IsEnabled="{Binding IsLocationServiceRunning}"
+                    BackgroundColor="#C9A36B"
+                    TextColor="Black"
+                    FontSize="16"
+                    FontAttributes="Bold"
+                    CornerRadius="10"
+                    Padding="15"/>
+        </StackLayout>
+    </Grid>
+</ContentPage>
