@@ -1,8 +1,0 @@
-wwwroot\css\app.css
-wwwroot\css\bootstrap\bootstrap.min.css
-wwwroot\css\bootstrap\bootstrap.min.css.map
-wwwroot\index.html
-D:\C#\Restaurant\v1.0\wwwroot\css\bootstrap\bootstrap.min.css
-D:\C#\Restaurant\v1.0\wwwroot\css\app.css
-D:\C#\Restaurant\v1.0\wwwroot\css\bootstrap\bootstrap.min.css.map
-D:\C#\Restaurant\v1.0\wwwroot\index.html
