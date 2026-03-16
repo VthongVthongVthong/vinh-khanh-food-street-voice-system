@@ -3,24 +3,30 @@
     x:Class="VinhKhanhstreetfoods.AppShell"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-    xmlns:local="clr-namespace:VinhKhanhstreetfoods.Views">
+    xmlns:local="clr-namespace:VinhKhanhstreetfoods.Views"
+    FlyoutBehavior="Disabled"
+    BackgroundColor="White"
+    TitleColor="#1a1a1a"
+    ForegroundColor="#000000"
+    NavBarHasShadow="True">
 
     <TabBar>
-        <ShellContent 
-            Title="Trang Chủ" 
-            ContentTemplate="{DataTemplate local:HomePage}" 
-            Route="HomePage" />
-        <ShellContent 
-            Title="Bản Đồ" 
-            ContentTemplate="{DataTemplate local:MapPage}" 
-            Route="MapPage" />
-        <ShellContent 
-            Title="Chi Tiết" 
-            ContentTemplate="{DataTemplate local:POIDetailPage}" 
-            Route="POIDetailPage" />
-        <ShellContent 
-            Title="Cài Đặt" 
-            ContentTemplate="{DataTemplate local:SettingsPage}" 
-            Route="SettingsPage" />
+        <ShellContent
+            Title="Trang chủ"
+            Icon="home"
+            ContentTemplate="{DataTemplate local:HomePage}"
+            Route="home" />
+
+        <ShellContent
+            Title="Bản đồ"
+            Icon="map"
+            ContentTemplate="{DataTemplate local:MapPage}"
+            Route="map" />
+
+        <ShellContent
+            Title="Cài đặt"
+            Icon="settings"
+            ContentTemplate="{DataTemplate local:SettingsPage}"
+            Route="settings" />
     </TabBar>
 </Shell>

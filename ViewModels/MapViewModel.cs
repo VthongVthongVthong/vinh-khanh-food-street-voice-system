@@ -88,7 +88,7 @@ namespace VinhKhanhstreetfoods.ViewModels
 
             try
             {
-                var uri = Uri.EscapeDataString(_mapService.GetGoogleMapsUrl(SelectedPOI.Latitude, SelectedPOI.Longitude));
+                var uri = Uri.EscapeDataString(_mapService.GetMapUrl(SelectedPOI.Latitude, SelectedPOI.Longitude));
                 await Launcher.OpenAsync(uri);
             }
             catch (Exception ex)

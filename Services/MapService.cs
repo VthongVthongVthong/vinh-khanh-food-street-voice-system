@@ -2,21 +2,24 @@ namespace VinhKhanhstreetfoods.Services
 {
     public class MapService
     {
-        public string GoogleMapsApiKey { get; set; }
+        public string TrackAsiaStyleUrl { get; set; }
 
-        public MapService(string apiKey = "YOUR_GOOGLE_MAPS_API_KEY")
+        public MapService(string apiKey = "bca01773651908dcc9bc6320f7c16973ce")
         {
-            GoogleMapsApiKey = apiKey;
+            // Track Asia Style URL - sử dụng style Streets v2
+            TrackAsiaStyleUrl = $"https://maps.track-asia.com/styles/v2/streets.json?key={apiKey}";
         }
 
-        public string GetGoogleMapsUrl(double latitude, double longitude, int zoomLevel = 15)
+        public string GetMapUrl(double latitude, double longitude, int zoomLevel = 15)
         {
-            return $"https://www.google.com/maps/search/?api=1&query={latitude},{longitude}&zoom={zoomLevel}";
+            // Trả về URL để sử dụng Track Asia với vị trí được chỉ định
+            return $"https://maps.track-asia.com/?lat={latitude}&lng={longitude}&zoom={zoomLevel}";
         }
 
         public string GetDirectionsUrl(double userLat, double userLon, double destLat, double destLon)
         {
-            return $"https://www.google.com/maps/dir/?api=1&origin={userLat},{userLon}&destination={destLat},{destLon}";
+            // Track Asia directions URL
+            return $"https://maps.track-asia.com/?origin={userLat},{userLon}&destination={destLat},{destLon}";
         }
 
         public double CalculateDistance(double lat1, double lon1, double lat2, double lon2)

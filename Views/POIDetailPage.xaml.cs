@@ -1,9 +1,37 @@
+using VinhKhanhstreetfoods.Services;
+using VinhKhanhstreetfoods.ViewModels;
+
 namespace VinhKhanhstreetfoods.Views;
 
+[QueryProperty(nameof(PoiId), "poiId")]
 public partial class POIDetailPage : ContentPage
 {
-	public POIDetailPage()
-	{
-		InitializeComponent();
-	}
+    private readonly POIDetailViewModel _viewModel;
+    private readonly POIRepository _poiRepository;
+
+    private int _poiId;
+
+    public POIDetailPage(POIDetailViewModel viewModel, POIRepository poiRepository)
+    {
+        InitializeComponent();
+        _viewModel = viewModel;
+        _poiRepository = poiRepository;
+        BindingContext = _viewModel;
+    }
+
+    public int PoiId
+    {
+        get => _poiId;
+        set
+        {
+            _poiId = value;
+            _ = LoadPoiAsync(_poiId);
+        }
+    }
+
+    private async Task LoadPoiAsync(int id)
+    {
+        var poi = await _poiRepository.GetPOIByIdAsync(id);
+        _viewModel.SelectedPOI = poi;
+    }
 }

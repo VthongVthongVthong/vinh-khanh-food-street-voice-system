@@ -1,9 +1,11 @@
 ﻿using CommunityToolkit.Maui;
 using Microsoft.Extensions.Logging;
-using VinhKhanhstreetfoods.Data;
 using VinhKhanhstreetfoods.Services;
 using VinhKhanhstreetfoods.ViewModels;
 using VinhKhanhstreetfoods.Views;
+using System.Diagnostics;
+using Microsoft.Maui;
+using Microsoft.Maui.Hosting;
 
 namespace VinhKhanhstreetfoods
 {
@@ -11,11 +13,8 @@ namespace VinhKhanhstreetfoods
     {
         public static MauiApp CreateMauiApp()
         {
-            AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
-            {
-                System.Diagnostics.Debug.WriteLine($"CRASH: {e.ExceptionObject}");
-            };
             var builder = MauiApp.CreateBuilder();
+
             builder
                 .UseMauiApp<App>()
                 .UseMauiCommunityToolkit()
@@ -27,44 +26,96 @@ namespace VinhKhanhstreetfoods
 
             // Register Services
             builder.Services.AddSingleton<LocationService>();
-
-            builder.Services.AddSingleton<IPOIRepository, POIRepository>();
-
+            builder.Services.AddSingleton<GeofenceEngine>();
+            builder.Services.AddSingleton<POIRepository>();
+            builder.Services.AddSingleton<IPOIRepository>(sp => sp.GetRequiredService<POIRepository>());
+            builder.Services.AddSingleton<AudioManager>();
             builder.Services.AddSingleton<TextToSpeechService>();
-            //builder.Services.AddSingleton<MapService>(new MapService("YOUR_GOOGLE_MAPS_API_KEY"));
-            builder.Services.AddSingleton<AudioManager>(sp => new AudioManager(sp.GetRequiredService<TextToSpeechService>()));
-            builder.Services.AddSingleton<GeofenceEngine>(sp => new GeofenceEngine(
-                sp.GetRequiredService<IPOIRepository>(),
-                sp.GetRequiredService<AudioManager>()
-            ));
-            builder.Services.AddSingleton<RestaurantService>(sp => new RestaurantService(
-                (POIRepository)sp.GetRequiredService<IPOIRepository>()
-            ));
+            builder.Services.AddSingleton<MapService>();
 
             // Register ViewModels
             builder.Services.AddSingleton<HomeViewModel>();
-            builder.Services.AddSingleton<MapViewModel>();
             builder.Services.AddSingleton<POIDetailViewModel>();
+            builder.Services.AddSingleton<MapViewModel>();
             builder.Services.AddSingleton<SettingsViewModel>();
 
             // Register Views
             builder.Services.AddSingleton<HomePage>();
-            builder.Services.AddSingleton<MapPage>();
             builder.Services.AddSingleton<POIDetailPage>();
+            builder.Services.AddSingleton<MapPage>();
             builder.Services.AddSingleton<SettingsPage>();
 
-            // Register Routes
-            Routing.RegisterRoute("home", typeof(HomePage));
-            Routing.RegisterRoute("map", typeof(MapPage));
-            Routing.RegisterRoute("detail", typeof(POIDetailPage));
-            Routing.RegisterRoute("settings", typeof(SettingsPage));
+            // Register Shell
+            builder.Services.AddSingleton<AppShell>();
 
-#if DEBUG
-            builder.Services.AddBlazorWebViewDeveloperTools();
-            builder.Logging.AddDebug();
-#endif
+            var app = builder.Build();
+            
+            // Initialize database on app startup
+            _ = CopySQLiteFileAsync();
 
-            return builder.Build();
+            return app;
+        }
+
+        public static async Task CopySQLiteFileAsync()
+        {
+            try
+            {
+                // Try multiple possible paths for the database file
+                var possiblePaths = new[]
+                {
+                    "Resources/Raw/poi_data.sqlite",
+                    "Data/poi_data.sqlite",
+                    "poi_data.sqlite"
+                };
+
+                var sourceFile = "";
+                foreach (var path in possiblePaths)
+                {
+                    try
+                    {
+                        using (var stream = await FileSystem.OpenAppPackageFileAsync(path))
+                        {
+                            sourceFile = path;
+                            break;
+                        }
+                    }
+                    catch
+                    {
+                        // Try next path
+                    }
+                }
+
+                if (string.IsNullOrEmpty(sourceFile))
+                {
+                    Debug.WriteLine("ERROR: Could not find poi_data.sqlite in any expected location");
+                    return;
+                }
+
+                var folderPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                var targetPath = Path.Combine(folderPath, "VinhKhanhFoodGuide.db3");
+
+                Debug.WriteLine($"[CopySQLiteFile] Found database at: {sourceFile}");
+                Debug.WriteLine($"[CopySQLiteFile] Target path: {targetPath}");
+
+                if (!File.Exists(targetPath))
+                {
+                    using (var stream = await FileSystem.OpenAppPackageFileAsync(sourceFile))
+                    using (var fileStream = File.Create(targetPath))
+                    {
+                        await stream.CopyToAsync(fileStream);
+                    }
+                    Debug.WriteLine($"[CopySQLiteFile] Database copied successfully");
+                }
+                else
+                {
+                    Debug.WriteLine($"[CopySQLiteFile] Database already exists at {targetPath}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[CopySQLiteFile] Error copying SQLite file: {ex.Message}");
+                Debug.WriteLine($"[CopySQLiteFile] Stack trace: {ex.StackTrace}");
+            }
         }
     }
 }

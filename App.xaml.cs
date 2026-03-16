@@ -1,47 +1,38 @@
-﻿using VinhKhanhstreetfoods.Data;
+﻿using VinhKhanhstreetfoods;
 using VinhKhanhstreetfoods.Services;
 using System.Diagnostics;
 
-namespace VinhKhanhstreetfoods
+namespace VinhKhanhstreetfoods;
+
+public partial class App : Application
 {
-    public partial class App : Application
+    public App()
     {
-        public App()
-        {
-            InitializeComponent();
-            MainPage = new AppShell();
-        }
+        InitializeComponent();
 
-        protected override void OnStart()
-        {
-            base.OnStart();
-            Debug.WriteLine("App started");
+        MainPage = new AppShell();
+    }
 
-            _ = InitializeDatabaseAsync();
-        }
-
-        private async Task InitializeDatabaseAsync()
+    protected override async void OnStart()
+    {
+        base.OnStart();
+        
+        try
         {
-            try
+            // ✅ Copy SQLite file nếu chưa có
+            await MauiProgram.CopySQLiteFileAsync();
+            
+            // ✅ Initialize database
+            var poiRepository = IPlatformApplication.Current?.Services?.GetService<IPOIRepository>();
+            if (poiRepository != null)
             {
-                var poiRepository = IPlatformApplication.Current?.Services?.GetService<IPOIRepository>();
-                if (poiRepository != null)
-                {
-                    // Với interface, không gọi InitializeAsync trực tiếp nữa.
-                    // SeedData hiện vẫn cần SQLite implementation, nên chỉ seed nếu repo là POIRepository.
-                    if (poiRepository is POIRepository sqliteRepo)
-                    {
-                        await sqliteRepo.InitializeAsync();
-                        await SeedData.InitializeAsync(sqliteRepo);
-                        Debug.WriteLine("Database initialized successfully");
-                    }
-                }
+                await poiRepository.InitializeAsync();
+                Debug.WriteLine("SQLite database initialized successfully");
             }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Database initialization error: {ex.Message}");
-                Debug.WriteLine($"Stack trace: {ex.StackTrace}");
-            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[App] Error during initialization: {ex.Message}");
         }
     }
 }

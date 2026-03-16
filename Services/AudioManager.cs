@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using VinhKhanhstreetfoods.Models;
 
 namespace VinhKhanhstreetfoods.Services
@@ -6,11 +7,13 @@ namespace VinhKhanhstreetfoods.Services
     {
         private readonly Queue<POI> _audioQueue = new();
         private readonly TextToSpeechService _ttsService;
-        private bool _isPlaying = false;
-        private POI _currentPOI;
+        private readonly SemaphoreSlim _queueLock = new(1, 1);
 
-        public event EventHandler<POI> AudioStarted;
-        public event EventHandler<POI> AudioCompleted;
+        private bool _isPlaying;
+        private POI? _currentPOI;
+
+        public event EventHandler<POI>? AudioStarted;
+        public event EventHandler<POI>? AudioCompleted;
 
         public AudioManager(TextToSpeechService ttsService)
         {
@@ -20,72 +23,89 @@ namespace VinhKhanhstreetfoods.Services
         public void AddToQueue(POI poi)
         {
             _audioQueue.Enqueue(poi);
-            ProcessQueue();
+            _ = ProcessQueueAsync();
         }
 
-        private async void ProcessQueue()
+        private async Task ProcessQueueAsync()
         {
-            if (_isPlaying || _audioQueue.Count == 0)
-                return;
-
-            _isPlaying = true;
-            _currentPOI = _audioQueue.Dequeue();
-
-            AudioStarted?.Invoke(this, _currentPOI);
-
+            await _queueLock.WaitAsync();
             try
             {
-                // Check if we have pre-recorded audio
-                if (!string.IsNullOrEmpty(_currentPOI.AudioFile) && File.Exists(_currentPOI.AudioFile))
-                {
-                    // Play MP3 file
-                    await PlayAudioFile(_currentPOI.AudioFile);
-                }
-                else
-                {
-                    // Use Text-to-Speech
-                    var text = string.IsNullOrEmpty(_currentPOI.TtsScript) 
-                        ? _currentPOI.DescriptionText 
-                        : _currentPOI.TtsScript;
+                if (_isPlaying || _audioQueue.Count == 0)
+                    return;
 
-                    await _ttsService.SpeakAsync(text, _currentPOI.Language);
-                }
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Audio playback error: {ex.Message}");
+                _isPlaying = true;
             }
             finally
             {
-                _isPlaying = false;
-                AudioCompleted?.Invoke(this, _currentPOI);
-                _currentPOI = null;
+                _queueLock.Release();
+            }
 
-                // Process next in queue
-                ProcessQueue();
+            while (true)
+            {
+                POI? poi;
+
+                await _queueLock.WaitAsync();
+                try
+                {
+                    if (_audioQueue.Count == 0)
+                    {
+                        _isPlaying = false;
+                        _currentPOI = null;
+                        return;
+                    }
+
+                    poi = _audioQueue.Dequeue();
+                    _currentPOI = poi;
+                }
+                finally
+                {
+                    _queueLock.Release();
+                }
+
+                if (poi is null)
+                    continue;
+
+                AudioStarted?.Invoke(this, poi);
+
+                try
+                {
+                    if (!string.IsNullOrEmpty(poi.AudioFile) && File.Exists(poi.AudioFile))
+                        await PlayAudioFile(poi.AudioFile);
+                    else
+                    {
+                        var text = string.IsNullOrEmpty(poi.TtsScript) ? poi.DescriptionText : poi.TtsScript;
+                        await _ttsService.SpeakAsync(text, poi.Language);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Audio playback error: {ex}");
+                }
+                finally
+                {
+                    AudioCompleted?.Invoke(this, poi);
+                }
             }
         }
 
-        private async Task PlayAudioFile(string filePath)
+        private static async Task PlayAudioFile(string filePath)
         {
-            // Implement MP3 playback using MediaPlayer
-            // This is a simplified version
-            await Task.Delay(2000); // Simulate audio playback
+            // TODO: replace with real player later
+            await Task.Delay(2000);
         }
 
         public void StopCurrent()
         {
             _ttsService.Stop();
-            _isPlaying = false;
             _audioQueue.Clear();
+            _isPlaying = false;
+            _currentPOI = null;
         }
 
-        public void ClearQueue()
-        {
-            _audioQueue.Clear();
-        }
+        public void ClearQueue() => _audioQueue.Clear();
 
         public bool IsPlaying => _isPlaying;
-        public POI CurrentPOI => _currentPOI;
+        public POI? CurrentPOI => _currentPOI;
     }
 }

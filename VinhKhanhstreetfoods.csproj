@@ -62,6 +62,10 @@
     </ItemGroup>
 
     <ItemGroup>
+      <AndroidResource Remove="Platforms\Android\Resources\drawable\default.xml" />
+    </ItemGroup>
+
+    <ItemGroup>
         <!-- MVVM Toolkit -->
         <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
         
@@ -80,6 +84,10 @@
         
         <!-- Other dependencies -->
         <PackageReference Include="StackExchange.Redis" Version="2.11.8" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <MauiAsset Include="Data\poi_data.sqlite" />
     </ItemGroup>
 
 </Project>

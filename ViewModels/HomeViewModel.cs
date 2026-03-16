@@ -1,8 +1,9 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using VinhKhanhstreetfoods.Models;
 using VinhKhanhstreetfoods.Services;
-using System.ComponentModel;
 
 namespace VinhKhanhstreetfoods.ViewModels
 {
@@ -18,8 +19,10 @@ namespace VinhKhanhstreetfoods.ViewModels
         private bool _isLocationServiceRunning;
         private double _userLatitude;
         private double _userLongitude;
+        private POI? _selectedPOI;
+        private bool _isLoading;
 
-        public event PropertyChangedEventHandler PropertyChanged;
+        public event PropertyChangedEventHandler? PropertyChanged;
 
         public HomeViewModel(
             LocationService locationService,
@@ -34,28 +37,38 @@ namespace VinhKhanhstreetfoods.ViewModels
 
             NearbyPOIs = new ObservableCollection<POI>();
             StatusMessage = "Ứng dụng sẵn sàng. Nhấn START để bắt đầu theo dõi vị trí.";
+            IsLoading = false;
 
             StartLocationServiceCommand = new Command(async () => await StartLocationService());
             StopLocationServiceCommand = new Command(async () => await StopLocationService());
+            OpenDetailCommand = new Command<POI>(async poi => await OpenDetailAsync(poi));
 
-            // Subscribe to events safely
-            try
-            {
-                _locationService.LocationUpdated += OnLocationUpdated;
-                _geofenceEngine.POITriggered += OnPOITriggered;
-                _audioManager.AudioStarted += OnAudioStarted;
-                _audioManager.AudioCompleted += OnAudioCompleted;
-            }
-            catch (Exception ex)
-            {
-                StatusMessage = $"Lỗi khởi tạo: {ex.Message}";
-            }
+            _locationService.LocationUpdated += OnLocationUpdated;
+            _geofenceEngine.POITriggered += OnPOITriggered;
+            _audioManager.AudioStarted += OnAudioStarted;
+            _audioManager.AudioCompleted += OnAudioCompleted;
+
+            // Load initial data
+            _ = LoadInitialDataAsync();
         }
 
         public ObservableCollection<POI> NearbyPOIs
         {
             get => _nearbyPOIs;
             set { _nearbyPOIs = value; OnPropertyChanged(); }
+        }
+
+        public POI? SelectedPOI
+        {
+            get => _selectedPOI;
+            set
+            {
+                if (Equals(_selectedPOI, value))
+                    return;
+
+                _selectedPOI = value;
+                OnPropertyChanged();
+            }
         }
 
         public string StatusMessage
@@ -82,8 +95,74 @@ namespace VinhKhanhstreetfoods.ViewModels
             set { _userLongitude = value; OnPropertyChanged(); }
         }
 
+        public bool IsLoading
+        {
+            get => _isLoading;
+            set { _isLoading = value; OnPropertyChanged(); }
+        }
+
         public ICommand StartLocationServiceCommand { get; }
         public ICommand StopLocationServiceCommand { get; }
+        public ICommand OpenDetailCommand { get; }
+
+        private async Task LoadInitialDataAsync()
+        {
+            try
+            {
+                IsLoading = true;
+                StatusMessage = "Đang tải dữ liệu...";
+
+                var allPOIs = await _poiRepository.GetActivePOIsAsync();
+
+                System.Diagnostics.Debug.WriteLine($"[HomeViewModel] Loaded {allPOIs.Count} active POIs from database");
+
+                if (allPOIs.Count == 0)
+                {
+                    StatusMessage = "Không có điểm của lãi nào. Kiểm tra dữ liệu cơ sở dữ liệu.";
+                    return;
+                }
+
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    NearbyPOIs.Clear();
+                    foreach (var poi in allPOIs)
+                    {
+                        NearbyPOIs.Add(poi);
+                    }
+
+                    StatusMessage = $"Đã tải {allPOIs.Count} điểm của lãi. Nhấn START để bắt đầu.";
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[HomeViewModel] Error loading initial data: {ex.Message}");
+                StatusMessage = $"Lỗi tải dữ liệu: {ex.Message}";
+            }
+            finally
+            {
+                IsLoading = false;
+            }
+        }
+
+        private async Task OpenDetailAsync(POI? poi)
+        {
+            if (poi is null)
+                return;
+
+            try
+            {
+                await Shell.Current.GoToAsync($"//home/detail?poiId={poi.Id}", true);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[HomeViewModel] Navigation error: {ex}");
+                StatusMessage = $"Lỗi: {ex.Message}";
+            }
+            finally
+            {
+                SelectedPOI = null;
+            }
+        }
 
         private async Task StartLocationService()
         {
@@ -112,7 +191,6 @@ namespace VinhKhanhstreetfoods.ViewModels
             UserLongitude = location.Longitude;
             StatusMessage = $"Vị trí: {location.Latitude:F5}, {location.Longitude:F5}";
 
-            // Check nearby POIs
             _ = _geofenceEngine.CheckPOIs(location);
         }
 
@@ -121,31 +199,25 @@ namespace VinhKhanhstreetfoods.ViewModels
             MainThread.BeginInvokeOnMainThread(() =>
             {
                 StatusMessage = $"Phát hành: {poi.Name}";
-                
+
                 if (!NearbyPOIs.Contains(poi))
                     NearbyPOIs.Add(poi);
+
+                System.Diagnostics.Debug.WriteLine($"[HomeViewModel] POI triggered and added: {poi.Name}");
             });
         }
 
         private void OnAudioStarted(object sender, POI poi)
         {
-            MainThread.BeginInvokeOnMainThread(() =>
-            {
-                StatusMessage = $"Đang phát: {poi.Name}";
-            });
+            MainThread.BeginInvokeOnMainThread(() => { StatusMessage = $"Đang phát: {poi.Name}"; });
         }
 
         private void OnAudioCompleted(object sender, POI poi)
         {
-            MainThread.BeginInvokeOnMainThread(() =>
-            {
-                StatusMessage = "Hoàn tất phát âm thanh";
-            });
+            MainThread.BeginInvokeOnMainThread(() => { StatusMessage = "Hoàn tất phát âm thanh"; });
         }
 
-        protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
+        protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }

@@ -23,14 +23,14 @@ namespace VinhKhanhstreetfoods.ViewModels
             _audioManager = audioManager;
             _mapService = mapService;
 
+            _audioManager.AudioStarted += OnAudioStarted;
+            _audioManager.AudioCompleted += OnAudioCompleted;
+
             PlayAudioCommand = new Command(async () => await PlayAudio());
             StopAudioCommand = new Command(StopAudio);
             OpenMapCommand = new Command(async () => await OpenMap());
             ShareCommand = new Command(async () => await SharePOI());
-
-            // Defensive: AudioManager may raise events from background threads.
-            _audioManager.AudioStarted += OnAudioStarted;
-            _audioManager.AudioCompleted += OnAudioCompleted;
+            GoBackCommand = new Command(async () => await GoBack());
         }
 
         public POI? SelectedPOI
@@ -76,6 +76,7 @@ namespace VinhKhanhstreetfoods.ViewModels
         public ICommand StopAudioCommand { get; }
         public ICommand OpenMapCommand { get; }
         public ICommand ShareCommand { get; }
+        public ICommand GoBackCommand { get; }
 
         private async Task PlayAudio()
         {
@@ -84,6 +85,7 @@ namespace VinhKhanhstreetfoods.ViewModels
 
             _audioManager.AddToQueue(SelectedPOI);
             StatusMessage = "Phát âm thanh...";
+            await Task.CompletedTask;
         }
 
         private void StopAudio()
@@ -100,8 +102,7 @@ namespace VinhKhanhstreetfoods.ViewModels
 
             try
             {
-                // Do NOT EscapeDataString the whole URL; that turns it into an invalid URL.
-                var url = _mapService.GetGoogleMapsUrl(SelectedPOI.Latitude, SelectedPOI.Longitude);
+                var url = _mapService.GetMapUrl(SelectedPOI.Latitude, SelectedPOI.Longitude);
 
                 if (string.IsNullOrWhiteSpace(url))
                 {
@@ -140,6 +141,36 @@ namespace VinhKhanhstreetfoods.ViewModels
             catch (Exception ex)
             {
                 StatusMessage = $"Lỗi chia sẻ: {ex.Message}";
+            }
+        }
+
+        private async Task GoBack()
+        {
+            try
+            {
+                var shell = Shell.Current;
+                if (shell is null)
+                    return;
+
+                var navigation = shell.Navigation;
+
+                if (navigation.ModalStack.Count > 0)
+                {
+                    await navigation.PopModalAsync();
+                    return;
+                }
+
+                if (navigation.NavigationStack.Count > 1)
+                {
+                    await navigation.PopAsync();
+                    return;
+                }
+
+                await shell.GoToAsync("//home");
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Lỗi: {ex.Message}";
             }
         }
 

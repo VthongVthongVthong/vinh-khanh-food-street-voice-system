@@ -1,15 +1,15 @@
-using SQLite;
+﻿using SQLite;
 
 namespace VinhKhanhstreetfoods.Models
 {
-    [Table("POIs")]
+    [Table("POI")]
     public class POI
     {
         [PrimaryKey, AutoIncrement]
         public int Id { get; set; }
 
         [NotNull]
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;  // ✅ Xóa 'required'
 
         [NotNull]
         public double Latitude { get; set; }
@@ -17,31 +17,41 @@ namespace VinhKhanhstreetfoods.Models
         [NotNull]
         public double Longitude { get; set; }
 
-        public double TriggerRadius { get; set; } = 20; // meters
+        public string? Address { get; set; }
+        public string? Phone { get; set; }
+
+        [NotNull]
+        public string DescriptionText { get; set; } = string.Empty;  // ✅ Xóa 'required'
+
+        public string? TtsScript { get; set; }
+        public string? AudioFile { get; set; }
+
+        [NotNull]
+        public string ImageUrls { get; set; } = string.Empty;  // ✅ Xóa 'required'
+
+        [NotNull]
+        public string Language { get; set; } = "vi-VN";  // ✅ Xóa 'required'
+
+        public string? MapLink { get; set; }
+
+        [Column("triggerRadiusMeters")]
+        public int TriggerRadius { get; set; } = 20;
+
         public int Priority { get; set; } = 1;
+        
+        public int IsActive { get; set; } = 1;
 
-        [NotNull]
-        public string DescriptionText { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime UpdatedAt { get; set; } = DateTime.Now;
 
-        public string TtsScript { get; set; }
+        public int OwnerId { get; set; }
 
-        // local file path (offline)
-        public string AudioFile { get; set; }
-
-        [NotNull]
-        public string ImageUrls { get; set; } // JSON array of URLs
-
-        // currently stored like: vi-VN
-        [NotNull]
-        public string Language { get; set; } = "vi-VN";
-
-        public string MapLink { get; set; }
-        public DateTime LastTriggered { get; set; }
-        public bool IsActive { get; set; } = true;
-
-        // ===== server-ready fields (not stored in SQLite) =====
+        // ===== Ignore fields (not in DB) =====
         [Ignore]
-        public string AudioUrl { get; set; }
+        public string? AudioUrl { get; set; }
+
+        [Ignore]
+        public DateTime LastTriggered { get; set; }
 
         [Ignore]
         public string NormalizedLanguageCode
@@ -50,14 +60,11 @@ namespace VinhKhanhstreetfoods.Models
             {
                 if (string.IsNullOrWhiteSpace(Language))
                     return "vi";
-
-                // vi-VN -> vi, en-US -> en
                 var idx = Language.IndexOf('-');
                 return idx > 0 ? Language[..idx] : Language;
             }
         }
 
-        // Helper properties (not stored in DB)
         [Ignore]
         public double DistanceFromUser { get; set; }
 

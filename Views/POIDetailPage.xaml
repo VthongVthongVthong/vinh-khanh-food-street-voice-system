@@ -3,7 +3,25 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="VinhKhanhstreetfoods.Views.POIDetailPage"
              Title="Chi Tiết Địa Điểm"
-             BackgroundColor="#F5F5F5">
+             BackgroundColor="#F5F5F5"
+             Shell.TabBarIsVisible="False"
+             Shell.TitleColor="#1a1a1a"
+             Shell.ForegroundColor="#1a1a1a">
+
+    <!--
+    <ContentPage.ToolbarItems>
+        <ToolbarItem 
+            Text="◀" 
+            Command="{Binding GoBackCommand}"
+            Order="Primary"
+            Priority="0" />
+    </ContentPage.ToolbarItems>     -->
+
+    <Shell.BackButtonBehavior>
+        <BackButtonBehavior
+            TextOverride="Quay lại ↺"
+            Command="{Binding GoBackCommand}" />
+    </Shell.BackButtonBehavior>
 
     <ScrollView Padding="20">
         <StackLayout Spacing="20">
