@@ -91,8 +91,8 @@ namespace VinhKhanhstreetfoods.ViewModels
         private void StopAudio()
         {
             _audioManager.StopCurrent();
-            StatusMessage = "Dừng phát";
             IsPlaying = false;
+            StatusMessage = "Đã dừng";
         }
 
         private async Task OpenMap()

@@ -70,6 +70,46 @@
                                 <style>
                                 body { margin:0; padding:0; }
                                 #map { width:100%; height:100vh; }
+                                .poi-marker {
+                                    width: 32px;
+                                    height: 32px;
+                                    border-radius: 50%;
+                                    background: #0A84FF;
+                                    border: 2px solid white;
+                                    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+                                    background-size: cover;
+                                    background-position: center;
+                                    cursor: pointer;
+                                }
+                                .poi-popup {
+                                    font-family: sans-serif;
+                                    max-width: 220px;
+                                }
+                                .poi-popup .poi-title {
+                                    font-weight: 700;
+                                    color: #111827;
+                                    margin-bottom: 4px;
+                                }
+                                .poi-popup .poi-sub {
+                                    font-size: 12px;
+                                    color: #6B7280;
+                                    margin-bottom: 6px;
+                                }
+                                .poi-popup .poi-desc {
+                                    font-size: 12px;
+                                    color: #374151;
+                                    margin-bottom: 8px;
+                                }
+                                .poi-popup button {
+                                    background: #0A84FF;
+                                    color: #fff;
+                                    border: none;
+                                    border-radius: 8px;
+                                    padding: 8px 10px;
+                                    font-size: 12px;
+                                    cursor: pointer;
+                                }
+                                .poi-popup button:active { opacity: 0.9; }
                                 </style>
                                 </head>
                                 <body>
@@ -86,6 +126,17 @@
                                 
                                 let userMarker = null;
                                 let isLocationEnabled = false;
+                                const poiMarkers = new Map();
+                                let hasFirstFix = false;
+
+                                function focusPOI(id) {
+                                    const marker = poiMarkers.get(id);
+                                    if (!marker) return;
+                                    const ll = marker.getLngLat();
+                                    map.flyTo({ center: ll, zoom: 17, speed: 1.5 });
+                                    const popup = marker.getPopup?.();
+                                    if (popup) popup.addTo(map);
+                                }
 
                                 function setTrackingState(isActive) {
                                     isLocationEnabled = isActive;
@@ -93,38 +144,69 @@
 
                                 function updateLocation(lat, lng) {
                                     if (!userMarker) {
-                                        // Create marker for user location
                                         userMarker = new mapboxgl.Marker({ color: '#FF0000' })
                                             .setLngLat([lng, lat])
                                             .addTo(map);
-                                            
-                                        // Smoothly pan map to new user location on first fix
-                                        map.flyTo({ 
-                                            center: [lng, lat], 
-                                            speed: 1.5,
-                                            zoom: 16
-                                        });
+                                        map.flyTo({ center: [lng, lat], speed: 1.5, zoom: 16 });
+                                        hasFirstFix = true;
                                     } else {
-                                        // Update existing marker
                                         userMarker.setLngLat([lng, lat]);
-                                        
-                                        // Auto-pan only if we recently got our first lock, or tracking logic wants to force it.
-                                        // Normally you let users drag freely without fighting them. But flyTo is ok for now.
-                                        map.flyTo({ 
-                                            center: [lng, lat], 
-                                            speed: 1.5,
-                                            zoom: 16
-                                        });
+                                        if (!hasFirstFix) {
+                                            map.flyTo({ center: [lng, lat], speed: 1.5, zoom: 16 });
+                                            hasFirstFix = true;
+                                        }
                                     }
                                 }
-                                
+
                                 function recenterMap() {
                                     if (userMarker) {
-                                        map.flyTo({ 
-                                            center: userMarker.getLngLat(), 
-                                            speed: 1.5,
-                                            zoom: 16
-                                        });
+                                        map.flyTo({ center: userMarker.getLngLat(), speed: 1.5, zoom: 16 });
+                                        hasFirstFix = true;
+                                    }
+                                }
+
+                                function openPoiDetail(id) {
+                                    window.location.href = `app://poi?id=${id}`;
+                                }
+
+                                function createPoiElement(p) {
+                                    const el = document.createElement('div');
+                                    el.className = 'poi-marker';
+                                    if (p.imageUrl) {
+                                        el.style.backgroundImage = `url(${p.imageUrl})`;
+                                    }
+                                    return el;
+                                }
+
+                                function renderPOIs(pois) {
+                                    poiMarkers.forEach(m => m.remove());
+                                    poiMarkers.clear();
+
+                                    if (!pois || pois.length === 0) return;
+
+                                    const bounds = new mapboxgl.LngLatBounds();
+                                    pois.forEach(p => {
+                                        const el = createPoiElement(p);
+
+                                        const popupHtml = `
+<div class="poi-popup">
+  <div class="poi-title">${p.name ?? ''}</div>
+  <div class="poi-sub">${p.address ?? ''}</div>
+  <div class="poi-desc">${(p.desc ?? '').slice(0, 90)}${(p.desc && p.desc.length > 90) ? '...' : ''}</div>
+  <button onclick="openPoiDetail(${p.id})">Xem chi tiết</button>
+</div>`;
+
+                                        const marker = new mapboxgl.Marker({ element: el })
+                                            .setLngLat([p.lng, p.lat])
+                                            .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(popupHtml))
+                                            .addTo(map);
+
+                                        poiMarkers.set(p.id, marker);
+                                        bounds.extend([p.lng, p.lat]);
+                                    });
+
+                                    if (!bounds.isEmpty()) {
+                                        map.fitBounds(bounds, { padding: 40, maxZoom: 17 });
                                     }
                                 }
                                 
@@ -153,15 +235,7 @@
                                 // Control
                                 map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
                                 map.addControl(new CustomGeolocateControl(), 'bottom-right');
-
-                                // Tự động center map mỗi 5 giây
-                                setInterval(() => {
-                                    if (!isLocationEnabled) return;
-                                    const btn = document.getElementById('auto-geolocate-btn');
-                                    if (btn && userMarker) {
-                                        btn.click();
-                                    }
-                                }, 5000);
+                                // removed auto recentre interval
                                 </script>
                                 </body>
                                 </html>

@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Maui.Media;
 
@@ -12,13 +13,15 @@ namespace VinhKhanhstreetfoods.Services
     public class TextToSpeechService
     {
         private bool _isPlaying = false;
+        private CancellationTokenSource? _cts;
 
-        public async Task SpeakAsync(string text, string language = "vi-VN")
+        public async Task SpeakAsync(string text, string language = "vi-VN", CancellationToken? token = null)
         {
             if (string.IsNullOrEmpty(text))
                 return;
 
             _isPlaying = true;
+            _cts = CancellationTokenSource.CreateLinkedTokenSource(token ?? CancellationToken.None);
 
             try
             {
@@ -31,9 +34,13 @@ namespace VinhKhanhstreetfoods.Services
                     Locale = locale
                 };
 
-                await TextToSpeech.SpeakAsync(text, settings);
+                await TextToSpeech.SpeakAsync(text, settings, _cts.Token);
 
                 Debug.WriteLine($"[TextToSpeechService] Speaking in language: {localeCode}");
+            }
+            catch (OperationCanceledException)
+            {
+                Debug.WriteLine("[TextToSpeechService] Playback canceled");
             }
             catch (Exception ex)
             {
@@ -42,13 +49,15 @@ namespace VinhKhanhstreetfoods.Services
             finally
             {
                 _isPlaying = false;
+                _cts?.Dispose();
+                _cts = null;
             }
         }
 
         public void Stop()
         {
             _isPlaying = false;
-            // Platform-specific stop would go here
+            _cts?.Cancel();
         }
 
         public bool IsPlaying => _isPlaying;

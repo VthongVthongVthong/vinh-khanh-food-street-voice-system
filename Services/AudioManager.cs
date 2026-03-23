@@ -1,14 +1,11 @@
 using System.Diagnostics;
+using System.Threading;
 using VinhKhanhstreetfoods.Models;
 
 namespace VinhKhanhstreetfoods.Services
 {
     /// <summary>
     /// Manages audio playback queue with multilingual support.
-    /// - Fetches TTS script from DB (original language)
-    /// - Translates if user selected different language
-    /// - Caches translation in-memory (5 min TTL)
-    /// - Plays via TextToSpeechService
     /// </summary>
     public class AudioManager
     {
@@ -20,6 +17,7 @@ namespace VinhKhanhstreetfoods.Services
 
         private bool _isPlaying;
         private POI? _currentPOI;
+        private CancellationTokenSource? _playbackCts;
 
         public event EventHandler<POI>? AudioStarted;
         public event EventHandler<POI>? AudioCompleted;
@@ -79,26 +77,26 @@ namespace VinhKhanhstreetfoods.Services
 
                 AudioStarted?.Invoke(this, poi);
 
+                _playbackCts = new CancellationTokenSource();
+
                 try
                 {
                     if (!string.IsNullOrEmpty(poi.AudioFile) && File.Exists(poi.AudioFile))
                     {
-                        await PlayAudioFile(poi.AudioFile);
+                        await PlayAudioFile(poi.AudioFile, _playbackCts.Token);
                     }
                     else
                     {
-                        // Get text to speak
                         var textToSpeak = string.IsNullOrEmpty(poi.TtsScript) ? poi.DescriptionText : poi.TtsScript;
-
-                        // Get user's selected narration language
                         var userLanguage = _settingsService.PreferredLanguage;
-
-                        // Translate if needed
                         var finalText = await GetTextForLanguageAsync(poi, textToSpeak, userLanguage);
 
-                        // Speak with user's selected language
-                        await _ttsService.SpeakAsync(finalText, userLanguage);
+                        await _ttsService.SpeakAsync(finalText, userLanguage, _playbackCts.Token);
                     }
+                }
+                catch (OperationCanceledException)
+                {
+                    Debug.WriteLine("[AudioManager] Playback canceled");
                 }
                 catch (Exception ex)
                 {
@@ -107,26 +105,23 @@ namespace VinhKhanhstreetfoods.Services
                 finally
                 {
                     AudioCompleted?.Invoke(this, poi);
+                    _playbackCts?.Dispose();
+                    _playbackCts = null;
                 }
             }
         }
 
-        /// <summary>
-        /// Get text in the requested language (with caching)
-        /// </summary>
         private async Task<string> GetTextForLanguageAsync(POI poi, string originalText, string targetLanguage)
         {
             var normalizedTarget = NormalizeLang(targetLanguage);
             var sourceLang = NormalizeLang(poi.TtsLanguage);
 
-            // If target is POI's default language or Vietnamese, use original
             if (string.Equals(sourceLang, normalizedTarget, StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(normalizedTarget, "vi", StringComparison.OrdinalIgnoreCase))
             {
                 return originalText;
             }
 
-            // Check cache (in-memory, 5 min TTL)
             if (!string.IsNullOrEmpty(poi.CachedTranslatedTtsScript))
             {
                 if (DateTime.UtcNow - poi.CachedTranslationTime < TimeSpan.FromMinutes(5))
@@ -136,7 +131,6 @@ namespace VinhKhanhstreetfoods.Services
                 }
             }
 
-            // Translate via API
             try
             {
                 var translatedText = await _translationService.TranslateAsync(
@@ -145,7 +139,6 @@ namespace VinhKhanhstreetfoods.Services
                     normalizedTarget
                 );
 
-                // Cache in-memory
                 poi.CachedTranslatedTtsScript = translatedText;
                 poi.CachedTranslationTime = DateTime.UtcNow;
 
@@ -155,7 +148,7 @@ namespace VinhKhanhstreetfoods.Services
             catch (Exception ex)
             {
                 Debug.WriteLine($"[AudioManager] Translation failed, using original: {ex.Message}");
-                return originalText; // Fallback to original
+                return originalText;
             }
         }
 
@@ -167,14 +160,15 @@ namespace VinhKhanhstreetfoods.Services
             return dashIndex > 0 ? trimmed[..dashIndex] : trimmed;
         }
 
-        private static async Task PlayAudioFile(string filePath)
+        private static async Task PlayAudioFile(string filePath, CancellationToken token)
         {
-            // TODO: replace with real player
-            await Task.Delay(2000);
+            // TODO: replace with real player that supports cancellation
+            await Task.Delay(2000, token);
         }
 
         public void StopCurrent()
         {
+            _playbackCts?.Cancel();
             _ttsService.Stop();
             _audioQueue.Clear();
             _isPlaying = false;

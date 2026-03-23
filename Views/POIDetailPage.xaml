@@ -8,15 +8,6 @@
              Shell.TitleColor="#1a1a1a"
              Shell.ForegroundColor="#1a1a1a">
 
-    <!--
-    <ContentPage.ToolbarItems>
-        <ToolbarItem 
-            Text="◀" 
-            Command="{Binding GoBackCommand}"
-            Order="Primary"
-            Priority="0" />
-    </ContentPage.ToolbarItems>     -->
-
     <Shell.BackButtonBehavior>
         <BackButtonBehavior
             TextOverride="Quay lại ↺"
@@ -99,20 +90,14 @@
                            FontSize="16" 
                            FontAttributes="Bold"
                            TextColor="#283845"/>
+                    <Label Text="{Binding SelectedPOI.TtsScript}"
+                           FontSize="13"
+                           TextColor="#374151"
+                           LineBreakMode="WordWrap"/>
                     <Label Text="{Binding StatusMessage}" 
                            FontSize="12" 
                            TextColor="#666666"/>
                 </StackLayout>
-            </Frame>
-
-            <!-- Status -->
-            <Frame BackgroundColor="{Binding IsPlaying, Converter={StaticResource IsPlayingColorConverter}}"
-                   CornerRadius="10"
-                   Padding="10">
-                <Label Text="{Binding IsPlaying, StringFormat='Trạng thái: {0}'}" 
-                       TextColor="White" 
-                       FontSize="12"
-                       HorizontalOptions="Center"/>
             </Frame>
 
             <!-- Action Buttons -->
@@ -136,7 +121,7 @@
                         CornerRadius="10"
                         Padding="15"/>
                 <Button Text="📍 Mở Bản Đồ" 
-                        Command="{Binding OpenMapCommand}"
+                        Clicked="OnOpenMapPageClicked"
                         BackgroundColor="#666666"
                         TextColor="White"
                         FontSize="14"
@@ -152,6 +137,7 @@
                         CornerRadius="10"
                         Padding="15"/>
             </StackLayout>
+
         </StackLayout>
     </ScrollView>
 </ContentPage>
