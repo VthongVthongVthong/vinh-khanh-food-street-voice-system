@@ -60,7 +60,6 @@ namespace VinhKhanhstreetfoods
         {
             try
             {
-                // Try multiple possible paths for the database file
                 var possiblePaths = new[]
                 {
                     "Resources/Raw/poi_data.sqlite",
@@ -97,6 +96,15 @@ namespace VinhKhanhstreetfoods
                 Debug.WriteLine($"[CopySQLiteFile] Found database at: {sourceFile}");
                 Debug.WriteLine($"[CopySQLiteFile] Target path: {targetPath}");
 
+                // ✅ Luôn xóa file cũ và copy lại (khi debug/dev)
+#if DEBUG
+                if (File.Exists(targetPath))
+                {
+                    File.Delete(targetPath);
+                    Debug.WriteLine($"[CopySQLiteFile] Deleted old database for fresh copy (DEBUG mode)");
+                }
+#endif
+
                 if (!File.Exists(targetPath))
                 {
                     using (var stream = await FileSystem.OpenAppPackageFileAsync(sourceFile))
@@ -108,7 +116,7 @@ namespace VinhKhanhstreetfoods
                 }
                 else
                 {
-                    Debug.WriteLine($"[CopySQLiteFile] Database already exists at {targetPath}");
+                    Debug.WriteLine($"[CopySQLiteFile] Database already exists");
                 }
             }
             catch (Exception ex)
