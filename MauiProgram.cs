@@ -24,14 +24,20 @@ namespace VinhKhanhstreetfoods
                     fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
                 });
 
-            // Register Services
+            // Register Services (lazy initialization to avoid ANR)
             builder.Services.AddSingleton<LocationService>();
             builder.Services.AddSingleton<GeofenceEngine>();
             builder.Services.AddSingleton<POIRepository>();
             builder.Services.AddSingleton<IPOIRepository>(sp => sp.GetRequiredService<POIRepository>());
-            builder.Services.AddSingleton<AudioManager>();
+            builder.Services.AddSingleton<ITourRepository, TourRepository>();
+            builder.Services.AddSingleton<SettingsService>();
             builder.Services.AddSingleton<TextToSpeechService>();
+            builder.Services.AddSingleton<ITranslationService, TranslationService>();
+            builder.Services.AddSingleton<AudioManager>();
             builder.Services.AddSingleton<MapService>();
+
+            // HTTP client for API calls
+            builder.Services.AddSingleton(new HttpClient());
 
             // Register ViewModels
             builder.Services.AddSingleton<HomeViewModel>();
@@ -49,19 +55,22 @@ namespace VinhKhanhstreetfoods
             builder.Services.AddSingleton<AppShell>();
 
             var app = builder.Build();
-            
-            // Initialize database on app startup
-            _ = CopySQLiteFileAsync();
+
+            // Initialize database asynchronously on background thread to avoid ANR
+            Task.Run(async () => await CopySQLiteFileAsync());
 
             return app;
         }
 
-        public static async Task CopySQLiteFileAsync()
+        private static async Task CopySQLiteFileAsync()
         {
             try
             {
                 var possiblePaths = new[]
                 {
+                    "poi_data_new.sqlite",
+                    "Resources/Raw/poi_data_new.sqlite",
+                    "Data/poi_data_new.sqlite",
                     "Resources/Raw/poi_data.sqlite",
                     "Data/poi_data.sqlite",
                     "poi_data.sqlite"
@@ -86,24 +95,20 @@ namespace VinhKhanhstreetfoods
 
                 if (string.IsNullOrEmpty(sourceFile))
                 {
-                    Debug.WriteLine("ERROR: Could not find poi_data.sqlite in any expected location");
+                    Debug.WriteLine("❌ [CopySQLiteFile] Could not find poi_data_new.sqlite in any path");
                     return;
                 }
 
                 var folderPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
                 var targetPath = Path.Combine(folderPath, "VinhKhanhFoodGuide.db3");
 
-                Debug.WriteLine($"[CopySQLiteFile] Found database at: {sourceFile}");
-                Debug.WriteLine($"[CopySQLiteFile] Target path: {targetPath}");
-
-                // ✅ Luôn xóa file cũ và copy lại (khi debug/dev)
-#if DEBUG
+                #if DEBUG
                 if (File.Exists(targetPath))
                 {
                     File.Delete(targetPath);
-                    Debug.WriteLine($"[CopySQLiteFile] Deleted old database for fresh copy (DEBUG mode)");
+                    Debug.WriteLine("🗑️ [CopySQLiteFile] Deleted old database for fresh copy");
                 }
-#endif
+                #endif
 
                 if (!File.Exists(targetPath))
                 {
@@ -112,17 +117,16 @@ namespace VinhKhanhstreetfoods
                     {
                         await stream.CopyToAsync(fileStream);
                     }
-                    Debug.WriteLine($"[CopySQLiteFile] Database copied successfully");
+                    Debug.WriteLine($"✅ [CopySQLiteFile] Database copied successfully from {sourceFile}");
                 }
                 else
                 {
-                    Debug.WriteLine($"[CopySQLiteFile] Database already exists");
+                    Debug.WriteLine("ℹ️ [CopySQLiteFile] Database already exists, skipping copy");
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[CopySQLiteFile] Error copying SQLite file: {ex.Message}");
-                Debug.WriteLine($"[CopySQLiteFile] Stack trace: {ex.StackTrace}");
+                Debug.WriteLine($"❌ [CopySQLiteFile] Error: {ex.Message}");
             }
         }
     }

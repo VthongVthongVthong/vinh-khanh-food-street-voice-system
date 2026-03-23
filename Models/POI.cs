@@ -9,7 +9,7 @@ namespace VinhKhanhstreetfoods.Models
         public int Id { get; set; }
 
         [NotNull]
-        public string Name { get; set; } = string.Empty;  // ✅ Xóa 'required'
+        public string Name { get; set; } = string.Empty;
 
         [NotNull]
         public double Latitude { get; set; }
@@ -21,16 +21,24 @@ namespace VinhKhanhstreetfoods.Models
         public string? Phone { get; set; }
 
         [NotNull]
-        public string DescriptionText { get; set; } = string.Empty;  // ✅ Xóa 'required'
+        public string DescriptionText { get; set; } = string.Empty;
 
+        /// <summary>
+        /// Default TTS script (usually in Vietnamese)
+        /// </summary>
         public string? TtsScript { get; set; }
+
+        /// <summary>
+        /// POI's default language for TTS (e.g., "vi-VN", "en-US")
+        /// Will be translated if user selects different language
+        /// </summary>
+        [NotNull]
+        public string TtsLanguage { get; set; } = "vi";
+
         public string? AudioFile { get; set; }
 
         [NotNull]
-        public string ImageUrls { get; set; } = string.Empty;  // ✅ Xóa 'required'
-
-        [NotNull]
-        public string Language { get; set; } = "vi-VN";  // ✅ Xóa 'required'
+        public string ImageUrls { get; set; } = string.Empty;
 
         public string? MapLink { get; set; }
 
@@ -38,7 +46,7 @@ namespace VinhKhanhstreetfoods.Models
         public int TriggerRadius { get; set; } = 20;
 
         public int Priority { get; set; } = 1;
-        
+
         public int IsActive { get; set; } = 1;
 
         public DateTime CreatedAt { get; set; } = DateTime.Now;
@@ -46,7 +54,7 @@ namespace VinhKhanhstreetfoods.Models
 
         public int OwnerId { get; set; }
 
-        // ===== Ignore fields (not in DB) =====
+        // ===== Runtime fields (not in DB) =====
         [Ignore]
         public string? AudioUrl { get; set; }
 
@@ -54,22 +62,19 @@ namespace VinhKhanhstreetfoods.Models
         public DateTime LastTriggered { get; set; }
 
         [Ignore]
-        public string NormalizedLanguageCode
-        {
-            get
-            {
-                if (string.IsNullOrWhiteSpace(Language))
-                    return "vi";
-                var idx = Language.IndexOf('-');
-                return idx > 0 ? Language[..idx] : Language;
-            }
-        }
-
-        [Ignore]
         public double DistanceFromUser { get; set; }
 
         [Ignore]
         public List<string> ImageUrlList =>
             System.Text.Json.JsonSerializer.Deserialize<List<string>>(ImageUrls ?? "[]") ?? new();
+
+        /// <summary>
+        /// Cached translated TTS script (in-memory, 5 min TTL)
+        /// </summary>
+        [Ignore]
+        public string? CachedTranslatedTtsScript { get; set; }
+
+        [Ignore]
+        public DateTime CachedTranslationTime { get; set; }
     }
 }

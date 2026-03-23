@@ -367,11 +367,12 @@
     <div class="language-tabs">
         @foreach (var lang in languages)
         {
-            <button class="language-tab @(selectedLanguage == lang.Code ? "active" : "")" 
-                    @onclick="@(() => SelectLanguage(lang.Code))">
-                @if (lang.Code == "vi") { <span>Tất cả</span> }
-                else if (lang.Code == "en") { <span>Việt Nam</span> }
-                else if (lang.Code == "ja") { <span>Quốc tế</span> }
+            <button class="language-tab @(selectedLanguage == lang ? "active" : "")" 
+                    @onclick="(() => SelectLanguage(lang))">
+                @if (lang == "vi") { <span>Tất cả</span> }
+                else if (lang == "en") { <span>Việt Nam</span> }
+                else if (lang == "zh") { <span>中文</span> }
+                else if (lang == "ko") { <span>한국어</span> }
             </button>
         }
     </div>
@@ -451,7 +452,7 @@
 @code {
     private List<Restaurant> restaurants;
     private List<Restaurant> filteredRestaurants;
-    private List<Language> languages;
+    private List<string> languages;
     private string selectedLanguage = "vi";
     private string searchQuery = "";
 

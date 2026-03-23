@@ -1,8 +1,7 @@
 using System.ComponentModel;
-using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
-using VinhKhanhstreetfoods.Models;
+using VinhKhanhstreetfoods.Services;
 
 namespace VinhKhanhstreetfoods.ViewModels
 {
@@ -10,7 +9,8 @@ namespace VinhKhanhstreetfoods.ViewModels
     {
         public sealed record LanguageOption(string CultureCode, string DisplayName);
 
-        private LanguageOption? _selectedAppLanguage;
+        private readonly SettingsService _settingsService;
+
         private LanguageOption? _selectedNarrationLanguage;
         private bool _enableAudio;
         private bool _enableAutoNarration;
@@ -20,18 +20,17 @@ namespace VinhKhanhstreetfoods.ViewModels
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
-        public SettingsViewModel()
+        public SettingsViewModel(SettingsService settingsService)
         {
-            LoadSettingsCommand = new Command(LoadSettings);
+            _settingsService = settingsService;
             SaveSettingsCommand = new Command(SaveSettings);
-            ResetSettingsCommand = new Command(ResetSettings);
 
             LanguageOptions = new List<LanguageOption>
             {
-                new("vi-VN", "Tiếng Việt"),
-                new("en-US", "English"),
-                new("zh-CN", "中文 (简体)"),
-                new("ko-KR", "한국어")
+                new("vi", "Tiếng Việt"),
+                new("en", "English"),
+                new("zh", "中文 (Chinese Simplified)"),
+                new("ko", "한국어 (Korean)")
             };
 
             LoadSettings();
@@ -39,21 +38,9 @@ namespace VinhKhanhstreetfoods.ViewModels
 
         public IReadOnlyList<LanguageOption> LanguageOptions { get; }
 
-        // App/UI language
-        public LanguageOption? SelectedAppLanguage
-        {
-            get => _selectedAppLanguage;
-            set
-            {
-                if (Equals(_selectedAppLanguage, value))
-                    return;
-
-                _selectedAppLanguage = value;
-                OnPropertyChanged();
-            }
-        }
-
-        // Narration language (TTS)
+        /// <summary>
+        /// Narration language (for TTS translation)
+        /// </summary>
         public LanguageOption? SelectedNarrationLanguage
         {
             get => _selectedNarrationLanguage;
@@ -97,70 +84,37 @@ namespace VinhKhanhstreetfoods.ViewModels
             set { _statusMessage = value; OnPropertyChanged(); }
         }
 
-        public ICommand LoadSettingsCommand { get; }
         public ICommand SaveSettingsCommand { get; }
-        public ICommand ResetSettingsCommand { get; }
 
         private void LoadSettings()
         {
-            var appLangCode = Preferences.Get("appLanguage", "vi-VN");
-            var narrationLangCode = Preferences.Get("narrationLanguage", "vi-VN");
+            var narrationLangCode = _settingsService.PreferredLanguage;
 
-            SelectedAppLanguage = LanguageOptions.FirstOrDefault(x => x.CultureCode == appLangCode) ?? LanguageOptions[0];
-            SelectedNarrationLanguage = LanguageOptions.FirstOrDefault(x => x.CultureCode == narrationLangCode) ?? LanguageOptions[0];
+            SelectedNarrationLanguage = LanguageOptions.FirstOrDefault(x => x.CultureCode == narrationLangCode)
+                ?? LanguageOptions[0];
 
             EnableAudio = Preferences.Get("enableAudio", true);
             EnableAutoNarration = Preferences.Get("enableAutoNarration", true);
             CooldownMinutes = Preferences.Get("cooldownMinutes", 5);
             TriggerRadiusMeters = Preferences.Get("triggerRadiusMeters", 20);
 
-            StatusMessage = "Cài đặt đã tải";
+            StatusMessage = "Settings loaded";
         }
 
         private void SaveSettings()
         {
-            var appCode = SelectedAppLanguage?.CultureCode ?? "vi-VN";
-            var narrationCode = SelectedNarrationLanguage?.CultureCode ?? "vi-VN";
-
-            Preferences.Set("appLanguage", appCode);
-            Preferences.Set("narrationLanguage", narrationCode);
+            var narrationCode = SelectedNarrationLanguage?.CultureCode ?? "vi";
+            _settingsService.PreferredLanguage = narrationCode;
 
             Preferences.Set("enableAudio", EnableAudio);
             Preferences.Set("enableAutoNarration", EnableAutoNarration);
             Preferences.Set("cooldownMinutes", CooldownMinutes);
             Preferences.Set("triggerRadiusMeters", TriggerRadiusMeters);
 
-            // Apply UI culture for current session.
-            // Note: full app localization requires resource-based strings; this sets CurrentCulture/CurrentUICulture.
-            try
-            {
-                var culture = CultureInfo.GetCultureInfo(appCode);
-                CultureInfo.CurrentCulture = culture;
-                CultureInfo.CurrentUICulture = culture;
-            }
-            catch
-            {
-                // ignore invalid culture codes
-            }
-
-            StatusMessage = "Cài đặt đã lưu";
+            StatusMessage = "Settings saved ✓";
         }
 
-        private void ResetSettings()
-        {
-            SelectedAppLanguage = LanguageOptions.FirstOrDefault(x => x.CultureCode == "vi-VN") ?? LanguageOptions[0];
-            SelectedNarrationLanguage = LanguageOptions.FirstOrDefault(x => x.CultureCode == "vi-VN") ?? LanguageOptions[0];
-
-            EnableAudio = true;
-            EnableAutoNarration = true;
-            CooldownMinutes = 5;
-            TriggerRadiusMeters = 20;
-
-            SaveSettings();
-            StatusMessage = "Đã đặt lại cài đặt mặc định";
-        }
-
-        private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+        protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }

@@ -1,44 +1,66 @@
-﻿using VinhKhanhstreetfoods;
+﻿using System.Diagnostics;
 using VinhKhanhstreetfoods.Services;
-using System.Diagnostics;
-using Microsoft.Maui;
 using Microsoft.Maui.Controls;
 
 namespace VinhKhanhstreetfoods;
 
 public partial class App : Application
 {
+    private bool _initializationComplete = false;
+
     public App()
     {
         InitializeComponent();
+
+        MainPage = new AppShell();
+
+        // Initialize services asynchronously after UI is ready
+        MainThread.BeginInvokeOnMainThread(async () =>
+        {
+            await Task.Delay(500); // Give UI time to render
+            await InitializeDatabaseAsync();
+        });
     }
 
-    protected override Window CreateWindow(IActivationState? activationState)
+    private async Task InitializeDatabaseAsync()
     {
-        var appShell = new AppShell();
-        return new Window(appShell);
-    }
+        if (_initializationComplete)
+            return;
 
-    protected override async void OnStart()
-    {
-        base.OnStart();
-        
+        _initializationComplete = true;
+
         try
         {
-            // ✅ Copy SQLite file nếu chưa có
-            await MauiProgram.CopySQLiteFileAsync();
+            Debug.WriteLine("[App] 🔄 Starting database initialization on background thread...");
             
-            // ✅ Initialize database
-            var poiRepository = IPlatformApplication.Current?.Services?.GetService<IPOIRepository>();
-            if (poiRepository != null)
+            // Get POI repository from DI container
+            var repository = Application.Current?.Handler?.MauiContext?.Services
+                .GetService<IPOIRepository>();
+            
+            if (repository != null)
             {
-                await poiRepository.InitializeAsync();
-                Debug.WriteLine("SQLite database initialized successfully");
+                // Run initialization on threadpool to avoid blocking UI
+                await Task.Run(async () => 
+                {
+                    try
+                    {
+                        await repository.InitializeAsync();
+                        Debug.WriteLine("✅ [App] Database initialized successfully");
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"❌ [App] Database init error: {ex.Message}");
+                    }
+                });
+            }
+            else
+            {
+                Debug.WriteLine("⚠️ [App] POIRepository not found in DI container");
             }
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"[App] Error during initialization: {ex.Message}");
+            Debug.WriteLine($"❌ [App] Initialization error: {ex.Message}");
         }
     }
 }

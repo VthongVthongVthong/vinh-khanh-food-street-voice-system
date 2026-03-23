@@ -49,6 +49,7 @@
 
         <!-- Raw Assets (also remove the "Resources\Raw" prefix) -->
         <MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
+        <MauiAsset Include="Data\poi_data_new.sqlite" LogicalName="poi_data_new.sqlite" />
     </ItemGroup>
 
     <ItemGroup>
@@ -58,6 +59,7 @@
     <ItemGroup>
         <!-- MVVM Toolkit -->
         <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+        <PackageReference Include="GTranslate" Version="2.3.1" />
         
         <!-- MAUI Core -->
         <PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
@@ -75,10 +77,6 @@
         <!-- Other dependencies -->
         <PackageReference Include="StackExchange.Redis" Version="2.11.8" />
         <PackageReference Include="ZXing.Net.Maui.Controls" Version="0.5.0" />
-    </ItemGroup>
-
-    <ItemGroup>
-        <MauiAsset Include="Data\poi_data.sqlite" />
     </ItemGroup>
 
 </Project>

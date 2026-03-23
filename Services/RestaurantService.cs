@@ -12,12 +12,9 @@ namespace VinhKhanhstreetfoods.Services
         private DateTime _cacheTime = DateTime.MinValue;
         private readonly TimeSpan _cacheDuration = TimeSpan.FromMinutes(5);
 
-        private static readonly List<Language> _languages = new()
+        private static readonly List<string> _languages = new()
         {
-            new Language("vi", "Vietnamese", "Tiếng Việt", "🇻🇳"),
-            new Language("en", "English", "English", "🇬🇧"),
-            new Language("zh", "Chinese", "中文", "🇨🇳"),
-            new Language("ko", "Korean", "한국어", "🇰🇷")
+            "vi", "en", "zh", "ko"
         };
 
         public RestaurantService(IPOIRepository poiRepository)
@@ -46,7 +43,7 @@ namespace VinhKhanhstreetfoods.Services
             return _restaurantCache;
         }
 
-        public Task<List<Language>> GetLanguagesAsync() => Task.FromResult(_languages);
+        public Task<List<string>> GetLanguagesAsync() => Task.FromResult(_languages);
 
         public async Task<Restaurant?> GetRestaurantByIdAsync(int id)
         {
