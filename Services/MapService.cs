@@ -2,11 +2,15 @@ namespace VinhKhanhstreetfoods.Services
 {
     public class MapService
     {
+        private readonly ConfigurationService _configService;
         public string TrackAsiaStyleUrl { get; set; }
 
-        public MapService(string apiKey = "bca01773651908dcc9bc6320f7c16973ce")
+        // ✅ Updated: Constructor now takes ConfigurationService instead of hardcoded API key
+        public MapService(ConfigurationService configService)
         {
-            // Track Asia Style URL - sử dụng style Streets v2
+            _configService = configService;
+            // Load API key from secure configuration
+            var apiKey = _configService.GetTrackAsiaApiKey();
             TrackAsiaStyleUrl = $"https://maps.track-asia.com/styles/v2/streets.json?key={apiKey}";
         }
 

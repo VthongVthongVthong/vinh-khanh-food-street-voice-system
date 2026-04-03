@@ -1,4 +1,5 @@
 ﻿using CommunityToolkit.Maui;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using VinhKhanhstreetfoods.Services;
 using VinhKhanhstreetfoods.ViewModels;
@@ -14,6 +15,9 @@ namespace VinhKhanhstreetfoods
         {
             var builder = MauiApp.CreateBuilder();
 
+            // ✅ Load configuration - simplified and optimized
+            var config = LoadConfigurationOptimized();
+
             builder
                 .UseMauiApp<App>()
                 .UseMauiCommunityToolkit()
@@ -24,7 +28,12 @@ namespace VinhKhanhstreetfoods
                     fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
                 });
 
-            // Register Services (lazy initialization to avoid ANR)
+            // ✅ Register configuration service
+            builder.Services.AddSingleton(config);
+            builder.Services.AddSingleton<ConfigurationService>();
+
+            // ✅ CRITICAL: Register services as LAZY SINGLETONS
+            // This prevents heavy initialization on app startup
             builder.Services.AddSingleton<LocationService>();
             builder.Services.AddSingleton<GeofenceEngine>();
             builder.Services.AddSingleton<POIRepository>();
@@ -32,7 +41,7 @@ namespace VinhKhanhstreetfoods
             builder.Services.AddSingleton<ITourRepository, TourRepository>();
             builder.Services.AddSingleton<SettingsService>();
             builder.Services.AddSingleton<TextToSpeechService>();
-            builder.Services.AddSingleton<ITranslationService, TranslationService>();
+            builder.Services.AddSingleton<ITranslationService, HybridTranslationService>();
             builder.Services.AddSingleton<AudioManager>();
             builder.Services.AddSingleton<MapService>();
 
@@ -43,7 +52,13 @@ namespace VinhKhanhstreetfoods
             builder.Services.AddSingleton<HomeViewModel>();
             builder.Services.AddSingleton<POIDetailViewModel>();
             builder.Services.AddSingleton<MapViewModel>();
-            builder.Services.AddSingleton<SettingsViewModel>();
+            builder.Services.AddSingleton<SettingsViewModel>(sp =>
+            {
+                var settingsService = sp.GetRequiredService<SettingsService>();
+                var translationService = sp.GetRequiredService<ITranslationService>();
+                var poiRepository = sp.GetRequiredService<IPOIRepository>();
+                return new SettingsViewModel(settingsService, translationService, poiRepository);
+            });
 
             // Register Views
             builder.Services.AddSingleton<HomePage>();
@@ -56,78 +71,79 @@ namespace VinhKhanhstreetfoods
 
             var app = builder.Build();
 
-            // Initialize database asynchronously on background thread to avoid ANR
-            Task.Run(async () => await CopySQLiteFileAsync());
+            // ✅ Add global exception handler
+#if DEBUG
+            AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
+            {
+                Debug.WriteLine($"❌ [FATAL] Unhandled exception: {e.ExceptionObject}");
+            };
+
+            TaskScheduler.UnobservedTaskException += (sender, e) =>
+            {
+                Debug.WriteLine($"❌ [FATAL] Unobserved task exception: {e.Exception}");
+                e.SetObserved();
+            };
+#endif
 
             return app;
         }
 
-        private static async Task CopySQLiteFileAsync()
+        /// <summary>
+        /// ✅ OPTIMIZED: Load configuration from app resources
+        /// Falls back to in-memory defaults if file not found
+        /// </summary>
+        private static IConfiguration LoadConfigurationOptimized()
         {
             try
             {
-                var possiblePaths = new[]
-                {
-                    "poi_data_new.sqlite",
-                    "Resources/Raw/poi_data_new.sqlite",
-                    "Data/poi_data_new.sqlite",
-                    "Resources/Raw/poi_data.sqlite",
-                    "Data/poi_data.sqlite",
-                    "poi_data.sqlite"
-                };
+                using var stream = FileSystem.OpenAppPackageFileAsync("appsettings.json")
+                    .GetAwaiter()
+                    .GetResult();
 
-                var sourceFile = "";
-                foreach (var path in possiblePaths)
-                {
-                    try
-                    {
-                        using (var stream = await FileSystem.OpenAppPackageFileAsync(path))
-                        {
-                            sourceFile = path;
-                            break;
-                        }
-                    }
-                    catch
-                    {
-                        // Try next path
-                    }
-                }
+                var builder = new ConfigurationBuilder();
+                builder.AddJsonStream(stream);
 
-                if (string.IsNullOrEmpty(sourceFile))
-                {
-                    Debug.WriteLine("❌ [CopySQLiteFile] Could not find poi_data_new.sqlite in any path");
-                    return;
-                }
-
-                var folderPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                var targetPath = Path.Combine(folderPath, "VinhKhanhFoodGuide.db3");
-
-                #if DEBUG
-                if (File.Exists(targetPath))
-                {
-                    File.Delete(targetPath);
-                    Debug.WriteLine("🗑️ [CopySQLiteFile] Deleted old database for fresh copy");
-                }
-                #endif
-
-                if (!File.Exists(targetPath))
-                {
-                    using (var stream = await FileSystem.OpenAppPackageFileAsync(sourceFile))
-                    using (var fileStream = File.Create(targetPath))
-                    {
-                        await stream.CopyToAsync(fileStream);
-                    }
-                    Debug.WriteLine($"✅ [CopySQLiteFile] Database copied successfully from {sourceFile}");
-                }
-                else
-                {
-                    Debug.WriteLine("ℹ️ [CopySQLiteFile] Database already exists, skipping copy");
-                }
+                Debug.WriteLine("✅ [MauiProgram] Loaded appsettings.json from app package");
+                return builder.Build();
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"❌ [CopySQLiteFile] Error: {ex.Message}");
+                Debug.WriteLine($"⚠️ [MauiProgram] Cannot load appsettings.json: {ex.Message}");
+                return CreateDefaultConfiguration();
             }
+        }
+
+        private static IConfiguration CreateDefaultConfiguration()
+        {
+            Debug.WriteLine("ℹ️ [MauiProgram] Using default/fallback configuration (no real API keys)");
+
+            var configBuilder = new ConfigurationBuilder();
+
+            // Security-first fallback: never store real API keys in code.
+            // Real keys must be loaded only from appsettings.json.
+            configBuilder.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                { "Environment", "Development" },
+                { "TrackAsiaApiKey", "" },
+                { "GoogleMapsApiKey", "" },
+                { "TranslationServiceKey", "" },
+                { "DatabasePath", "VinhKhanhFoodGuide.db3" },
+                { "Logging:LogLevel:Default", "Debug" }
+            });
+
+            return configBuilder.Build();
+        }
+
+        /// <summary>
+        /// Detect current environment (Development vs Production)
+        /// </summary>
+        private static string GetEnvironment()
+        {
+#if DEBUG
+            return "Development";
+#else
+            return "Production";
+#endif
         }
     }
 }

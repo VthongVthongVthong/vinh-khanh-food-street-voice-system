@@ -1,3 +1,54 @@
-.vs/ 
-bin/ 
-obj/ 
+# ===== API KEYS & SECRETS (CRITICAL - NEVER COMMIT!) =====
+env/
+env/**
+!env/.gitkeep
+secrets.json
+appsettings.*.json
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+*.jks
+
+# ===== IDE =====
+.vs/
+.vscode/
+*.userprefs
+*.user
+*.suo
+*.sln.iml
+
+# ===== Build & Compilation =====
+bin/
+obj/
+*.o
+*.a
+*.so
+*.dll
+*.exe
+*.out
+
+# ===== Debug =====
+*.pdb
+*.dbg
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# ===== NuGet =====
+packages/
+.nuget/
+*.nupkg
+
+# ===== Test Results =====
+TestResults/
+.coverage
+
+# ===== Node (if using frontend tools) =====
+node_modules/
+dist/

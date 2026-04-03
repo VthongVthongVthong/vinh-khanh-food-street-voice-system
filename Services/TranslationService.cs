@@ -1,10 +1,12 @@
 ﻿using System.Diagnostics;
 using GTranslate.Translators;
+using VinhKhanhstreetfoods.Models;
 
 namespace VinhKhanhstreetfoods.Services;
 
 /// <summary>
-/// Translation service using GTranslate (Google) with safe fallbacks.
+/// Legacy translation service.
+/// Kept for compatibility; HybridTranslationService is preferred.
 /// </summary>
 public class TranslationService : ITranslationService
 {
@@ -18,7 +20,6 @@ public class TranslationService : ITranslationService
         var src = NormalizeLang(sourceLanguage);
         var tgt = NormalizeLang(targetLanguage);
 
-        // Do not translate to Vietnamese (default) or same language
         if (string.Equals(tgt, "vi", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(src, tgt, StringComparison.OrdinalIgnoreCase))
         {
@@ -34,7 +35,6 @@ public class TranslationService : ITranslationService
         {
             Debug.WriteLine($"[TranslationService] Translation error ({src}->{tgt}): {ex.Message}. Retrying with auto-detect...");
 
-            // Retry once with auto-detect source
             try
             {
                 var retry = await _translator.TranslateAsync(text, null, tgt);
@@ -43,9 +43,24 @@ public class TranslationService : ITranslationService
             catch (Exception retryEx)
             {
                 Debug.WriteLine($"[TranslationService] Retry failed: {retryEx.Message}");
-                return text; // Fallback to original
+                return text;
             }
         }
+    }
+
+    public async Task<string> ResolveNarrationTextAsync(POI poi, string targetLanguage, bool preferTtsScript = true)
+    {
+        var original = preferTtsScript
+            ? (!string.IsNullOrWhiteSpace(poi.TtsScript) ? poi.TtsScript! : poi.DescriptionText)
+            : poi.DescriptionText;
+
+        var target = NormalizeLang(targetLanguage);
+        var source = NormalizeLang(poi.TtsLanguage);
+
+        if (target == "vi" || target == source)
+            return original;
+
+        return await TranslateAsync(original, source, target);
     }
 
     public async Task<bool> IsAvailableAsync()
@@ -61,6 +76,13 @@ public class TranslationService : ITranslationService
         }
     }
 
+    public Task<int> DownloadLanguagePackAsync(string languageCode, CancellationToken cancellationToken = default)
+        => Task.FromResult(0);
+
+    public IReadOnlyList<string> GetOfflineBaseLanguages() => ["vi"];
+
+    public IReadOnlyList<string> GetOnlineLanguages() => ["en", "zh", "ja", "ko", "fr", "ru"];
+
     private static string NormalizeLang(string? code)
     {
         if (string.IsNullOrWhiteSpace(code)) return "vi";
@@ -71,10 +93,13 @@ public class TranslationService : ITranslationService
         {
             "vn" or "vi" or "vi-vn" => "vi",
             "en" or "en-us" or "en-gb" => "en",
-            "zh" or "zh-cn" or "zh-hans" => "zh-CN",
-            "zh-tw" or "zh-hant" => "zh-TW",
+            "zh" or "zh-cn" or "zh-hans" => "zh",
+            "zh-tw" or "zh-hant" => "zh",
+            "ja" or "ja-jp" => "ja",
             "ko" or "ko-kr" => "ko",
-            _ when normalized.Length > 2 => normalized,
+            "fr" or "fr-fr" => "fr",
+            "ru" or "ru-ru" => "ru",
+            _ when normalized.Length > 2 && normalized.Contains('-') => normalized[..normalized.IndexOf('-')],
             _ => normalized
         };
     }

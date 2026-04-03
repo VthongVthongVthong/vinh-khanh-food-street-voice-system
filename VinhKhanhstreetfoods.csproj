@@ -50,6 +50,9 @@
         <!-- Raw Assets (also remove the "Resources\Raw" prefix) -->
         <MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
         <MauiAsset Include="Data\poi_data_new.sqlite" LogicalName="poi_data_new.sqlite" />
+        
+        <!-- ✅ Embed appsettings.json for mobile deployment -->
+        <MauiAsset Include="env\appsettings.json" LogicalName="appsettings.json" />
     </ItemGroup>
 
     <ItemGroup>

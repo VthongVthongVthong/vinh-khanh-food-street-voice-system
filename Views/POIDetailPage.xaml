@@ -90,7 +90,17 @@
                            FontSize="16" 
                            FontAttributes="Bold"
                            TextColor="#283845"/>
-                    <Label Text="{Binding SelectedPOI.TtsScript}"
+
+                    <Label Text="Ngôn ngữ thuyết minh"
+                           FontSize="12"
+                           TextColor="#666666"/>
+                    <Picker ItemsSource="{Binding LanguageOptions}"
+                            SelectedItem="{Binding SelectedNarrationLanguage}"
+                            ItemDisplayBinding="{Binding DisplayLabel}"
+                            TextColor="#283845"
+                            Title="Chọn ngôn ngữ"/>
+
+                    <Label Text="{Binding NarrationPreviewText}"
                            FontSize="13"
                            TextColor="#374151"
                            LineBreakMode="WordWrap"/>

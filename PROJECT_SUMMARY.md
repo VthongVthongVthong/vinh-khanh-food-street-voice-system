@@ -15,154 +15,154 @@
 
 ```
 VinhKhanhFoodGuide/
-│
-├── 📄 VinhKhanhFoodGuide.csproj
-│   └─ Project configuration with NuGet packages
-│   
-├── 📄 MauiProgram.cs
-│   └─ Dependency injection container setup
-│   
-├── 📄 App.xaml
-├── 📄 App.xaml.cs
-│   └─ Application entry point + DB initialization
-│   
-├── 📄 AppShell.xaml
-├── 📄 AppShell.xaml.cs
-│   └─ Shell navigation with tabs (Home, Settings)
-│
-├── 📁 Models/
-│   ├── POI.cs                      [21 lines] SQLite POI entity
-│   ├── POIContent.cs               [20 lines] Multilingual content entity
-│   ├── LocationData.cs             [8 lines]  Location info model
-│   └── GeofenceEvent.cs            [9 lines]  Geofence trigger event
-│
-├── 📁 Services/
-│   ├── LocationService.cs          [130 lines] Real-time GPS tracking
-│   │   └─ ILocationService (interface)
-│   │   └─ Adaptive update interval (2-5 sec)
-│   │   └─ LocationChanged event emission
-│   │
-│   ├── GeofenceEngine.cs           [115 lines] Geofence logic + Haversine
-│   │   └─ IGeofenceEngine (interface)
-│   │   └─ Haversine distance formula
-│   │   └─ Debounce + Cooldown management
-│   │   └─ Audio lock prevention
-│   │   └─ GeofenceTriggered event
-│   │
-│   └── AudioManager.cs             [95 lines]  TTS + audio playback queue
-│       └─ IAudioManager (interface)
-│       └─ Text-to-Speech support
-│       └─ Local audio file playback
-│       └─ Sequential audio queue
-│
-├── 📁 Data/
-│   ├── IPoiRepository.cs           [14 lines] Repository interface
-│   │   └─ GetAllPoisAsync()
-│   │   └─ GetPoiByIdAsync()
-│   │   └─ GetPoiContentAsync()
-│   │   └─ GetPoiContentByLanguageAsync()
-│   │   └─ Insert/Update/Delete operations
-│   │   └─ InitializeDatabaseAsync()
-│   │
-│   └── PoiRepository.cs            [190 lines] SQLite implementation
-│       └─ Database path configuration
-│       └─ Table creation
-│       └─ Seed demo data (5 POIs, 10 content items)
-│       └─ Vietnamese + English translations
-│
-├── 📁 ViewModels/
-│   ├── HomeViewModel.cs            [145 lines] Home page logic (MVVM)
-│   │   └─ Status management
-│   │   └─ Location tracking control
-│   │   └─ POI list management
-│   │   └─ Geofence event handling
-│   │   └─ Audio playback control
-│   │   └─ Nearest POI calculation
-│   │
-│   ├── POIDetailViewModel.cs       [75 lines]  POI detail page logic
-│   │   └─ POI loading
-│   │   └─ Language selection
-│   │   └─ Audio playback control
-│   │   └─ Content dynamic loading
-│   │
-│   └── SettingsViewModel.cs        [43 lines]  Settings page logic
-│       └─ Language preference
-│       └─ TTS toggle
-│       └─ Update interval control
-│       └─ Preferences persistence
-│
-├── 📁 Pages/
-│   ├── HomePage.xaml               [48 lines] Main tracking UI
-│   ├── HomePage.xaml.cs            [35 lines] Code-behind
-│   │   └─ Start/Stop tracking buttons
-│   │   └─ Status display
-│   │   └─ POI list with CollectionView
-│   │
-│   ├── POIDetailPage.xaml          [42 lines] POI detail UI
-│   ├── POIDetailPage.xaml.cs       [40 lines] Code-behind
-│   │   └─ POI image display
-│   │   └─ Language selector
-│   │   └─ Description text
-│   │   └─ Play/Stop audio buttons
-│   │
-│   └── SettingsPage.xaml           [55 lines] Settings UI
-│   └── SettingsPage.xaml.cs        [42 lines] Code-behind
-│       └─ Language dropdown
-│       └─ TTS toggle switch
-│       └─ Update interval slider
-│       └─ Save settings button
-│       └─ About section
-│
-├── 📁 Platforms/Android/
-│   ├── AndroidManifest.xml         [30 lines] Android permissions + manifest
-│   │   └─ Location permissions (fine, coarse, background)
-│   │   └─ Audio permissions (record, modify)
-│   │   └─ Network permissions
-│   │   └─ Service declarations
-│   │
-│   └── LocationService.cs          [19 lines] Android service stub
-│       └─ Placeholder for native location service
-│       └─ Background tracking support
-│
-├── 📁 Resources/Images/
-│   └─ (Placeholder for POI images - add .png files here)
-│
-└── 📁 (Root documentation)
-    ├── README.md                   [430 lines] Complete documentation
-    │   ├─ Overview & features
-    │   ├─ Architecture description
-    │   ├─ Data models
-    │   ├─ Installation instructions
-    │   ├─ Database schema
-    │   ├─ Troubleshooting
-    │   ├─ Permissions reference
-    │   ├─ File structure
-    │   └─ Future enhancements
-    │
-    ├── QUICKSTART.md               [380 lines] Setup & testing guide
-    │   ├─ Installation steps
-    │   ├─ Running the app
-    │   ├─ First run behavior
-    │   ├─ Test scenarios
-    │   ├─ Troubleshooting
-    │   ├─ Development workflow
-    │   └─ Production checklist
-    │
-    ├── ARCHITECTURE.md             [350 lines] Detailed architecture doc
-    │   ├─ System diagrams
-    │   ├─ Component interaction flows
-    │   ├─ Haversine algorithm explanation
-    │   ├─ Data model schemas
-    │   ├─ DI configuration
-    │   ├─ Performance characteristics
-    │   ├─ State management
-    │   ├─ Event flow
-    │   ├─ Error handling
-    │   ├─ Security considerations
-    │   └─ Scalability limits
-    │
-    ├── .gitignore                  [45 lines] Git ignore patterns
-    └── [This file summary]
+�
++-- ?? VinhKhanhFoodGuide.csproj
+�   +- Project configuration with NuGet packages
+�   
++-- ?? MauiProgram.cs
+�   +- Dependency injection container setup
+�   
++-- ?? App.xaml
++-- ?? App.xaml.cs
+�   +- Application entry point + DB initialization
+�   
++-- ?? AppShell.xaml
++-- ?? AppShell.xaml.cs
+�   +- Shell navigation with tabs (Home, Settings)
+�
++-- ?? Models/
+�   +-- POI.cs                      [21 lines] SQLite POI entity
+�   +-- POIContent.cs               [20 lines] Multilingual content entity
+�   +-- LocationData.cs             [8 lines]  Location info model
+�   +-- GeofenceEvent.cs            [9 lines]  Geofence trigger event
+�
++-- ?? Services/
+�   +-- LocationService.cs          [130 lines] Real-time GPS tracking
+�   �   +- ILocationService (interface)
+�   �   +- Adaptive update interval (2-5 sec)
+�   �   +- LocationChanged event emission
+�   �
+�   +-- GeofenceEngine.cs           [115 lines] Geofence logic + Haversine
+�   �   +- IGeofenceEngine (interface)
+�   �   +- Haversine distance formula
+�   �   +- Debounce + Cooldown management
+�   �   +- Audio lock prevention
+�   �   +- GeofenceTriggered event
+�   �
+�   +-- AudioManager.cs             [95 lines]  TTS + audio playback queue
+�       +- IAudioManager (interface)
+�       +- Text-to-Speech support
+�       +- Local audio file playback
+�       +- Sequential audio queue
+�
++-- ?? Data/
+�   +-- IPoiRepository.cs           [14 lines] Repository interface
+�   �   +- GetAllPoisAsync()
+�   �   +- GetPoiByIdAsync()
+�   �   +- GetPoiContentAsync()
+�   �   +- GetPoiContentByLanguageAsync()
+�   �   +- Insert/Update/Delete operations
+�   �   +- InitializeDatabaseAsync()
+�   �
+�   +-- PoiRepository.cs            [190 lines] SQLite implementation
+�       +- Database path configuration
+�       +- Table creation
+�       +- Seed demo data (5 POIs, 10 content items)
+�       +- Vietnamese + English translations
+�
++-- ?? ViewModels/
+�   +-- HomeViewModel.cs            [145 lines] Home page logic (MVVM)
+�   �   +- Status management
+�   �   +- Location tracking control
+�   �   +- POI list management
+�   �   +- Geofence event handling
+�   �   +- Audio playback control
+�   �   +- Nearest POI calculation
+�   �
+�   +-- POIDetailViewModel.cs       [75 lines]  POI detail page logic
+�   �   +- POI loading
+�   �   +- Language selection
+�   �   +- Audio playback control
+�   �   +- Content dynamic loading
+�   �
+�   +-- SettingsViewModel.cs        [43 lines]  Settings page logic
+�       +- Language preference
+�       +- TTS toggle
+�       +- Update interval control
+�       +- Preferences persistence
+�
++-- ?? Pages/
+�   +-- HomePage.xaml               [48 lines] Main tracking UI
+�   +-- HomePage.xaml.cs            [35 lines] Code-behind
+�   �   +- Start/Stop tracking buttons
+�   �   +- Status display
+�   �   +- POI list with CollectionView
+�   �
+�   +-- POIDetailPage.xaml          [42 lines] POI detail UI
+�   +-- POIDetailPage.xaml.cs       [40 lines] Code-behind
+�   �   +- POI image display
+�   �   +- Language selector
+�   �   +- Description text
+�   �   +- Play/Stop audio buttons
+�   �
+�   +-- SettingsPage.xaml           [55 lines] Settings UI
+�   +-- SettingsPage.xaml.cs        [42 lines] Code-behind
+�       +- Language dropdown
+�       +- TTS toggle switch
+�       +- Update interval slider
+�       +- Save settings button
+�       +- About section
+�
++-- ?? Platforms/Android/
+�   +-- AndroidManifest.xml         [30 lines] Android permissions + manifest
+�   �   +- Location permissions (fine, coarse, background)
+�   �   +- Audio permissions (record, modify)
+�   �   +- Network permissions
+�   �   +- Service declarations
+�   �
+�   +-- LocationService.cs          [19 lines] Android service stub
+�       +- Placeholder for native location service
+�       +- Background tracking support
+�
++-- ?? Resources/Images/
+�   +- (Placeholder for POI images - add .png files here)
+�
++-- ?? (Root documentation)
+    +-- README.md                   [430 lines] Complete documentation
+    �   +- Overview & features
+    �   +- Architecture description
+    �   +- Data models
+    �   +- Installation instructions
+    �   +- Database schema
+    �   +- Troubleshooting
+    �   +- Permissions reference
+    �   +- File structure
+    �   +- Future enhancements
+    �
+    +-- QUICKSTART.md               [380 lines] Setup & testing guide
+    �   +- Installation steps
+    �   +- Running the app
+    �   +- First run behavior
+    �   +- Test scenarios
+    �   +- Troubleshooting
+    �   +- Development workflow
+    �   +- Production checklist
+    �
+    +-- ARCHITECTURE.md             [350 lines] Detailed architecture doc
+    �   +- System diagrams
+    �   +- Component interaction flows
+    �   +- Haversine algorithm explanation
+    �   +- Data model schemas
+    �   +- DI configuration
+    �   +- Performance characteristics
+    �   +- State management
+    �   +- Event flow
+    �   +- Error handling
+    �   +- Security considerations
+    �   +- Scalability limits
+    �
+    +-- .gitignore                  [45 lines] Git ignore patterns
+    +-- [This file summary]
 ```
 
 ---
@@ -187,82 +187,82 @@ VinhKhanhFoodGuide/
 
 ### LocationService.cs (130 lines)
 ```csharp
-✓ ILocationService interface
-✓ Real-time GPS tracking with Geolocation API
-✓ Adaptive update intervals (2-5 seconds)
-✓ Background task with CancellationToken
-✓ LocationChanged event for subscribers
-✓ Permission handling (runtime requests)
-✓ Error handling and debug logging
+? ILocationService interface
+? Real-time GPS tracking with Geolocation API
+? Adaptive update intervals (2-5 seconds)
+? Background task with CancellationToken
+? LocationChanged event for subscribers
+? Permission handling (runtime requests)
+? Error handling and debug logging
 ```
 
 ### GeofenceEngine.cs (115 lines)
 ```csharp
-✓ IGeofenceEngine interface
-✓ Haversine formula distance calculation
-✓ POI loading from repository
-✓ Debounce mechanism (3 seconds)
-✓ Per-POI cooldown tracking
-✓ Audio playing lock
-✓ GeofenceTriggered event emission
-✓ Priority-based POI sorting
+? IGeofenceEngine interface
+? Haversine formula distance calculation
+? POI loading from repository
+? Debounce mechanism (3 seconds)
+? Per-POI cooldown tracking
+? Audio playing lock
+? GeofenceTriggered event emission
+? Priority-based POI sorting
 ```
 
 ### AudioManager.cs (95 lines)
 ```csharp
-✓ IAudioManager interface
-✓ Text-to-Speech integration
-✓ Audio file playback support
-✓ Queue-based sequential processing
-✓ Locale support (vi-VN, en-US, etc.)
-✓ Play/Pause/Stop controls
-✓ Playing state tracking
-✓ Single-audio enforcement
+? IAudioManager interface
+? Text-to-Speech integration
+? Audio file playback support
+? Queue-based sequential processing
+? Locale support (vi-VN, en-US, etc.)
+? Play/Pause/Stop controls
+? Playing state tracking
+? Single-audio enforcement
 ```
 
 ### PoiRepository.cs (190 lines)
 ```csharp
-✓ IPoiRepository interface
-✓ SQLite database initialization
-✓ Table creation with schema
-✓ Demo data seeding (5 POIs + 10 content)
-✓ Vietnamese & English translations
-✓ CRUD operations (Create, Read, Update, Delete)
-✓ Query operations by language/POI
-✓ Indexed queries for performance
+? IPoiRepository interface
+? SQLite database initialization
+? Table creation with schema
+? Demo data seeding (5 POIs + 10 content)
+? Vietnamese & English translations
+? CRUD operations (Create, Read, Update, Delete)
+? Query operations by language/POI
+? Indexed queries for performance
 ```
 
 ### HomeViewModel.cs (145 lines)
 ```csharp
-✓ Location tracking management
-✓ Geofence event handling
-✓ POI list management
-✓ Audio playback orchestration
-✓ Status message updates
-✓ Nearest POI calculation
-✓ Language-aware content loading
-✓ Double-event subscription (Location + Geofence)
+? Location tracking management
+? Geofence event handling
+? POI list management
+? Audio playback orchestration
+? Status message updates
+? Nearest POI calculation
+? Language-aware content loading
+? Double-event subscription (Location + Geofence)
 ```
 
 ### Pages (6 files, 262 lines total)
 ```csharp
 HomePagess
-  ✓ Status display frame
-  ✓ Start/Stop tracking buttons
-  ✓ POI CollectionView with bindings
+  ? Status display frame
+  ? Start/Stop tracking buttons
+  ? POI CollectionView with bindings
 
 POIDetailPage
-  ✓ POI image display
-  ✓ Language selector dropdown
-  ✓ Description text binding
-  ✓ Play/Stop audio buttons
+  ? POI image display
+  ? Language selector dropdown
+  ? Description text binding
+  ? Play/Stop audio buttons
 
 SettingsPage
-  ✓ Language preferences
-  ✓ TTS toggle switch
-  ✓ Update interval slider
-  ✓ Save settings button
-  ✓ About app section
+  ? Language preferences
+  ? TTS toggle switch
+  ? Update interval slider
+  ? Save settings button
+  ? About app section
 ```
 
 ---
@@ -270,11 +270,11 @@ SettingsPage
 ## Demo Data Included
 
 ### 5 Sample POIs
-1. **Bánh Mì Tươi** (10.77695°N, 106.67895°E) - Fresh Vietnamese Bread
-2. **Cơm Tấm Sài Gòn** (10.77705°N, 106.67915°E) - Broken Rice
-3. **Phở Hương Liệu** (10.77715°N, 106.67835°E) - Beef Noodle Soup
-4. **Kem Tươi Tây Ninh** (10.77685°N, 106.67955°E) - Fresh Ice Cream
-5. **Nước Mía Minh Châu** (10.77675°N, 106.67875°E) - Sugarcane Juice
+1. **B�nh M� Tuoi** (10.77695�N, 106.67895�E) - Fresh Vietnamese Bread
+2. **Com T?m S�i G�n** (10.77705�N, 106.67915�E) - Broken Rice
+3. **Ph? Huong Li?u** (10.77715�N, 106.67835�E) - Beef Noodle Soup
+4. **Kem Tuoi T�y Ninh** (10.77685�N, 106.67955�E) - Fresh Ice Cream
+5. **Nu?c M�a Minh Ch�u** (10.77675�N, 106.67875�E) - Sugarcane Juice
 
 ### Content Per POI
 - **Vietnamese description** (Text-to-Speech enabled)
@@ -331,24 +331,24 @@ System.Runtime.Serialization
 
 ### Tables
 1. **POI** - 5 rows (sample locations)
-2. **POIContent** - 10 rows (5 POIs × 2 languages)
+2. **POIContent** - 10 rows (5 POIs � 2 languages)
 
 ---
 
 ## Testing Scenarios Covered
 
-1. ✓ Location permission request
-2. ✓ GPS location tracking
-3. ✓ Distance calculation (Haversine)
-4. ✓ Geofence trigger with debounce
-5. ✓ Per-POI cooldown
-6. ✓ Audio lock prevention
-7. ✓ Text-to-Speech playback
-8. ✓ Language switching
-9. ✓ Settings persistence
-10. ✓ Database initialization
-11. ✓ POI data seeding
-12. ✓ Multi-language content loading
+1. ? Location permission request
+2. ? GPS location tracking
+3. ? Distance calculation (Haversine)
+4. ? Geofence trigger with debounce
+5. ? Per-POI cooldown
+6. ? Audio lock prevention
+7. ? Text-to-Speech playback
+8. ? Language switching
+9. ? Settings persistence
+10. ? Database initialization
+11. ? POI data seeding
+12. ? Multi-language content loading
 
 ---
 
@@ -407,7 +407,7 @@ dotnet build -f net8.0-android && dotnet run -f net8.0-android
 
 ---
 
-**Project Ready for Development! 🚀**
+**Project Ready for Development! ??**
 
 All required components are implemented and integrated.
 The application is fully functional with sample data.

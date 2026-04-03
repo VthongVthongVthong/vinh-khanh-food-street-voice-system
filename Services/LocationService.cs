@@ -5,7 +5,6 @@ namespace VinhKhanhstreetfoods.Services
 {
     public class LocationService
     {
-        //private CancellationTokenSource _cancelTokenSource;
         private bool _isCheckingLocation;
         private Location _lastLocation;
         private DateTime _lastUpdateTime;
@@ -28,33 +27,55 @@ namespace VinhKhanhstreetfoods.Services
 
         public async Task StartListening(int intervalSeconds = 5)
         {
-            if (_isCheckingLocation)
-                return;
-
-            var hasPermission = await CheckAndRequestLocationPermission();
-            if (hasPermission != PermissionStatus.Granted)
-                return;
-
-            _isCheckingLocation = true;
-
-            // Adaptive interval based on speed
-            Geolocation.LocationChanged += Geolocation_LocationChanged;
-
-            var request = new GeolocationListeningRequest(GeolocationAccuracy.Best)
-            {
-                // Adaptive interval logic
-                DesiredAccuracy = GeolocationAccuracy.Best,
-                MinimumTime = TimeSpan.FromSeconds(intervalSeconds)
-            };
-
             try
             {
+                if (_isCheckingLocation)
+                    return;
+
+                var hasPermission = await CheckAndRequestLocationPermission();
+                if (hasPermission != PermissionStatus.Granted)
+                {
+                    System.Diagnostics.Debug.WriteLine("[LocationService] Location permission not granted");
+                    return;
+                }
+
+                _isCheckingLocation = true;
+
+                // Avoid duplicate subscription in edge cases
+                Geolocation.LocationChanged -= Geolocation_LocationChanged;
+                Geolocation.LocationChanged += Geolocation_LocationChanged;
+
+                var request = new GeolocationListeningRequest(GeolocationAccuracy.Best)
+                {
+                    DesiredAccuracy = GeolocationAccuracy.Best,
+                    MinimumTime = TimeSpan.FromSeconds(intervalSeconds)
+                };
+
                 await Geolocation.StartListeningForegroundAsync(request);
                 TrackingStateChanged?.Invoke(this, true);
+                System.Diagnostics.Debug.WriteLine("[LocationService] Location listening started");
+            }
+            catch (FeatureNotSupportedException fex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[LocationService] Geolocation not supported: {fex.Message}");
+                _isCheckingLocation = false;
+                TrackingStateChanged?.Invoke(this, false);
+            }
+            catch (FeatureNotEnabledException fex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[LocationService] Geolocation not enabled: {fex.Message}");
+                _isCheckingLocation = false;
+                TrackingStateChanged?.Invoke(this, false);
+            }
+            catch (PermissionException pex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[LocationService] Permission exception: {pex.Message}");
+                _isCheckingLocation = false;
+                TrackingStateChanged?.Invoke(this, false);
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Location listening error: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[LocationService] Unexpected error: {ex.Message}\n{ex.StackTrace}");
                 _isCheckingLocation = false;
                 TrackingStateChanged?.Invoke(this, false);
             }
@@ -67,11 +88,10 @@ namespace VinhKhanhstreetfoods.Services
             _lastLocation = e.Location;
             _lastUpdateTime = DateTime.Now;
 
-            // Calculate speed and adjust interval
             AdjustUpdateInterval(e.Location);
 
-            // Throttle events to avoid overload
-            if ((DateTime.Now - _lastInvokeTime).TotalSeconds >= 2)
+            // Throttle a bit more aggressively to reduce geofence+db+audio pressure
+            if ((DateTime.Now - _lastInvokeTime).TotalSeconds >= 3)
             {
                 _lastInvokeTime = DateTime.Now;
                 LocationUpdated?.Invoke(this, e.Location);
@@ -80,45 +100,41 @@ namespace VinhKhanhstreetfoods.Services
 
         private void AdjustUpdateInterval(Location location)
         {
-            // Simple speed-based interval adjustment
             if (location.Speed.HasValue)
             {
                 double speedKmh = location.Speed.Value * 3.6;
-
-                // Walking (< 5 km/h): 5 seconds
-                // Biking (5-20 km/h): 3 seconds  
-                // Driving (>20 km/h): 2 seconds
                 int newInterval = speedKmh < 5 ? 5 : speedKmh < 20 ? 3 : 2;
-
-                // Could implement actual interval change here
             }
         }
 
         public async Task StopListening()
         {
-            if (!_isCheckingLocation)
-                return;
-
             try
             {
-                Geolocation.LocationChanged -= Geolocation_LocationChanged;
-                Geolocation.StopListeningForeground();
+                if (!_isCheckingLocation)
+                    return;
+
+                try
+                {
+                    Geolocation.LocationChanged -= Geolocation_LocationChanged;
+                    Geolocation.StopListeningForeground();
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[LocationService] Error stopping location listening: {ex.Message}");
+                }
+
+                _isCheckingLocation = false;
+                TrackingStateChanged?.Invoke(this, false);
+
+                await Task.CompletedTask;
+                System.Diagnostics.Debug.WriteLine("[LocationService] Location listening stopped");
             }
-            catch
+            catch (Exception ex)
             {
-                // Ignore if event handler wasn't subscribed
+                System.Diagnostics.Debug.WriteLine($"[LocationService] Error in StopListening: {ex.Message}");
+                _isCheckingLocation = false;
             }
-            
-            _isCheckingLocation = false;
-            TrackingStateChanged?.Invoke(this, false);
-            
-            // Invoke one last time with the last location if we have it
-            if (_lastLocation != null)
-            {
-                LocationUpdated?.Invoke(this, _lastLocation);
-            }
-            
-            await Task.CompletedTask;
         }
 
         public async Task<Location> GetCurrentLocation()
@@ -130,7 +146,7 @@ namespace VinhKhanhstreetfoods.Services
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Get location error: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Get location error: {ex.Message}");
                 return null;
             }
         }

@@ -128,12 +128,20 @@ namespace VinhKhanhstreetfoods.ViewModels
                 IsLoading = true;
                 StatusMessage = "Đang tải dữ liệu...";
 
-                var allPOIs = await _poiRepository.GetActivePOIsAsync();
-                System.Diagnostics.Debug.WriteLine($"[HomeViewModel] Loaded {allPOIs.Count} active POIs from database");
+                if (_poiRepository == null)
+                {
+                    StatusMessage = "Lỗi: Repository không được khởi tạo";
+                    IsLoading = false;
+                    return;
+                }
 
-                if (allPOIs.Count == 0)
+                var allPOIs = await _poiRepository.GetActivePOIsAsync();
+                System.Diagnostics.Debug.WriteLine($"[HomeViewModel] Loaded {allPOIs?.Count ?? 0} active POIs from database");
+
+                if (allPOIs == null || allPOIs.Count == 0)
                 {
                     StatusMessage = "Không có điểm của lãi nào. Kiểm tra dữ liệu cơ sở dữ liệu.";
+                    IsLoading = false;
                     return;
                 }
 
@@ -144,7 +152,7 @@ namespace VinhKhanhstreetfoods.ViewModels
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[HomeViewModel] Error loading initial data: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[HomeViewModel] Error loading initial data: {ex.Message}\n{ex.StackTrace}");
                 StatusMessage = $"Lỗi tải dữ liệu: {ex.Message}";
             }
             finally

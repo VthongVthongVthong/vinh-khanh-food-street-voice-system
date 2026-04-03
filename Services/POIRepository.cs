@@ -24,23 +24,48 @@ namespace VinhKhanhstreetfoods.Services
 
             try
             {
-                await EnsureDatabaseFileAsync(); // đảm bảo file được copy trước
+                // ✅ OPTIMIZED: Copy database file asynchronously first
+                await EnsureDatabaseFileAsync();
 
+                // ✅ Create async connection (doesn't block)
                 _database = new SQLiteAsyncConnection(_databasePath);
+
+                // ✅ DEFER: Run schema updates on background thread to prevent ANR
+                // Don't await this - fire and forget with proper error handling
+                _ = InitializeSchemaAsync();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[POIRepository] Error initializing database connection: {ex.Message}");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// ✅ DEFERRED: Schema initialization runs in background
+        /// This prevents ANR by not blocking the UI thread with schema migrations
+        /// </summary>
+        private async Task InitializeSchemaAsync()
+        {
+            try
+            {
+                if (_database == null)
+                    return;
 
                 await MigrateFromOldSchemaIfNeeded();
                 await EnsureSchemaAsync();
+                await EnsureHybridTranslationColumnsAsync();
 
                 var count = await _database.Table<POI>().CountAsync();
-                Debug.WriteLine($"[POIRepository] Database initialized. POI table has {count} records.");
+                Debug.WriteLine($"[POIRepository] Schema initialized. POI table has {count} records.");
 
                 if (count == 0)
                     await SeedInitialDataAsync();
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[POIRepository] Error initializing database: {ex.Message}");
-                throw;
+                Debug.WriteLine($"[POIRepository] Error in background schema initialization: {ex.Message}");
+                // Don't throw - schema can be fixed on next run
             }
         }
 
@@ -51,24 +76,113 @@ namespace VinhKhanhstreetfoods.Services
 
             try
             {
-                using var stream = await FileSystem.OpenAppPackageFileAsync("poi_data_new.sqlite");
+                // ✅ OPTIMIZED: Use multiple fallback paths for packaged database
+                var possiblePaths = new[]
+                {
+                    "poi_data_new.sqlite",
+                    "poi_data_new.sqlite3",
+                    "Resources/Raw/poi_data_new.sqlite",
+                    "poi_data.sqlite"
+                };
+
+                string? sourcePath = null;
+                foreach (var path in possiblePaths)
+                {
+                    try
+                    {
+                        using (var testStream = await FileSystem.OpenAppPackageFileAsync(path))
+                        {
+                            sourcePath = path;
+                            break;
+                        }
+                    }
+                    catch
+                    {
+                        // Try next path
+                    }
+                }
+
+                if (string.IsNullOrEmpty(sourcePath))
+                {
+                    Debug.WriteLine("⚠️ [POIRepository] No packaged database found - will use empty database");
+                    return;
+                }
+
+                // ✅ Only copy if file doesn't exist (safe check)
+                if (File.Exists(_databasePath))
+                    return;
+
+                using var stream = await FileSystem.OpenAppPackageFileAsync(sourcePath);
                 using var fileStream = File.Create(_databasePath);
                 await stream.CopyToAsync(fileStream);
-                Debug.WriteLine("✅ [POIRepository] Copied packaged poi_data_new.sqlite to local db");
+                Debug.WriteLine($"✅ [POIRepository] Copied packaged database from {sourcePath}");
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"⚠️ [POIRepository] Could not copy packaged DB: {ex.Message}");
+                // Fall through - let database initialize with empty schema
             }
         }
 
         private async Task EnsureSchemaAsync()
         {
-            await EnsureTableExistsAsync<POI>("POI");
-            await EnsureTableExistsAsync<Tour>("Tour");
-            await EnsureTableExistsAsync<TourPOI>("TourPOI");
+            try
+            {
+                // ✅ OPTIMIZED: Check which tables exist first
+                var existingTables = await GetExistingTablesAsync();
 
-            const string createUser = @"CREATE TABLE IF NOT EXISTS User (
+                // Only create missing tables
+                if (!existingTables.Contains("POI"))
+                    await _database!.CreateTableAsync<POI>();
+                if (!existingTables.Contains("Tour"))
+                    await _database!.CreateTableAsync<Tour>();
+                if (!existingTables.Contains("TourPOI"))
+                    await _database!.CreateTableAsync<TourPOI>();
+
+                // ✅ Create optional tables if they don't exist (but don't fail if they do)
+                var tablesAndSchemas = new (string name, string schema)[]
+                {
+                    ("User", createUserSchema),
+                    ("POIImage", createPOIImageSchema),
+                    ("VisitLog", createVisitLogSchema),
+                    ("AudioPlayLog", createAudioPlayLogSchema),
+                    ("TranslationCache", createTranslationCacheSchema)
+                };
+
+                foreach (var (tableName, schema) in tablesAndSchemas)
+                {
+                    if (!existingTables.Contains(tableName))
+                    {
+                        await _database.ExecuteAsync(schema);
+                    }
+                }
+
+                // Create unique index if it doesn't exist
+                await _database.ExecuteAsync(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS IX_TranslationCache_Unique ON TranslationCache (poiId, languageCode, isTtsScript);");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[POIRepository] Schema creation error (continuing): {ex.Message}");
+                // Don't throw - non-critical tables can be created later if needed
+            }
+        }
+
+        private async Task<HashSet<string>> GetExistingTablesAsync()
+        {
+            try
+            {
+                var result = await _database!.QueryAsync<TableInfo>(
+                    "SELECT name FROM sqlite_master WHERE type='table';");
+                return new HashSet<string>(result.Select(r => r.name), StringComparer.OrdinalIgnoreCase);
+            }
+            catch
+            {
+                return new HashSet<string>();
+            }
+        }
+
+        private const string createUserSchema = @"CREATE TABLE IF NOT EXISTS User (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT NOT NULL UNIQUE,
     passwordHash TEXT NOT NULL,
@@ -79,7 +193,7 @@ namespace VinhKhanhstreetfoods.Services
     updatedAt TEXT NOT NULL DEFAULT (datetime('now'))
 );";
 
-            const string createPOIImage = @"CREATE TABLE IF NOT EXISTS POIImage (
+        private const string createPOIImageSchema = @"CREATE TABLE IF NOT EXISTS POIImage (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     imageUrl TEXT NOT NULL,
     caption TEXT,
@@ -89,7 +203,7 @@ namespace VinhKhanhstreetfoods.Services
     FOREIGN KEY (poiId) REFERENCES POI(id)
 );";
 
-            const string createVisitLog = @"CREATE TABLE IF NOT EXISTS VisitLog (
+        private const string createVisitLogSchema = @"CREATE TABLE IF NOT EXISTS VisitLog (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     visitTime TEXT NOT NULL DEFAULT (datetime('now')),
     latitude REAL NOT NULL,
@@ -100,7 +214,7 @@ namespace VinhKhanhstreetfoods.Services
     FOREIGN KEY (poiId) REFERENCES POI(id)
 );";
 
-            const string createAudioPlayLog = @"CREATE TABLE IF NOT EXISTS AudioPlayLog (
+        private const string createAudioPlayLogSchema = @"CREATE TABLE IF NOT EXISTS AudioPlayLog (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     playTime TEXT NOT NULL DEFAULT (datetime('now')),
     durationListened REAL,
@@ -110,37 +224,43 @@ namespace VinhKhanhstreetfoods.Services
     FOREIGN KEY (poiId) REFERENCES POI(id)
 );";
 
-            await _database!.ExecuteAsync(createUser);
-            await _database.ExecuteAsync(createPOIImage);
-            await _database.ExecuteAsync(createVisitLog);
-            await _database.ExecuteAsync(createAudioPlayLog);
-        }
-
-        private async Task EnsureTableExistsAsync<T>(string tableName) where T : new()
-        {
-            var exists = await _database!.ExecuteScalarAsync<int>(
-                "SELECT COUNT(1) FROM sqlite_master WHERE type='table' AND name=?;",
-                tableName);
-            if (exists == 0)
-                await _database.CreateTableAsync<T>();
-        }
+        private const string createTranslationCacheSchema = @"CREATE TABLE IF NOT EXISTS TranslationCache (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    poiId INTEGER NOT NULL,
+    languageCode TEXT NOT NULL,
+    isTtsScript INTEGER NOT NULL DEFAULT 0,
+    translatedText TEXT NOT NULL,
+    isDownloadedPack INTEGER NOT NULL DEFAULT 0,
+    updatedAt TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (poiId) REFERENCES POI(id)
+);";
 
         private async Task MigrateFromOldSchemaIfNeeded()
         {
-            // Check if POI table exists and has legacy columns
-            var tableInfo = await _database!.QueryAsync<PragmaTableInfo>("PRAGMA table_info('POI');");
-            var hasLanguageColumn = tableInfo.Any(c => c.Name.Equals("language", StringComparison.OrdinalIgnoreCase));
-            var hasTtsScriptColumn = tableInfo.Any(c => c.Name.Equals("ttsScript", StringComparison.OrdinalIgnoreCase));
-
-            if (tableInfo.Count == 0)
+            try
             {
-                // Table missing entirely; creation will happen later
-                return;
-            }
+                // ✅ OPTIMIZED: Quick check without full PRAGMA if table doesn't exist
+                var tableExists = await _database!.ExecuteScalarAsync<int>(
+                    "SELECT COUNT(1) FROM sqlite_master WHERE type='table' AND name='POI';");
 
-            if (hasLanguageColumn || !hasTtsScriptColumn)
-            {
-                Debug.WriteLine("[POIRepository] Migrating POI table from legacy schema...");
+                if (tableExists == 0)
+                {
+                    Debug.WriteLine("[POIRepository] POI table doesn't exist - no migration needed");
+                    return;
+                }
+
+                // Only if POI table exists, check for legacy columns
+                var tableInfo = await _database.QueryAsync<PragmaTableInfo>("PRAGMA table_info('POI');");
+                var hasLanguageColumn = tableInfo.Any(c => c.Name.Equals("language", StringComparison.OrdinalIgnoreCase));
+                var hasTtsScriptColumn = tableInfo.Any(c => c.Name.Equals("ttsScript", StringComparison.OrdinalIgnoreCase));
+
+                if (!hasLanguageColumn && hasTtsScriptColumn)
+                {
+                    // Schema is already modern - no migration needed
+                    return;
+                }
+
+                Debug.WriteLine("[POIRepository] Detected legacy schema - starting migration...");
 
                 await _database.ExecuteAsync("ALTER TABLE POI RENAME TO POI_old;");
                 await _database.CreateTableAsync<POI>();
@@ -167,7 +287,12 @@ FROM POI_old;";
                 await _database.ExecuteAsync(copySql);
                 await _database.ExecuteAsync("DROP TABLE IF EXISTS POI_old;");
 
-                Debug.WriteLine("[POIRepository] Migration completed.");
+                Debug.WriteLine("[POIRepository] Migration completed successfully.");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[POIRepository] Migration error (continuing): {ex.Message}");
+                // Don't throw - migration failure shouldn't crash app
             }
         }
 
@@ -292,6 +417,28 @@ FROM POI_old;";
         public async Task<List<POI>> GetActivePOIsAsync()
         {
             await InitializeAsync();
+     
+            // ✅ OPTIMIZATION: Wait for schema to be ready before querying
+            // Give schema initialization a moment if it's still running
+            int maxWaitMs = 5000; // 5 second max wait
+            int elapsedMs = 0;
+            while (_database != null && elapsedMs < maxWaitMs)
+            {
+                try
+                {
+                    // Try to count POIs - if it works, schema is ready
+                    var count = await _database.Table<POI>().CountAsync();
+                    break; // Success
+                }
+                catch
+                {
+                    // Schema still initializing
+                    await Task.Delay(100);
+                    elapsedMs += 100;
+                }
+            }
+
+            // ✅ Return active POIs
             return await _database!.Table<POI>().Where(p => p.IsActive == 1).ToListAsync();
         }
 
@@ -332,10 +479,144 @@ FROM POI_old;";
             await _database!.DeleteAllAsync<POI>();
         }
 
+        private async Task EnsureHybridTranslationColumnsAsync()
+        {
+            try
+            {
+                var tableInfo = await _database!.QueryAsync<PragmaTableInfo>("PRAGMA table_info('POI');");
+
+                // ✅ OPTIMIZED: Only add missing columns
+                var columnNames = tableInfo.Select(c => c.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+                var missingColumns = new[]
+                {
+                    ("descriptionEn", "TEXT"),
+                    ("descriptionZh", "TEXT"),
+                    ("ttsScriptEn", "TEXT"),
+                    ("ttsScriptZh", "TEXT")
+                };
+
+                foreach (var (columnName, sqlType) in missingColumns)
+                {
+                    if (!columnNames.Contains(columnName))
+                    {
+                        await _database.ExecuteAsync($"ALTER TABLE POI ADD COLUMN {columnName} {sqlType};");
+                        Debug.WriteLine($"[POIRepository] Added column: POI.{columnName}");
+                    }
+                }
+
+                // ✅ OPTIMIZED: Only update if columns actually needed filling
+                if (missingColumns.Any(c => columnNames.Contains(c.Item1)))
+                {
+                    await _database.ExecuteAsync(@"UPDATE POI
+SET descriptionEn = COALESCE(descriptionEn, descriptionText),
+       descriptionZh = COALESCE(descriptionZh, descriptionText),
+      ttsScriptEn= COALESCE(ttsScriptEn, ttsScript, descriptionText),
+  ttsScriptZh   = COALESCE(ttsScriptZh, ttsScript, descriptionText)
+WHERE descriptionEn IS NULL
+   OR descriptionZh IS NULL
+  OR ttsScriptEn IS NULL
+ OR ttsScriptZh IS NULL;");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[POIRepository] Translation columns error (continuing): {ex.Message}");
+            }
+        }
+
+        public async Task<string?> GetCachedTranslationAsync(int poiId, string languageCode, bool isTtsScript)
+        {
+            await InitializeAsync();
+
+            var normalized = NormalizeLang(languageCode);
+            var entry = await _database!.Table<TranslationCacheEntry>()
+                .Where(x => x.PoiId == poiId && x.LanguageCode == normalized && x.IsTtsScript == (isTtsScript ? 1 : 0))
+                .OrderByDescending(x => x.UpdatedAt)
+                .FirstOrDefaultAsync();
+
+            return entry?.TranslatedText;
+        }
+
+        public async Task UpsertCachedTranslationAsync(int poiId, string languageCode, bool isTtsScript, string translatedText, bool isDownloadedPack = false)
+        {
+            await InitializeAsync();
+
+            var normalized = NormalizeLang(languageCode);
+            var flag = isTtsScript ? 1 : 0;
+
+            var existing = await _database!.Table<TranslationCacheEntry>()
+                .Where(x => x.PoiId == poiId && x.LanguageCode == normalized && x.IsTtsScript == flag)
+                .FirstOrDefaultAsync();
+
+            if (existing is null)
+            {
+                await _database.InsertAsync(new TranslationCacheEntry
+                {
+                    PoiId = poiId,
+                    LanguageCode = normalized,
+                    IsTtsScript = flag,
+                    TranslatedText = translatedText,
+                    IsDownloadedPack = isDownloadedPack ? 1 : 0,
+                    UpdatedAt = DateTime.UtcNow
+                });
+                return;
+            }
+
+            existing.TranslatedText = translatedText;
+            existing.IsDownloadedPack = isDownloadedPack ? 1 : existing.IsDownloadedPack;
+            existing.UpdatedAt = DateTime.UtcNow;
+
+            await _database.UpdateAsync(existing);
+        }
+
+        public async Task<bool> HasDownloadedLanguagePackAsync(string languageCode)
+        {
+            await InitializeAsync();
+
+            var normalized = NormalizeLang(languageCode);
+            var count = await _database!.Table<TranslationCacheEntry>()
+                .Where(x => x.LanguageCode == normalized && x.IsDownloadedPack == 1)
+                .CountAsync();
+
+            return count > 0;
+        }
+
+        /// <summary>
+        /// Clear all cached translations (run when language changes).
+        /// </summary>
+        public async Task ClearCachedTranslationsAsync()
+        {
+            try
+            {
+                await InitializeAsync();
+                await _database!.DeleteAllAsync<TranslationCacheEntry>();
+                Debug.WriteLine("[POIRepository] ✅ All cached translations cleared");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[POIRepository] Error clearing cache: {ex.Message}");
+            }
+        }
+
+        private static string NormalizeLang(string? code)
+        {
+            if (string.IsNullOrWhiteSpace(code)) return "vi";
+            var normalized = code.Trim().Replace('_', '-').ToLowerInvariant();
+            var dash = normalized.IndexOf('-');
+            return dash > 0 ? normalized[..dash] : normalized;
+        }
+
         private class PragmaTableInfo
         {
             [Column("name")]
             public string Name { get; set; } = string.Empty;
+        }
+
+        private class TableInfo
+        {
+            [Column("name")]
+            public string name { get; set; } = string.Empty;
         }
     }
 }

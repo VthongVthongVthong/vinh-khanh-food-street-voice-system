@@ -24,9 +24,29 @@ namespace VinhKhanhstreetfoods.Models
         public string DescriptionText { get; set; } = string.Empty;
 
         /// <summary>
+        /// Offline English description (hybrid translation mode)
+        /// </summary>
+        public string? DescriptionEn { get; set; }
+
+        /// <summary>
+        /// Offline Simplified Chinese description (hybrid translation mode)
+        /// </summary>
+        public string? DescriptionZh { get; set; }
+
+        /// <summary>
         /// Default TTS script (usually in Vietnamese)
         /// </summary>
         public string? TtsScript { get; set; }
+
+        /// <summary>
+        /// Offline English TTS script (hybrid translation mode)
+        /// </summary>
+        public string? TtsScriptEn { get; set; }
+
+        /// <summary>
+        /// Offline Simplified Chinese TTS script (hybrid translation mode)
+        /// </summary>
+        public string? TtsScriptZh { get; set; }
 
         /// <summary>
         /// POI's default language for TTS (e.g., "vi-VN", "en-US")
@@ -76,5 +96,57 @@ namespace VinhKhanhstreetfoods.Models
 
         [Ignore]
         public DateTime CachedTranslationTime { get; set; }
+
+        // ===== MULTILINGUAL HELPERS =====
+        /// <summary>
+        /// Get description in specific language from offline DB columns
+        /// Priority: ExactLanguage > Fallback to Vietnamese
+        /// </summary>
+        public string GetDescriptionByLanguage(string languageCode)
+        {
+            var normalized = NormalizeLang(languageCode);
+
+            return normalized switch
+            {
+                "en" => DescriptionEn ?? DescriptionText,      // English
+                "zh" => DescriptionZh ?? DescriptionText,      // Simplified Chinese
+                "ja" => DescriptionText,        // Japanese (not in DB yet, fallback to VI)
+                "ko" => DescriptionText,  // Korean (not in DB yet, fallback to VI)
+                "fr" => DescriptionText,                // French (not in DB yet, fallback to VI)
+                "ru" => DescriptionText,         // Russian (not in DB yet, fallback to VI)
+                _ => DescriptionText   // Default: Vietnamese
+            };
+        }
+
+        /// <summary>
+        /// Get TTS script in specific language from offline DB columns
+        /// Priority: ExactLanguage > Fallback to Vietnamese TtsScript
+        /// </summary>
+        public string GetTtsScriptByLanguage(string languageCode)
+        {
+            var normalized = NormalizeLang(languageCode);
+
+            return normalized switch
+            {
+                "en" => TtsScriptEn ?? TtsScript ?? DescriptionEn ?? DescriptionText,
+                "zh" => TtsScriptZh ?? TtsScript ?? DescriptionZh ?? DescriptionText,
+                "ja" => TtsScript ?? DescriptionText,           // Not in DB, fallback to VI
+                "ko" => TtsScript ?? DescriptionText,     // Not in DB, fallback to VI
+                "fr" => TtsScript ?? DescriptionText,      // Not in DB, fallback to VI
+                "ru" => TtsScript ?? DescriptionText,  // Not in DB, fallback to VI
+                _ => TtsScript ?? DescriptionText       // Default: Vietnamese
+            };
+        }
+
+        /// <summary>
+        /// Normalize language code: "en-US" → "en", "vi-VN" → "vi"
+        /// </summary>
+        private static string NormalizeLang(string? code)
+        {
+            if (string.IsNullOrWhiteSpace(code)) return "vi";
+            var trimmed = code.Trim().ToLowerInvariant();
+            var dashIndex = trimmed.IndexOf('-');
+            return dashIndex > 0 ? trimmed[..dashIndex] : trimmed;
+        }
     }
 }

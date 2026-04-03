@@ -14,4 +14,9 @@ public interface IPOIRepository
     Task<int> UpdatePOIAsync(POI poi);
     Task<int> DeletePOIAsync(POI poi);
     Task ClearAllPOIsAsync();
+
+    Task<string?> GetCachedTranslationAsync(int poiId, string languageCode, bool isTtsScript);
+    Task UpsertCachedTranslationAsync(int poiId, string languageCode, bool isTtsScript, string translatedText, bool isDownloadedPack = false);
+    Task<bool> HasDownloadedLanguagePackAsync(string languageCode);
+    Task ClearCachedTranslationsAsync();
 }
