@@ -20,7 +20,8 @@ public class TranslationService : ITranslationService
         var src = NormalizeLang(sourceLanguage);
         var tgt = NormalizeLang(targetLanguage);
 
-        if (string.Equals(tgt, "vi", StringComparison.OrdinalIgnoreCase) ||
+        if (string.IsNullOrWhiteSpace(tgt) ||
+            string.Equals(tgt, "vi", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(src, tgt, StringComparison.OrdinalIgnoreCase))
         {
             return text;
@@ -33,28 +34,27 @@ public class TranslationService : ITranslationService
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"[TranslationService] Translation error ({src}->{tgt}): {ex.Message}. Retrying with auto-detect...");
-
-            try
-            {
-                var retry = await _translator.TranslateAsync(text, null, tgt);
-                return retry?.Translation ?? text;
-            }
-            catch (Exception retryEx)
-            {
-                Debug.WriteLine($"[TranslationService] Retry failed: {retryEx.Message}");
-                return text;
-            }
+            Debug.WriteLine($"[TranslationService] Translation error ({src}->{tgt}): {ex.Message}");
+            return text;
         }
     }
 
     public async Task<string> ResolveNarrationTextAsync(POI poi, string targetLanguage, bool preferTtsScript = true)
     {
+        var target = NormalizeLang(targetLanguage);
+
+        // OFFLINE-FIRST: always try POI DB multilingual columns before API
+        var offline = preferTtsScript
+            ? poi.GetTtsScriptByLanguage(target)
+            : poi.GetDescriptionByLanguage(target);
+
+        if (!string.IsNullOrWhiteSpace(offline))
+            return offline;
+
         var original = preferTtsScript
             ? (!string.IsNullOrWhiteSpace(poi.TtsScript) ? poi.TtsScript! : poi.DescriptionText)
             : poi.DescriptionText;
 
-        var target = NormalizeLang(targetLanguage);
         var source = NormalizeLang(poi.TtsLanguage);
 
         if (target == "vi" || target == source)

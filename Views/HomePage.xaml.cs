@@ -10,11 +10,18 @@ public partial class HomePage : ContentPage
 {
     private bool _isScannerVisible;
     private bool _isDataLoaded;
+    private bool _isScannerInitialized;
 
     public HomePage(HomeViewModel viewModel)
     {
         InitializeComponent();
         BindingContext = viewModel;
+        
+        // ? FIX: Disable QR scanner initially to prevent ANR
+    if (QrScannerOverlay != null)
+        {
+            QrScannerOverlay.IsVisible = false;
+  }
     }
 
     protected override async void OnAppearing()
@@ -22,117 +29,139 @@ public partial class HomePage : ContentPage
         base.OnAppearing();
 
         if (_isDataLoaded)
-            return;
+        return;
 
         if (BindingContext is HomeViewModel vm)
         {
-            _isDataLoaded = true;
-            await vm.EnsureInitialDataLoadedAsync();
+       _isDataLoaded = true;
+            // Load data in background to not block UI
+         _ = vm.EnsureInitialDataLoadedAsync();
         }
     }
 
-    private async void OnQrButtonClicked(object sender, EventArgs e)
+ private async void OnQrButtonClicked(object sender, EventArgs e)
     {
-        try
-        {
-            if (!await EnsureCameraPermissionAsync())
-            {
-                return;
-            }
+      try
+   {
+          if (!await EnsureCameraPermissionAsync())
+ {
+     return;
+      }
 
-            ToggleScannerOverlay(true);
+     // ? FIX: Lazy initialize QR scanner only when needed
+        if (!_isScannerInitialized)
+     {
+        _isScannerInitialized = true;
+             // Initialize in background
+    _ = Task.Run(() => MainThread.BeginInvokeOnMainThread(() =>
+   {
+          if (QrCameraView is CameraBarcodeReaderView cameraView)
+                 {
+        cameraView.IsDetecting = true;
+      }
+       }));
+   }
+
+     ToggleScannerOverlay(true);
         }
         catch (Exception ex)
         {
-            await DisplayAlert("Lỗi", $"Lỗi quét QR: {ex.Message}", "OK");
+         MainThread.BeginInvokeOnMainThread(async () =>
+            {
+      await DisplayAlert("Lỗi", $"Lỗi quét QR: {ex.Message}", "OK");
+     });
         }
     }
 
     private async Task<bool> EnsureCameraPermissionAsync()
     {
-        var cameraStatus = await Permissions.CheckStatusAsync<Permissions.Camera>();
-        if (cameraStatus != PermissionStatus.Granted)
+     var cameraStatus = await Permissions.CheckStatusAsync<Permissions.Camera>();
+ if (cameraStatus != PermissionStatus.Granted)
         {
             cameraStatus = await Permissions.RequestAsync<Permissions.Camera>();
         }
 
-        if (cameraStatus != PermissionStatus.Granted)
+if (cameraStatus != PermissionStatus.Granted)
         {
-            await DisplayAlert("Quyền camera", "Cần cấp quyền camera để quét mã QR.", "OK");
+    await DisplayAlert("Quyền camera", "Cần cấp quyền camera để quét mã QR.", "OK");
             return false;
-        }
+  }
 
         return true;
-    }
+ }
 
     private void ToggleScannerOverlay(bool isVisible)
     {
         _isScannerVisible = isVisible;
 
-        if (QrScannerOverlay is not null)
+   if (QrScannerOverlay is not null)
         {
             QrScannerOverlay.IsVisible = isVisible;
         }
 
-        if (QrCameraView is CameraBarcodeReaderView cameraView)
+     if (isVisible && QrCameraView is CameraBarcodeReaderView cameraView)
         {
-            cameraView.IsDetecting = isVisible;
+            cameraView.IsDetecting = true;
         }
     }
 
     private void OnCloseScannerClicked(object sender, EventArgs e)
     {
-        ToggleScannerOverlay(false);
+    if (QrCameraView is CameraBarcodeReaderView cameraView)
+        {
+            cameraView.IsDetecting = false;
+   }
+ ToggleScannerOverlay(false);
     }
 
     private async void OnBarcodesDetected(object sender, BarcodeDetectionEventArgs e)
     {
         if (!_isScannerVisible)
         {
-            return;
+          return;
         }
 
         var qrValue = e.Results?.FirstOrDefault()?.Value;
         if (string.IsNullOrWhiteSpace(qrValue))
-        {
-            return;
+      {
+    return;
         }
 
         _isScannerVisible = false;
 
         await MainThread.InvokeOnMainThreadAsync(async () =>
         {
-            ToggleScannerOverlay(false);
-            await DisplayAlert("QR Code Detected", $"Nội dung: {qrValue}", "OK");
-            await HandleQrResult(qrValue);
-        });
+    ToggleScannerOverlay(false);
+          await DisplayAlert("QR Code Detected", $"Nội dung: {qrValue}", "OK");
+    await HandleQrResult(qrValue);
+   });
     }
 
     private async Task HandleQrResult(string qrValue)
     {
         if (qrValue.StartsWith("poi_", StringComparison.OrdinalIgnoreCase))
         {
-            var poiIdStr = qrValue.Substring(4);
+     var poiIdStr = qrValue.Substring(4);
 
-            if (int.TryParse(poiIdStr, out var poiId))
-            {
-                var viewModel = (HomeViewModel)BindingContext;
-                var poi = viewModel.NearbyPOIs.FirstOrDefault(p => p.Id == poiId);
+if (int.TryParse(poiIdStr, out var poiId))
+     {
+         var viewModel = (HomeViewModel)BindingContext;
+       var poi = viewModel.NearbyPOIs.FirstOrDefault(p => p.Id == poiId);
 
-                if (poi != null)
-                {
-                    await DisplayAlert("POI Found", $"Tìm thấy: {poi.Name}", "OK");
-                    viewModel.SelectedPOI = poi;
+        if (poi != null)
+          {
+      await DisplayAlert("POI Found", $"Tìm thấy: {poi.Name}", "OK");
+       viewModel.SelectedPOI = poi;
                 }
-                else
-                {
-                    await DisplayAlert("POI Not Found", "Không tìm thấy POI này", "OK");
-                }   
+      else
+         {
+     await DisplayAlert("POI Not Found", "Không tìm thấy POI này", "OK");
+     }   
             }
-        }
-        else
-        {
-            await DisplayAlert("Thông tin", $"QR Code: {qrValue}", "OK");
-        }
+   }
+else
+     {
+      await DisplayAlert("Thông tin", $"QR Code: {qrValue}", "OK");
+}
     }
 }

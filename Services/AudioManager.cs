@@ -23,8 +23,8 @@ namespace VinhKhanhstreetfoods.Services
         private readonly SemaphoreSlim _ttsSemaphore = new(1, 1);  // Ensure only 1 TTS at a time
         private readonly SemaphoreSlim _queueSignal = new(0);
         private readonly CancellationTokenSource _queueWorkerCts = new();
-        private readonly ConcurrentDictionary<int, DateTime> _lastEnqueueByPoi = new();
-        private readonly TimeSpan _enqueueDebounce = TimeSpan.FromSeconds(10);
+        private readonly ConcurrentDictionary<string, DateTime> _lastEnqueueByPoiLanguage = new();
+        private readonly TimeSpan _enqueueDebounce = TimeSpan.FromSeconds(4);
 
         private bool _isPlaying;
         private POI? _currentPOI;
@@ -37,6 +37,10 @@ namespace VinhKhanhstreetfoods.Services
         // FIX: Track language to detect rapid changes
         private string _currentLanguage = "vi";
         private readonly object _languageLock = new();
+  
+        // FIX: Throttle translation requests to avoid 429 Too Many Requests
+        private readonly Dictionary<string, DateTime> _lastTranslationAttempt = new();
+        private readonly TimeSpan _translationThrottle = TimeSpan.FromSeconds(2); // Min 2 sec between requests
 
         public event EventHandler<POI>? AudioStarted;
         public event EventHandler<POI>? AudioCompleted;
@@ -49,7 +53,9 @@ namespace VinhKhanhstreetfoods.Services
                 _translationService = translationService;
                 _settingsService = settingsService;
 
-                // ? Safe subscription with null-check
+                // Initialize runtime language from persisted setting (avoid hardcoded vi on app start)
+                _currentLanguage = NormalizeLang(_settingsService.PreferredLanguage);
+
                 if (_settingsService != null)
                 {
                     _settingsService.PreferredLanguageChanged += OnPreferredLanguageChanged;
@@ -70,8 +76,7 @@ namespace VinhKhanhstreetfoods.Services
                 {
                     var normalizedNew = NormalizeLang(language);
                     var normalizedCurrent = NormalizeLang(_currentLanguage);
-                    
-                    // OPTIMIZATION: Only reset if language actually changed
+
                     if (normalizedNew == normalizedCurrent)
                     {
                         Debug.WriteLine($"[AudioManager] Language '{language}' is same as current, skipping reset");
@@ -81,8 +86,11 @@ namespace VinhKhanhstreetfoods.Services
                     _currentLanguage = normalizedNew;
                     Debug.WriteLine($"[AudioManager] Preferred language changed to '{normalizedNew}', stopping current playback and clearing queue");
                 }
-                
-                StopCurrent();
+
+                // Reset runtime queue/debounce state so same POI can be replayed immediately in new language
+                StopCurrentPlayback();
+                ClearQueue();
+                _lastEnqueueByPoiLanguage.Clear();
             }
             catch (Exception ex)
             {
@@ -100,20 +108,34 @@ namespace VinhKhanhstreetfoods.Services
                     return;
                 }
 
-                var now = DateTime.UtcNow;
-                if (_lastEnqueueByPoi.TryGetValue(poi.Id, out var lastEnqueuedAt) && now - lastEnqueuedAt < _enqueueDebounce)
+                string currentLang;
+                lock (_languageLock)
                 {
-                    Debug.WriteLine($"[AudioManager] Skip duplicate enqueue for POI {poi.Id} within debounce window");
+                    currentLang = _currentLanguage;
+                }
+
+                var now = DateTime.UtcNow;
+                var enqueueKey = $"{poi.Id}_{currentLang}";
+
+                if (_lastEnqueueByPoiLanguage.TryGetValue(enqueueKey, out var lastEnqueuedAt) &&
+                    now - lastEnqueuedAt < _enqueueDebounce)
+                {
+                    Debug.WriteLine($"[AudioManager] Skip duplicate enqueue for POI {poi.Id} in '{currentLang}' within debounce window");
                     return;
                 }
 
-                _lastEnqueueByPoi[poi.Id] = now;
+                _lastEnqueueByPoiLanguage[enqueueKey] = now;
 
                 lock (_queueSync)
                 {
+                    // Latest-wins policy: keep queue responsive when user changes context quickly.
+                    _audioQueue.Clear();
                     _audioQueue.Enqueue(poi);
-                    Debug.WriteLine($"[AudioManager] Added to queue: {poi.Name} (queue size: {_audioQueue.Count})");
+                    Debug.WriteLine($"[AudioManager] Added to queue (latest-wins): {poi.Name} (queue size: {_audioQueue.Count})");
                 }
+
+                // If currently speaking old context, cancel immediately so new item starts ASAP.
+                StopCurrentPlayback();
 
                 EnsureWorkerStarted();
                 _queueSignal.Release();
@@ -138,9 +160,7 @@ namespace VinhKhanhstreetfoods.Services
             {
                 try
                 {
-                    // WAIT for signal with timeout to handle rapid language changes
-                    // If timeout expires, loop continues to check cancellation
-                    await _queueSignal.WaitAsync(TimeSpan.FromSeconds(2), ct);
+                    await _queueSignal.WaitAsync(ct);
                 }
                 catch (OperationCanceledException)
                 {
@@ -199,11 +219,36 @@ namespace VinhKhanhstreetfoods.Services
                 
                         Debug.WriteLine($"[AudioManager] ? Resolved text for '{poi.Name}' in {userLanguage}: {finalText.Substring(0, Math.Min(50, finalText.Length))}...");
 
+                        // CRITICAL FIX: Check if language changed BEFORE starting TTS
+                        string languageBeforeTts;
+                        lock (_languageLock)
+                        {
+                            languageBeforeTts = _currentLanguage;
+                        }
+
+                        // If language changed while resolving, cancel this playback
+                        if (languageBeforeTts != userLanguage)
+                        {
+                            Debug.WriteLine($"[AudioManager] Language changed before TTS (was {userLanguage}, now {languageBeforeTts}), cancelling playback");
+                            linkedCts.Cancel();
+                            continue;
+                        }
+
                         // ? STEP 2: Now safely call TTS with correct language text
                         // Use linked cancellation token to cancel if language changed
                         await _ttsSemaphore.WaitAsync(linkedCts.Token);
                         try
                         {
+                            // Final language check before starting TTS
+                            lock (_languageLock)
+                            {
+                                if (_currentLanguage != userLanguage)
+                                {
+                                    Debug.WriteLine($"[AudioManager] Language changed just before TTS, cancelling");
+                                    linkedCts.Cancel();
+                                }
+                            }
+
                             await _ttsService.SpeakAsync(finalText, userLanguage, linkedCts.Token);
                         }
                         finally
@@ -268,6 +313,21 @@ namespace VinhKhanhstreetfoods.Services
             // PRIORITY 4: Resolve via translation service (DB/cache fallback strategy)
             try
             {
+                // ? FIX: Throttle translation requests to avoid 429 rate limit
+                var throttleKey = $"{poi.Id}_{normalizedTarget}";
+                if (_lastTranslationAttempt.TryGetValue(throttleKey, out var lastAttempt))
+                {
+                    var timeSinceLast = DateTime.UtcNow - lastAttempt;
+                    if (timeSinceLast < _translationThrottle)
+                    {
+                        Debug.WriteLine($"[AudioManager] Throttling translation for '{poi.Name}' ({normalizedTarget}) - last request {timeSinceLast.TotalSeconds:F1}s ago");
+                        // Return fallback instead of hammering API
+                        return string.IsNullOrWhiteSpace(poi.TtsScript) ? poi.DescriptionText : poi.TtsScript;
+                    }
+                }
+
+                _lastTranslationAttempt[throttleKey] = DateTime.UtcNow;
+
                 var resolved = await _translationService.ResolveNarrationTextAsync(poi, normalizedTarget, preferTtsScript: true);
 
                 poi.CachedTranslatedTtsScript = resolved;
@@ -284,7 +344,7 @@ namespace VinhKhanhstreetfoods.Services
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[AudioManager] Translation resolve failed: {ex.Message}, using original");
+                Debug.WriteLine($"[AudioManager] Translation resolve failed: {ex.Message}, using fallback");
                 return string.IsNullOrWhiteSpace(poi.TtsScript) ? poi.DescriptionText : poi.TtsScript;
             }
         }
@@ -328,14 +388,24 @@ namespace VinhKhanhstreetfoods.Services
             await Task.Delay(2000, token);
         }
 
-        public void StopCurrent()
+        /// <summary>
+        /// Stop only the current playback without clearing the queue.
+        /// This prevents race conditions when language changes rapidly.
+        /// </summary>
+        private void StopCurrentPlayback()
         {
             _playbackCts?.Cancel();
             _ttsService.Stop();
+        }
+
+        public void StopCurrent()
+        {
+            StopCurrentPlayback();
+            ClearQueue();
+            _lastEnqueueByPoiLanguage.Clear();
 
             lock (_queueSync)
             {
-                _audioQueue.Clear();
                 _isPlaying = false;
                 _currentPOI = null;
             }

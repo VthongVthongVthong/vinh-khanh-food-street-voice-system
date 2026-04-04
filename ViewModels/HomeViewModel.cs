@@ -141,7 +141,16 @@ namespace VinhKhanhstreetfoods.ViewModels
                     return;
                 }
 
-                var allPOIs = await _poiRepository.GetActivePOIsAsync();
+                // ✅ CRITICAL FIX: Run DB query on background thread to prevent ANR
+                var allPOIs = await Task.Run(async () =>
+                {
+                    if (_poiRepository is POIRepository poiRepo)
+                    {
+                        await poiRepo.EnsureInitializedAsync();
+                    }
+                    return await _poiRepository.GetActivePOIsAsync();
+                });
+
                 System.Diagnostics.Debug.WriteLine($"[HomeViewModel] Loaded {allPOIs?.Count ?? 0} active POIs from database");
 
                 if (allPOIs == null || allPOIs.Count == 0)
@@ -151,15 +160,22 @@ namespace VinhKhanhstreetfoods.ViewModels
                     return;
                 }
 
-                _allPOIs.Clear();
-                _allPOIs.AddRange(allPOIs);
-                ApplyFilter();
-                StatusMessage = $"Đã tải {allPOIs.Count} điểm của lãi. Nhấn START để bắt đầu.";
+                // Switch back to main thread for UI updates
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                {
+                    _allPOIs.Clear();
+                    _allPOIs.AddRange(allPOIs);
+                    ApplyFilter();
+                    StatusMessage = $"Đã tải {allPOIs.Count} điểm của lãi. Nhấn START để bắt đầu.";
+                });
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[HomeViewModel] Error loading initial data: {ex.Message}\n{ex.StackTrace}");
-                StatusMessage = $"Lỗi tải dữ liệu: {ex.Message}";
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                {
+                    StatusMessage = $"Lỗi tải dữ liệu: {ex.Message}";
+                });
             }
             finally
             {

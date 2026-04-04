@@ -82,19 +82,7 @@
                                 </StackLayout>
                                 <Label Grid.Row="1" Text="{Binding Name}" FontSize="13" FontAttributes="Bold" TextColor="#1a1a1a" LineBreakMode="TailTruncation" />
                                 <Label Grid.Row="2" Text="{Binding Address}" FontSize="10" TextColor="#888" LineBreakMode="TailTruncation" />
-                                <Grid Grid.Row="3" ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                                    <Label Grid.Column="0" Text="{Binding DescriptionText}" FontSize="9" TextColor="#666" LineBreakMode="TailTruncation" />
-                                    <Button Grid.Column="1"
-                                            Text="📞"
-                                            BackgroundColor="Transparent"
-                                            TextColor="#FF8C00"
-                                            FontSize="14"
-                                            CornerRadius="0"
-                                            Padding="4"
-                                            WidthRequest="40"
-                                            HeightRequest="30"
-                                            HorizontalOptions="End" />
-                                </Grid>
+                                <Label Grid.Row="3" Text="{Binding DescriptionText}" FontSize="9" TextColor="#666" LineBreakMode="WordWrap" MaxLines="2" />
                             </Grid>
                         </Grid>
                     </ContentView>
