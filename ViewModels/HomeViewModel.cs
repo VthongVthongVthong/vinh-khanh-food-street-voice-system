@@ -24,6 +24,8 @@ namespace VinhKhanhstreetfoods.ViewModels
         private POI? _selectedPOI;
         private bool _isLoading;
         private string _searchText = string.Empty;
+        private int _isSyncingFromAdmin;
+        private bool _isRefreshing;
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -45,11 +47,13 @@ namespace VinhKhanhstreetfoods.ViewModels
             StartLocationServiceCommand = new Command(async () => await StartLocationService());
             StopLocationServiceCommand = new Command(async () => await StopLocationService());
             OpenDetailCommand = new Command<POI>(async poi => await OpenDetailAsync(poi));
+            RefreshDataCommand = new Command(async () => await RefreshDataAsync(), () => !IsRefreshing);
 
             _locationService.LocationUpdated += OnLocationUpdated;
             _geofenceEngine.POITriggered += OnPOITriggered;
             _audioManager.AudioStarted += OnAudioStarted;
             _audioManager.AudioCompleted += OnAudioCompleted;
+            _poiRepository.POIsSynced += OnRepositoryPoisSynced;
         }
 
         public ObservableCollection<POI> NearbyPOIs
@@ -115,9 +119,25 @@ namespace VinhKhanhstreetfoods.ViewModels
             }
         }
 
+        public bool IsRefreshing
+        {
+            get => _isRefreshing;
+            set
+            {
+                if (_isRefreshing == value)
+                    return;
+
+                _isRefreshing = value;
+                OnPropertyChanged();
+                if (RefreshDataCommand is Command command)
+                    command.ChangeCanExecute();
+            }
+        }
+
         public ICommand StartLocationServiceCommand { get; }
         public ICommand StopLocationServiceCommand { get; }
         public ICommand OpenDetailCommand { get; }
+        public ICommand RefreshDataCommand { get; }
 
         public async Task EnsureInitialDataLoadedAsync()
         {
@@ -146,7 +166,8 @@ namespace VinhKhanhstreetfoods.ViewModels
                 {
                     if (_poiRepository is POIRepository poiRepo)
                     {
-                        await poiRepo.EnsureInitializedAsync();
+                        // Don't wait for schema to finish - just initialize connection
+                        await poiRepo.InitializeAsync();
                     }
                     return await _poiRepository.GetActivePOIsAsync();
                 });
@@ -168,6 +189,10 @@ namespace VinhKhanhstreetfoods.ViewModels
                     ApplyFilter();
                     StatusMessage = $"Đã tải {allPOIs.Count} điểm của lãi. Nhấn START để bắt đầu.";
                 });
+
+                // ? Sync online in background (non-blocking) to keep offline-first UX
+                // Fire and forget
+                _ = TrySyncFromAdminInBackgroundAsync();
             }
             catch (Exception ex)
             {
@@ -180,6 +205,72 @@ namespace VinhKhanhstreetfoods.ViewModels
             finally
             {
                 IsLoading = false;
+            }
+        }
+
+        private async Task TrySyncFromAdminInBackgroundAsync()
+        {
+            if (Interlocked.Exchange(ref _isSyncingFromAdmin, 1) == 1)
+                return;
+
+            try
+            {
+                var updatedCount = await _poiRepository.SyncPOIsFromAdminAsync();
+                if (updatedCount <= 0)
+                    return;
+
+                var refreshed = await _poiRepository.GetActivePOIsAsync();
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                {
+                    _allPOIs.Clear();
+                    _allPOIs.AddRange(refreshed);
+                    ApplyFilter();
+                    StatusMessage = $"Đã đồng bộ {updatedCount} địa điểm mới từ máy chủ.";
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[HomeViewModel] Admin sync skipped/error: {ex.Message}");
+            }
+            finally
+            {
+                Interlocked.Exchange(ref _isSyncingFromAdmin, 0);
+            }
+        }
+
+        private async Task RefreshDataAsync()
+        {
+            if (IsRefreshing)
+                return;
+
+            try
+            {
+                IsRefreshing = true;
+                StatusMessage = "Đang làm mới dữ liệu từ máy chủ...";
+
+                var updatedCount = await _poiRepository.SyncPOIsFromAdminAsync(force: true);
+                var refreshed = await _poiRepository.GetActivePOIsAsync();
+
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                {
+                    _allPOIs.Clear();
+                    _allPOIs.AddRange(refreshed);
+                    ApplyFilter();
+
+                    StatusMessage = updatedCount > 0
+                        ? $"Đã cập nhật {updatedCount} địa điểm từ server."
+                        : "Không có dữ liệu mới hoặc server chưa trả JSON.";
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[HomeViewModel] Manual refresh error: {ex.Message}");
+                StatusMessage = "Làm mới thất bại. Kiểm tra mạng/API.";
+            }
+            finally
+            {
+                // ? FIX: Set IsRefreshing to false synchronously to avoid blocking
+                IsRefreshing = false;
             }
         }
 
@@ -277,6 +368,25 @@ namespace VinhKhanhstreetfoods.ViewModels
         private void OnAudioCompleted(object sender, POI poi)
         {
             MainThread.BeginInvokeOnMainThread(() => { StatusMessage = "Hoàn tất phát âm thanh"; });
+        }
+
+        private async void OnRepositoryPoisSynced(object? sender, int syncedCount)
+        {
+            try
+            {
+                var refreshed = await _poiRepository.GetActivePOIsAsync();
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                {
+                    _allPOIs.Clear();
+                    _allPOIs.AddRange(refreshed);
+                    ApplyFilter();
+                    StatusMessage = $"Dữ liệu đã tự động cập nhật ({syncedCount} POI).";
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[HomeViewModel] Auto-refresh after sync error: {ex.Message}");
+            }
         }
 
         protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)

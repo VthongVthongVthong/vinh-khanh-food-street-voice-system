@@ -1,4 +1,8 @@
 using System;
+using System.Globalization;
+using System.Text;
+using System.Text.Json;
+using System.Security.Cryptography;
 using VinhKhanhstreetfoods.Models;
 using SQLite;
 using System.Diagnostics;
@@ -8,79 +12,163 @@ namespace VinhKhanhstreetfoods.Services
 {
     public class POIRepository : IPOIRepository
     {
-        private readonly string _databasePath;
-      private SQLiteAsyncConnection? _database;
-      private Task? _schemaInitializationTask;
-        private readonly SemaphoreSlim _initializationLock = new SemaphoreSlim(1, 1);
-
-        public POIRepository()
+        private static readonly Uri[] AdminSyncUris =
         {
+            new("https://vinhkhanh-68a4b-default-rtdb.asia-southeast1.firebasedatabase.app/pois.json"),
+            new("https://vinhkhanh-68a4b-default-rtdb.asia-southeast1.firebasedatabase.app/POI.json"),
+            new("https://vinhkhanh-68a4b-default-rtdb.asia-southeast1.firebasedatabase.app/poi.json"),
+            new("https://vinhkhanh-68a4b-default-rtdb.asia-southeast1.firebasedatabase.app/.json")
+        };
+        private static readonly TimeSpan AdminSyncThrottle = TimeSpan.FromMinutes(2);
+        private static readonly TimeSpan RealtimeSyncInterval = TimeSpan.FromSeconds(4);
+        private static readonly TimeSpan RealtimeSyncMaxInterval = TimeSpan.FromSeconds(20);
+
+        private readonly string _databasePath;
+        private readonly HttpClient _httpClient;
+        private SQLiteAsyncConnection? _database;
+        private Task? _schemaInitializationTask;
+        private readonly SemaphoreSlim _initializationLock = new SemaphoreSlim(1, 1);
+        private readonly SemaphoreSlim _adminSyncLock = new SemaphoreSlim(1, 1);
+        private Task? _realtimeSyncTask;
+        private CancellationTokenSource? _realtimeSyncCts;
+        private string? _lastFirebasePayloadHash;
+        private DateTime _lastAdminSyncUtc = DateTime.MinValue;
+        private DateTime _skipRealtimeSyncUntilUtc = DateTime.MinValue;
+        private TimeSpan _currentRealtimeInterval = RealtimeSyncInterval;
+
+        public event EventHandler<int>? POIsSynced;
+
+        public POIRepository(HttpClient httpClient)
+        {
+            _httpClient = httpClient;
             var folderPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-    _databasePath = Path.Combine(folderPath, "VinhKhanhFoodGuide.db3");
+            _databasePath = Path.Combine(folderPath, "VinhKhanhFoodGuide.db3");
         }
 
-  public async Task InitializeAsync()
+        public async Task InitializeAsync()
         {
-         // ? CRITICAL FIX: Use SemaphoreSlim to prevent race conditions
+            // ? CRITICAL FIX: Use SemaphoreSlim to prevent race conditions
             await _initializationLock.WaitAsync();
-         try
-     {
-    if (_database != null)
+            try
+            {
+                if (_database != null)
+                {
+                    EnsureRealtimeSyncStarted();
                     return;
+                }
 
-     try
- {
-         // ? Copy database file asynchronously FIRST
-             await EnsureDatabaseFileAsync();
+                try
+                {
+                    // ? Copy database file asynchronously FIRST
+                    await EnsureDatabaseFileAsync();
 
-        // ? Create async connection (doesn't block)
-               _database = new SQLiteAsyncConnection(_databasePath, SQLiteOpenFlags.ReadWrite | SQLiteOpenFlags.Create);
+                    // ? Create async connection (doesn't block)
+                    _database = new SQLiteAsyncConnection(_databasePath, SQLiteOpenFlags.ReadWrite | SQLiteOpenFlags.Create);
 
-      // ? IMPORTANT: Don't await schema immediately on UI thread
-     _schemaInitializationTask ??= InitializeSchemaAsync();
+                    // ? IMPORTANT: Don't await schema immediately on UI thread
+                    _schemaInitializationTask ??= InitializeSchemaAsync();
 
-         // ? Give schema 1.2 second to initialize, then continue
-            // This prevents UI freeze while still allowing early operations
-           _ = _schemaInitializationTask.ContinueWith(t =>
-      {
-           if (t.IsFaulted)
-Debug.WriteLine($"[POIRepository] Schema init failed: {t.Exception?.InnerException}");
-        });
-            }
+                    EnsureRealtimeSyncStarted();
+
+                    // ? Don't wait for schema - let it initialize in background
+                    // Fire and forget - UI can proceed with offline data
+                }
                 catch (Exception ex)
-     {
-     Debug.WriteLine($"[POIRepository] Error initializing database connection: {ex.Message}");
-      throw;
-  }
-     }
+                {
+                    Debug.WriteLine($"[POIRepository] Error initializing database connection: {ex.Message}");
+                    throw;
+                }
+            }
             finally
             {
-     _initializationLock.Release();
-   }
+                _initializationLock.Release();
+            }
         }
 
-  /// <summary>
+        private void EnsureRealtimeSyncStarted()
+        {
+            if (_realtimeSyncTask != null)
+                return;
+
+            _realtimeSyncCts = new CancellationTokenSource();
+            _realtimeSyncTask = Task.Run(() => RealtimeSyncLoopAsync(_realtimeSyncCts.Token));
+            Debug.WriteLine($"[POIRepository] Firebase realtime polling started (interval: {RealtimeSyncInterval.TotalSeconds}s)");
+        }
+
+        private async Task RealtimeSyncLoopAsync(CancellationToken cancellationToken)
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                try
+                {
+                    if (DateTime.UtcNow >= _skipRealtimeSyncUntilUtc)
+                    {
+                        var changedCount = await SyncPOIsFromAdminAsync(force: true, cancellationToken);
+
+                        if (changedCount > 0)
+                        {
+                            _currentRealtimeInterval = RealtimeSyncInterval;
+                        }
+                        else
+                        {
+                            var next = TimeSpan.FromSeconds(Math.Min(
+                                RealtimeSyncMaxInterval.TotalSeconds,
+                                _currentRealtimeInterval.TotalSeconds + 2));
+                            _currentRealtimeInterval = next;
+                        }
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[POIRepository] Realtime sync loop error: {ex.Message}");
+                    _currentRealtimeInterval = TimeSpan.FromSeconds(Math.Min(
+                        RealtimeSyncMaxInterval.TotalSeconds,
+                        _currentRealtimeInterval.TotalSeconds + 2));
+                }
+
+                try
+                {
+                    await Task.Delay(_currentRealtimeInterval, cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
+            }
+        }
+
+        /// <summary>
         /// ? PUBLIC: Wait for repository to be fully initialized
         /// Ensures all background schema operations are complete
         /// </summary>
     public async Task EnsureInitializedAsync()
 {
          await InitializeAsync();
-     await WaitForSchemaReadyAsync(2000); // Wait up to 2 seconds for schema
+   // ? OPTIMIZED: Use shorter timeout to prevent ANR
+      // Schema can continue initializing in background
+     await WaitForSchemaReadyAsync(500); // Reduced from 2000ms
    }
 
-        private async Task WaitForSchemaReadyAsync(int timeoutMs = 1200)
+    private async Task WaitForSchemaReadyAsync(int timeoutMs = 500)
         {
           var task = _schemaInitializationTask;
-    if (task is null)
-            return;
+  if (task is null)
+ return;
+
+      // ? Only wait if schema is still initializing
+     if (task.IsCompleted)
+       return;
 
          try
             {
-                await Task.WhenAny(task, Task.Delay(timeoutMs));
+       await Task.WhenAny(task, Task.Delay(timeoutMs));
           }
     catch (Exception ex)
-        {
+   {
     Debug.WriteLine($"[POIRepository] Warning while waiting for schema: {ex.Message}");
      }
  }
@@ -92,24 +180,68 @@ Debug.WriteLine($"[POIRepository] Schema init failed: {t.Exception?.InnerExcepti
         private async Task InitializeSchemaAsync()
         {
             try
-   {
-   if (_database == null)
-         return;
+            {
+                if (_database == null)
+                    return;
 
-  await MigrateFromOldSchemaIfNeeded();
- await EnsureSchemaAsync();
-     await EnsureHybridTranslationColumnsAsync();
+                await MigrateFromOldSchemaIfNeeded();
+                await EnsureSchemaAsync();
+                await EnsureCorePoiColumnsAsync();
+                await EnsureHybridTranslationColumnsAsync();
 
-          var count = await _database.Table<POI>().CountAsync();
-        Debug.WriteLine($"[POIRepository] Schema initialized. POI table has {count} records.");
+                var count = await _database.Table<POI>().CountAsync();
+                Debug.WriteLine($"[POIRepository] Schema initialized. POI table has {count} records.");
 
                 if (count == 0)
-       await SeedInitialDataAsync();
+                    await SeedInitialDataAsync();
             }
-       catch (Exception ex)
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[POIRepository] Error in background schema initialization: {ex.Message}");
+                // Don't throw - schema can be fixed on next run
+            }
+        }
+
+        private async Task EnsureCorePoiColumnsAsync()
         {
-    Debug.WriteLine($"[POIRepository] Error in background schema initialization: {ex.Message}");
-              // Don't throw - schema can be fixed on next run
+            try
+            {
+                var tableInfo = await _database!.QueryAsync<PragmaTableInfo>("PRAGMA table_info('POI');");
+                var columnNames = tableInfo.Select(c => c.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+                // legacy migration: POI.language -> POI.ttsLanguage
+                if (!columnNames.Contains("ttsLanguage") && columnNames.Contains("language"))
+                {
+                    await _database.ExecuteAsync("ALTER TABLE POI ADD COLUMN ttsLanguage TEXT;");
+                    await _database.ExecuteAsync("UPDATE POI SET ttsLanguage = COALESCE(ttsLanguage, language, 'vi');");
+                    Debug.WriteLine("[POIRepository] Migrated POI.language -> POI.ttsLanguage");
+                }
+
+                var requiredColumns = new (string Name, string SqlType)[]
+                {
+                    ("ttsLanguage", "TEXT"),
+                    ("audioFile", "TEXT"),
+                    ("priority", "INTEGER"),
+                    ("ownerId", "INTEGER")
+                };
+
+                foreach (var (name, sqlType) in requiredColumns)
+                {
+                    if (!columnNames.Contains(name))
+                    {
+                        await _database.ExecuteAsync($"ALTER TABLE POI ADD COLUMN {name} {sqlType};");
+                        Debug.WriteLine($"[POIRepository] Added core column: POI.{name}");
+                    }
+                }
+
+                await _database.ExecuteAsync(@"UPDATE POI
+SET ttsLanguage = COALESCE(ttsLanguage, 'vi'),
+    priority = COALESCE(priority, 1)
+WHERE ttsLanguage IS NULL OR priority IS NULL;");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[POIRepository] Core column migration error (continuing): {ex.Message}");
             }
         }
 
@@ -448,70 +580,479 @@ FROM POI_old;";
     public async Task<bool> HasAnyPOIAsync()
   {
             await InitializeAsync();
-  await WaitForSchemaReadyAsync();
-       var first = await _database!.Table<POI>().FirstOrDefaultAsync();
+  // ? Don't wait for schema - just proceed with query
+     var first = await _database!.Table<POI>().FirstOrDefaultAsync();
    return first != null;
         }
 
-        public async Task<List<POI>> GetAllPOIsAsync()
+ public async Task<List<POI>> GetAllPOIsAsync()
  {
-            await InitializeAsync();
-       await WaitForSchemaReadyAsync();
-     return await _database!.Table<POI>().ToListAsync();
-        }
+           await InitializeAsync();
+   return await _database!.Table<POI>().ToListAsync();
+    }
 
         public async Task<List<POI>> GetActivePOIsAsync()
-        {
-            await InitializeAsync();
-         await WaitForSchemaReadyAsync();
-   return await _database!.Table<POI>().Where(p => p.IsActive == 1).ToListAsync();
-     }
-
-        public async Task<POI?> GetPOIByIdAsync(int id)
-        {
+      {
   await InitializeAsync();
-       await WaitForSchemaReadyAsync();
-return await _database!.Table<POI>().Where(p => p.Id == id).FirstOrDefaultAsync();
+    return await _database!.Table<POI>().Where(p => p.IsActive == 1).ToListAsync();
         }
 
-    public async Task<int> AddPOIAsync(POI poi)
+ public async Task<POI?> GetPOIByIdAsync(int id)
         {
   await InitializeAsync();
-            await WaitForSchemaReadyAsync();
-    return await _database!.InsertAsync(poi);
+   return await _database!.Table<POI>().Where(p => p.Id == id).FirstOrDefaultAsync();
         }
+
+        public async Task<int> AddPOIAsync(POI poi)
+        {
+  await InitializeAsync();
+         return await _database!.InsertAsync(poi);
+ }
 
         public async Task<int> AddPOIsAsync(List<POI> pois)
-     {
-   await InitializeAsync();
-            await WaitForSchemaReadyAsync();
-          return await _database!.InsertAllAsync(pois);
-   }
-
-        public async Task<int> UpdatePOIAsync(POI poi)
-        {
-         await InitializeAsync();
-            await WaitForSchemaReadyAsync();
-            poi.UpdatedAt = DateTime.Now;
-       return await _database!.UpdateAsync(poi);
-        }
-
-        public async Task<int> DeletePOIAsync(POI poi)
-  {
-            await InitializeAsync();
-     await WaitForSchemaReadyAsync();
-       return await _database!.DeleteAsync(poi);
-        }
-
-    public async Task ClearAllPOIsAsync()
     {
-            await InitializeAsync();
-            await WaitForSchemaReadyAsync();
-            await _database!.DeleteAllAsync<POI>();
+    await InitializeAsync();
+       return await _database!.InsertAllAsync(pois);
+  }
+
+     public async Task<int> UpdatePOIAsync(POI poi)
+   {
+   await InitializeAsync();
+   poi.UpdatedAt = DateTime.Now;
+   return await _database!.UpdateAsync(poi);
+        }
+
+  public async Task<int> DeletePOIAsync(POI poi)
+{
+  await InitializeAsync();
+    return await _database!.DeleteAsync(poi);
+        }
+
+ public async Task ClearAllPOIsAsync()
+  {
+    await InitializeAsync();
+      await _database!.DeleteAllAsync<POI>();
+        }
+
+        public Task<DateTime?> GetLastAdminSyncTimeUtcAsync()
+        {
+            DateTime? value = _lastAdminSyncUtc == DateTime.MinValue ? null : _lastAdminSyncUtc;
+            return Task.FromResult(value);
+        }
+
+        public async Task<int> SyncPOIsFromAdminAsync(bool force = false, CancellationToken cancellationToken = default)
+        {
+            if (Connectivity.Current.NetworkAccess != NetworkAccess.Internet)
+            {
+                Debug.WriteLine("[POIRepository] Offline mode: skip Firebase sync");
+                return 0;
+            }
+
+            await _adminSyncLock.WaitAsync(cancellationToken);
+            try
+            {
+                if (!force && DateTime.UtcNow - _lastAdminSyncUtc < AdminSyncThrottle)
+                    return 0;
+
+                await InitializeAsync();
+  // ? Don't wait for schema - sync can proceed
+   var payload = await FetchFirebasePayloadAsync(cancellationToken);
+                if (string.IsNullOrWhiteSpace(payload) || string.Equals(payload.Trim(), "null", StringComparison.OrdinalIgnoreCase))
+                {
+                    Debug.WriteLine("[POIRepository] Firebase returned null/empty at known paths. Check RTDB node path and rules.");
+                    _lastAdminSyncUtc = DateTime.UtcNow;
+                    return 0;
+                }
+
+                var payloadHash = ComputePayloadHash(payload);
+                if (string.Equals(payloadHash, _lastFirebasePayloadHash, StringComparison.Ordinal))
+                {
+                    _lastAdminSyncUtc = DateTime.UtcNow;
+                    return 0;
+                }
+
+                var pois = ParseAdminPoiPayload(payload);
+                if (pois.Count == 0)
+                {
+                    Debug.WriteLine("[POIRepository] Firebase sync returned empty/invalid payload");
+                    _lastAdminSyncUtc = DateTime.UtcNow;
+                    _lastFirebasePayloadHash = payloadHash;
+                    return 0;
+                }
+
+                var now = DateTime.Now;
+                await _database!.RunInTransactionAsync(db =>
+                {
+                    foreach (var poi in pois)
+                    {
+                        ApplyDefaultsForPersistedPoi(poi, now);
+                        db.InsertOrReplace(poi);
+                    }
+                });
+
+                _lastFirebasePayloadHash = payloadHash;
+                _lastAdminSyncUtc = DateTime.UtcNow;
+                _skipRealtimeSyncUntilUtc = DateTime.UtcNow.AddSeconds(8); // avoid immediate repetitive pulls after manual refresh
+                POIsSynced?.Invoke(this, pois.Count);
+                Debug.WriteLine($"[POIRepository] Synced {pois.Count} POIs from Firebase");
+                return pois.Count;
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[POIRepository] Firebase sync error (fallback to offline DB): {ex.Message}");
+                return 0;
+            }
+            finally
+            {
+                _adminSyncLock.Release();
+            }
+        }
+
+        private async Task<string?> FetchFirebasePayloadAsync(CancellationToken cancellationToken)
+        {
+            foreach (var uri in AdminSyncUris)
+            {
+                try
+                {
+                    using var request = new HttpRequestMessage(HttpMethod.Get, uri);
+                    request.Headers.Accept.ParseAdd("application/json");
+
+                    using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        Debug.WriteLine($"[POIRepository] Firebase path failed: {uri} -> HTTP {(int)response.StatusCode}");
+                        continue;
+                    }
+
+                    var payload = await response.Content.ReadAsStringAsync(cancellationToken);
+                    if (!string.IsNullOrWhiteSpace(payload) && !string.Equals(payload.Trim(), "null", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var nextHash = ComputePayloadHash(payload);
+                        if (!string.Equals(nextHash, _lastFirebasePayloadHash, StringComparison.Ordinal))
+                            Debug.WriteLine($"[POIRepository] Firebase source path: {uri}");
+
+                        return payload;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[POIRepository] Firebase path error: {uri} -> {ex.Message}");
+                }
+            }
+
+            return null;
+        }
+
+        private static string ComputePayloadHash(string payload)
+        {
+            if (string.IsNullOrEmpty(payload))
+                return string.Empty;
+
+            var bytes = Encoding.UTF8.GetBytes(payload);
+            var hash = SHA256.HashData(bytes);
+            return Convert.ToHexString(hash);
+        }
+
+        private static List<POI> ParseAdminPoiPayload(string? payload)
+        {
+            if (string.IsNullOrWhiteSpace(payload))
+                return new List<POI>();
+
+            try
+            {
+                using var document = JsonDocument.Parse(payload);
+                var root = document.RootElement;
+
+                JsonElement poiArray;
+                if (root.ValueKind == JsonValueKind.Array)
+                {
+                    poiArray = root;
+                    return ParsePoiArray(poiArray);
+                }
+
+                if (root.ValueKind == JsonValueKind.Object)
+                {
+                    if (TryFindPoiArray(root, out var extracted))
+                        return ParsePoiArray(extracted);
+
+                    if (TryFindPoiObject(root, out var poiObject))
+                        return ParseFirebasePoiMap(poiObject);
+
+                    // Firebase RTDB format: { "1": {poi...}, "2": {poi...} }
+                    return ParseFirebasePoiMap(root);
+                }
+
+                return new List<POI>();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[POIRepository] Invalid Firebase JSON: {ex.Message}");
+                return new List<POI>();
+            }
+        }
+
+        private static bool TryFindPoiObject(JsonElement root, out JsonElement poiObject)
+        {
+            var candidates = new[] { "data", "pois", "poi", "POI", "result", "items", "rows" };
+            foreach (var key in candidates)
+            {
+                if (TryGetPropertyIgnoreCase(root, key, out var value) && value.ValueKind == JsonValueKind.Object)
+                {
+                    poiObject = value;
+                    return true;
+                }
+            }
+
+            poiObject = default;
+            return false;
+        }
+
+        private static List<POI> ParsePoiArray(JsonElement poiArray)
+        {
+            var result = new List<POI>();
+            foreach (var item in poiArray.EnumerateArray())
+            {
+                if (item.ValueKind != JsonValueKind.Object)
+                    continue;
+
+                var poi = MapJsonToPoi(item);
+                if (poi is not null)
+                    result.Add(poi);
+            }
+
+            return result;
+        }
+
+        private static List<POI> ParseFirebasePoiMap(JsonElement root)
+        {
+            var result = new List<POI>();
+            foreach (var property in root.EnumerateObject())
+            {
+                if (property.Value.ValueKind != JsonValueKind.Object)
+                    continue;
+
+                var fallbackId = int.TryParse(property.Name, NumberStyles.Integer, CultureInfo.InvariantCulture, out var keyId)
+                    ? keyId
+                    : 0;
+
+                var poi = MapJsonToPoi(property.Value, fallbackId);
+                if (poi is not null)
+                    result.Add(poi);
+            }
+
+            return result;
+        }
+
+        private static POI? MapJsonToPoi(JsonElement item)
+            => MapJsonToPoi(item, 0);
+
+        private static POI? MapJsonToPoi(JsonElement item, int fallbackId)
+        {
+            var id = GetInt(item, "id", "poiId", "poi_id");
+            if (id <= 0)
+                id = GetInt(item, "Id");
+            if (id <= 0)
+                id = fallbackId;
+
+            if (id <= 0)
+                return null;
+
+            var createdAt = GetDateTime(item, "createdAt", "created_at") ?? GetUnixDateTime(item, "createdAtUnix", "createdAtTs", "created_ts");
+            var updatedAt = GetDateTime(item, "updatedAt", "updated_at") ?? GetUnixDateTime(item, "updatedAtUnix", "updatedAtTs", "updated_ts");
+
+            var poi = new POI
+            {
+                Id = id,
+                Name = GetString(item, "name", "title") ?? string.Empty,
+                Latitude = GetDouble(item, "latitude", "lat"),
+                Longitude = GetDouble(item, "longitude", "lng", "lon"),
+                Address = GetString(item, "address"),
+                Phone = GetString(item, "phone", "phoneNumber"),
+                DescriptionText = GetString(item, "descriptionText", "description_text", "description") ?? string.Empty,
+                DescriptionEn = GetString(item, "descriptionEn", "description_en"),
+                DescriptionZh = GetString(item, "descriptionZh", "description_zh"),
+                DescriptionJa = GetString(item, "descriptionJa", "description_ja"),
+                DescriptionKo = GetString(item, "descriptionKo", "description_ko"),
+                DescriptionFr = GetString(item, "descriptionFr", "description_fr"),
+                DescriptionRu = GetString(item, "descriptionRu", "description_ru"),
+                TtsScript = GetString(item, "ttsScript", "tts_script"),
+                TtsScriptEn = GetString(item, "ttsScriptEn", "tts_script_en"),
+                TtsScriptZh = GetString(item, "ttsScriptZh", "tts_script_zh"),
+                TtsScriptJa = GetString(item, "ttsScriptJa", "tts_script_ja"),
+                TtsScriptKo = GetString(item, "ttsScriptKo", "tts_script_ko"),
+                TtsScriptFr = GetString(item, "ttsScriptFr", "tts_script_fr"),
+                TtsScriptRu = GetString(item, "ttsScriptRu", "tts_script_ru"),
+                TtsLanguage = GetString(item, "ttsLanguage", "tts_language", "language") ?? "vi",
+                AudioFile = GetString(item, "audioFile", "audio_file", "audioUrl", "audio_url"),
+                ImageUrls = GetString(item, "imageUrls", "image_urls") ?? "[]",
+                MapLink = GetString(item, "mapLink", "map_link"),
+                TriggerRadius = GetIntOrDefault(item, 20, "triggerRadiusMeters", "trigger_radius_meters", "triggerRadius", "radius"),
+                Priority = GetIntOrDefault(item, 1, "priority"),
+                IsActive = GetIntOrDefault(item, 1, "isActive", "is_active", "active"),
+                CreatedAt = createdAt ?? default,
+                UpdatedAt = updatedAt ?? default,
+                OwnerId = GetInt(item, "ownerId", "owner_id")
+            };
+
+            return poi;
+        }
+
+        private static int GetIntOrDefault(JsonElement obj, int defaultValue, params string[] names)
+        {
+            foreach (var name in names)
+            {
+                if (!TryGetPropertyIgnoreCase(obj, name, out var value))
+                    continue;
+
+                if (value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var intValue))
+                    return intValue;
+
+                if (value.ValueKind == JsonValueKind.String && int.TryParse(value.GetString(), NumberStyles.Any, CultureInfo.InvariantCulture, out intValue))
+                    return intValue;
+            }
+
+            return defaultValue;
+        }
+
+        private static DateTime? GetUnixDateTime(JsonElement obj, params string[] names)
+        {
+            foreach (var name in names)
+            {
+                if (!TryGetPropertyIgnoreCase(obj, name, out var value))
+                    continue;
+
+                if (value.ValueKind == JsonValueKind.Number)
+                {
+                    if (value.TryGetInt64(out var unixSeconds) && unixSeconds > 0)
+                        return DateTimeOffset.FromUnixTimeSeconds(unixSeconds).LocalDateTime;
+
+                    if (value.TryGetDouble(out var unixDouble) && unixDouble > 0)
+                        return DateTimeOffset.FromUnixTimeSeconds((long)unixDouble).LocalDateTime;
+                }
+
+                if (value.ValueKind == JsonValueKind.String && long.TryParse(value.GetString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedUnix) && parsedUnix > 0)
+                    return DateTimeOffset.FromUnixTimeSeconds(parsedUnix).LocalDateTime;
+            }
+
+            return null;
+        }
+
+        private static void ApplyDefaultsForPersistedPoi(POI poi, DateTime now)
+        {
+            poi.Name = string.IsNullOrWhiteSpace(poi.Name) ? "(Không rõ tên)" : poi.Name.Trim();
+            poi.DescriptionText = string.IsNullOrWhiteSpace(poi.DescriptionText) ? poi.Name : poi.DescriptionText.Trim();
+            poi.TtsScript ??= poi.DescriptionText;
+            poi.TtsLanguage = string.IsNullOrWhiteSpace(poi.TtsLanguage) ? "vi" : poi.TtsLanguage;
+            poi.ImageUrls = string.IsNullOrWhiteSpace(poi.ImageUrls) ? "[]" : poi.ImageUrls;
+            poi.TriggerRadius = poi.TriggerRadius <= 0 ? 20 : poi.TriggerRadius;
+            poi.Priority = poi.Priority <= 0 ? 1 : poi.Priority;
+            poi.IsActive = poi.IsActive is 0 or 1 ? poi.IsActive : 1;
+            poi.CreatedAt = poi.CreatedAt == default ? now : poi.CreatedAt;
+            poi.UpdatedAt = now;
+        }
+
+        private static bool TryGetPropertyIgnoreCase(JsonElement obj, string propertyName, out JsonElement value)
+        {
+            foreach (var property in obj.EnumerateObject())
+            {
+                if (string.Equals(property.Name, propertyName, StringComparison.OrdinalIgnoreCase))
+                {
+                    value = property.Value;
+                    return true;
+                }
+            }
+
+            value = default;
+            return false;
+        }
+
+        private static string? GetString(JsonElement obj, params string[] names)
+        {
+            foreach (var name in names)
+            {
+                if (!TryGetPropertyIgnoreCase(obj, name, out var value))
+                    continue;
+
+                if (value.ValueKind == JsonValueKind.String)
+                    return value.GetString();
+
+                if (value.ValueKind == JsonValueKind.Number || value.ValueKind == JsonValueKind.True || value.ValueKind == JsonValueKind.False)
+                    return value.ToString();
+            }
+
+            return null;
+        }
+
+        private static int GetInt(JsonElement obj, params string[] names)
+        {
+            foreach (var name in names)
+            {
+                if (!TryGetPropertyIgnoreCase(obj, name, out var value))
+                    continue;
+
+                if (value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var intValue))
+                    return intValue;
+
+                if (value.ValueKind == JsonValueKind.String && int.TryParse(value.GetString(), NumberStyles.Any, CultureInfo.InvariantCulture, out intValue))
+                    return intValue;
+            }
+
+            return 0;
+        }
+
+        private static double GetDouble(JsonElement obj, params string[] names)
+        {
+            foreach (var name in names)
+            {
+                if (!TryGetPropertyIgnoreCase(obj, name, out var value))
+                    continue;
+
+                if (value.ValueKind == JsonValueKind.Number && value.TryGetDouble(out var doubleValue))
+                    return doubleValue;
+
+                if (value.ValueKind == JsonValueKind.String && double.TryParse(value.GetString(), NumberStyles.Any, CultureInfo.InvariantCulture, out doubleValue))
+                    return doubleValue;
+            }
+
+            return 0;
+        }
+
+        private static DateTime? GetDateTime(JsonElement obj, params string[] names)
+        {
+            foreach (var name in names)
+            {
+                if (!TryGetPropertyIgnoreCase(obj, name, out var value))
+                    continue;
+
+                if (value.ValueKind == JsonValueKind.String && DateTime.TryParse(value.GetString(), CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var dateTime))
+                    return dateTime;
+            }
+
+            return null;
+        }
+
+        private static bool TryFindPoiArray(JsonElement root, out JsonElement poiArray)
+        {
+            var candidates = new[] { "data", "pois", "result", "items", "rows" };
+            foreach (var key in candidates)
+            {
+                if (TryGetPropertyIgnoreCase(root, key, out var value) && value.ValueKind == JsonValueKind.Array)
+                {
+                    poiArray = value;
+                    return true;
+                }
+            }
+
+            poiArray = default;
+            return false;
         }
 
         private async Task EnsureHybridTranslationColumnsAsync()
-    {
+        {
             try
     {
                 var tableInfo = await _database!.QueryAsync<PragmaTableInfo>("PRAGMA table_info('POI');");
@@ -579,9 +1120,8 @@ WHERE descriptionEn IS NULL
         public async Task<string?> GetCachedTranslationAsync(int poiId, string languageCode, bool isTtsScript)
         {
           await InitializeAsync();
-     await WaitForSchemaReadyAsync();
-
-            var normalized = NormalizeLang(languageCode);
+     // ? Don't wait for schema
+     var normalized = NormalizeLang(languageCode);
             var entry = await _database!.Table<TranslationCacheEntry>()
                 .Where(x => x.PoiId == poiId && x.LanguageCode == normalized && x.IsTtsScript == (isTtsScript ? 1 : 0))
    .OrderByDescending(x => x.UpdatedAt)
@@ -591,12 +1131,11 @@ WHERE descriptionEn IS NULL
         }
 
         public async Task UpsertCachedTranslationAsync(int poiId, string languageCode, bool isTtsScript, string translatedText, bool isDownloadedPack = false)
-        {
+   {
    await InitializeAsync();
-            await WaitForSchemaReadyAsync();
-
+     // ? Don't wait for schema
   var normalized = NormalizeLang(languageCode);
-         var flag = isTtsScript ? 1 : 0;
+    var flag = isTtsScript ? 1 : 0;
 
    var existing = await _database!.Table<TranslationCacheEntry>()
       .Where(x => x.PoiId == poiId && x.LanguageCode == normalized && x.IsTtsScript == flag)
@@ -604,7 +1143,7 @@ WHERE descriptionEn IS NULL
 
     if (existing is null)
          {
-           await _database.InsertAsync(new TranslationCacheEntry
+    await _database.InsertAsync(new TranslationCacheEntry
         {
      PoiId = poiId,
         LanguageCode = normalized,
@@ -621,13 +1160,12 @@ WHERE descriptionEn IS NULL
             existing.UpdatedAt = DateTime.UtcNow;
 
      await _database.UpdateAsync(existing);
-   }
+}
 
         public async Task<bool> HasDownloadedLanguagePackAsync(string languageCode)
         {
    await InitializeAsync();
-       await WaitForSchemaReadyAsync();
-
+    // ? Don't wait for schema
          var normalized = NormalizeLang(languageCode);
      var count = await _database!.Table<TranslationCacheEntry>()
             .Where(x => x.LanguageCode == normalized && x.IsDownloadedPack == 1)
@@ -637,26 +1175,26 @@ WHERE descriptionEn IS NULL
    }
 
         /// <summary>
-        /// Clear all cached translations (run when language changes).
+  /// Clear all cached translations (run when language changes).
         /// </summary>
         public async Task ClearCachedTranslationsAsync()
-        {
+    {
  try
 {
-                await InitializeAsync();
-        await WaitForSchemaReadyAsync();
+   await InitializeAsync();
+   // ? Don't wait for schema
     await _database!.DeleteAllAsync<TranslationCacheEntry>();
            Debug.WriteLine("[POIRepository] ? All cached translations cleared");
       }
-         catch (Exception ex)
+       catch (Exception ex)
 {
-           Debug.WriteLine($"[POIRepository] Error clearing cache: {ex.Message}");
-            }
-        }
+       Debug.WriteLine($"[POIRepository] Error clearing cache: {ex.Message}");
+       }
+ }
 
-        private static string NormalizeLang(string? code)
+      private static string NormalizeLang(string? code)
         {
-       if (string.IsNullOrWhiteSpace(code)) return "vi";
+     if (string.IsNullOrWhiteSpace(code)) return "vi";
       var normalized = code.Trim().Replace('_', '-').ToLowerInvariant();
             var dash = normalized.IndexOf('-');
      return dash > 0 ? normalized[..dash] : normalized;
@@ -664,12 +1202,12 @@ WHERE descriptionEn IS NULL
 
         private class PragmaTableInfo
   {
-            [Column("name")]
-            public string Name { get; set; } = string.Empty;
+      [Column("name")]
+  public string Name { get; set; } = string.Empty;
         }
 
         private class TableInfo
-        {
+    {
      [Column("name")]
    public string name { get; set; } = string.Empty;
  }

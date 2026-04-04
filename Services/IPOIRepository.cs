@@ -4,6 +4,8 @@ namespace VinhKhanhstreetfoods.Services;
 
 public interface IPOIRepository
 {
+    event EventHandler<int>? POIsSynced;
+
     Task InitializeAsync();
     Task<bool> HasAnyPOIAsync();
     Task<List<POI>> GetAllPOIsAsync();
@@ -19,4 +21,8 @@ public interface IPOIRepository
     Task UpsertCachedTranslationAsync(int poiId, string languageCode, bool isTtsScript, string translatedText, bool isDownloadedPack = false);
     Task<bool> HasDownloadedLanguagePackAsync(string languageCode);
     Task ClearCachedTranslationsAsync();
+
+    // Admin online sync (offline-first: safe to fail and continue with local DB)
+    Task<int> SyncPOIsFromAdminAsync(bool force = false, CancellationToken cancellationToken = default);
+    Task<DateTime?> GetLastAdminSyncTimeUtcAsync();
 }

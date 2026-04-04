@@ -35,7 +35,8 @@ public partial class HomePage : ContentPage
         {
        _isDataLoaded = true;
             // Load data in background to not block UI
-         _ = vm.EnsureInitialDataLoadedAsync();
+          // Fire and forget immediately
+   _ = vm.EnsureInitialDataLoadedAsync();
         }
     }
 

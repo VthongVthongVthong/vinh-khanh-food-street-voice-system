@@ -9,7 +9,7 @@ namespace VinhKhanhstreetfoods.ViewModels
 {
     public class MapViewModel : INotifyPropertyChanged
     {
-        private readonly POIRepository _poiRepository;
+        private readonly IPOIRepository _poiRepository;
         private readonly MapService _mapService;
         private readonly LocationService _locationService;
 
@@ -19,10 +19,11 @@ namespace VinhKhanhstreetfoods.ViewModels
         private double _userLongitude;
         private bool _isTracking;
         private string _statusMessage;
+        private int _isSyncingFromAdmin;
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
-        public MapViewModel(POIRepository poiRepository, MapService mapService, LocationService locationService)
+        public MapViewModel(IPOIRepository poiRepository, MapService mapService, LocationService locationService)
         {
             _poiRepository = poiRepository ?? throw new ArgumentNullException(nameof(poiRepository));
             _mapService = mapService ?? throw new ArgumentNullException(nameof(mapService));
@@ -146,6 +147,8 @@ namespace VinhKhanhstreetfoods.ViewModels
                     StatusMessage = $"Đã tải {pois.Count} địa điểm";
                     System.Diagnostics.Debug.WriteLine($"[MapViewModel] Loaded {pois.Count} POIs successfully");
                 });
+
+                _ = TrySyncFromAdminInBackgroundAsync();
             }
             catch (Exception ex)
             {
@@ -157,11 +160,40 @@ namespace VinhKhanhstreetfoods.ViewModels
             }
         }
 
+        private async Task TrySyncFromAdminInBackgroundAsync()
+        {
+            if (Interlocked.Exchange(ref _isSyncingFromAdmin, 1) == 1)
+                return;
+
+            try
+            {
+                var updatedCount = await _poiRepository.SyncPOIsFromAdminAsync();
+                if (updatedCount <= 0)
+                    return;
+
+                var refreshed = await _poiRepository.GetAllPOIsAsync();
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    AllPOIs = new ObservableCollection<POI>(refreshed);
+                    StatusMessage = $"Đã đồng bộ {updatedCount} địa điểm từ máy chủ";
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[MapViewModel] Admin sync skipped/error: {ex.Message}");
+            }
+            finally
+            {
+                Interlocked.Exchange(ref _isSyncingFromAdmin, 0);
+            }
+        }
+
         private async Task RefreshPOIs()
         {
             try
             {
                 StatusMessage = "Đang làm mới...";
+                await _poiRepository.SyncPOIsFromAdminAsync();
                 await LoadPOIs();
                 StatusMessage = "Làm mới hoàn tất";
             }
