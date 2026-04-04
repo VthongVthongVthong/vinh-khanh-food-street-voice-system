@@ -27,7 +27,7 @@
                            FontSize="28" 
                            FontAttributes="Bold"
                            TextColor="White"/>
-                    <Label Text="{Binding SelectedPOI.DescriptionText}" 
+                    <Label Text="{Binding CurrentDescriptionText}" 
                            FontSize="14" 
                            TextColor="#E8E8E8"
                            LineBreakMode="WordWrap"/>
@@ -100,7 +100,7 @@
                             TextColor="#283845"
                             Title="Chọn ngôn ngữ"/>
 
-                    <Label Text="{Binding NarrationPreviewText}"
+                    <Label Text="{Binding CurrentTtsScriptText}"
                            FontSize="13"
                            TextColor="#374151"
                            LineBreakMode="WordWrap"/>

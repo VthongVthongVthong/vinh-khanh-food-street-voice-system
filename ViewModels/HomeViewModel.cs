@@ -50,8 +50,6 @@ namespace VinhKhanhstreetfoods.ViewModels
             _geofenceEngine.POITriggered += OnPOITriggered;
             _audioManager.AudioStarted += OnAudioStarted;
             _audioManager.AudioCompleted += OnAudioCompleted;
-
-            _ = LoadInitialDataAsync();
         }
 
         public ObservableCollection<POI> NearbyPOIs
@@ -120,6 +118,14 @@ namespace VinhKhanhstreetfoods.ViewModels
         public ICommand StartLocationServiceCommand { get; }
         public ICommand StopLocationServiceCommand { get; }
         public ICommand OpenDetailCommand { get; }
+
+        public async Task EnsureInitialDataLoadedAsync()
+        {
+            if (_allPOIs.Count > 0 || IsLoading)
+                return;
+
+            await LoadInitialDataAsync();
+        }
 
         private async Task LoadInitialDataAsync()
         {

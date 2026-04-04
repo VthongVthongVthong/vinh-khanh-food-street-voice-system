@@ -41,8 +41,14 @@ namespace VinhKhanhstreetfoods.ViewModels
                 _locationService.LocationUpdated += OnLocationUpdated;
                 _locationService.TrackingStateChanged += OnTrackingStateChanged;
             }
+        }
 
-            _ = LoadPOIs();
+        public async Task EnsurePOIsLoadedAsync()
+        {
+            if (AllPOIs.Count > 0)
+                return;
+
+            await LoadPOIs();
         }
 
         private void OnTrackingStateChanged(object sender, bool isTracking)

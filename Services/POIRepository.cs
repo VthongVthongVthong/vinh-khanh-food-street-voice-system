@@ -10,6 +10,7 @@ namespace VinhKhanhstreetfoods.Services
     {
         private readonly string _databasePath;
         private SQLiteAsyncConnection? _database;
+        private Task? _schemaInitializationTask;
 
         public POIRepository()
         {
@@ -30,15 +31,22 @@ namespace VinhKhanhstreetfoods.Services
                 // ✅ Create async connection (doesn't block)
                 _database = new SQLiteAsyncConnection(_databasePath);
 
-                // ✅ DEFER: Run schema updates on background thread to prevent ANR
-                // Don't await this - fire and forget with proper error handling
-                _ = InitializeSchemaAsync();
+                _schemaInitializationTask ??= InitializeSchemaAsync();
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[POIRepository] Error initializing database connection: {ex.Message}");
                 throw;
             }
+        }
+
+        private async Task WaitForSchemaReadyAsync(int timeoutMs = 1200)
+        {
+            var task = _schemaInitializationTask;
+            if (task is null)
+                return;
+
+            await Task.WhenAny(task, Task.Delay(timeoutMs));
         }
 
         /// <summary>
@@ -411,34 +419,14 @@ FROM POI_old;";
         public async Task<List<POI>> GetAllPOIsAsync()
         {
             await InitializeAsync();
+            await WaitForSchemaReadyAsync();
             return await _database!.Table<POI>().ToListAsync();
         }
 
         public async Task<List<POI>> GetActivePOIsAsync()
         {
             await InitializeAsync();
-     
-            // ✅ OPTIMIZATION: Wait for schema to be ready before querying
-            // Give schema initialization a moment if it's still running
-            int maxWaitMs = 5000; // 5 second max wait
-            int elapsedMs = 0;
-            while (_database != null && elapsedMs < maxWaitMs)
-            {
-                try
-                {
-                    // Try to count POIs - if it works, schema is ready
-                    var count = await _database.Table<POI>().CountAsync();
-                    break; // Success
-                }
-                catch
-                {
-                    // Schema still initializing
-                    await Task.Delay(100);
-                    elapsedMs += 100;
-                }
-            }
-
-            // ✅ Return active POIs
+            await WaitForSchemaReadyAsync();
             return await _database!.Table<POI>().Where(p => p.IsActive == 1).ToListAsync();
         }
 
@@ -492,8 +480,16 @@ FROM POI_old;";
                 {
                     ("descriptionEn", "TEXT"),
                     ("descriptionZh", "TEXT"),
+                    ("descriptionJa", "TEXT"),
+                    ("descriptionKo", "TEXT"),
+                    ("descriptionFr", "TEXT"),
+                    ("descriptionRu", "TEXT"),
                     ("ttsScriptEn", "TEXT"),
-                    ("ttsScriptZh", "TEXT")
+                    ("ttsScriptZh", "TEXT"),
+                    ("ttsScriptJa", "TEXT"),
+                    ("ttsScriptKo", "TEXT"),
+                    ("ttsScriptFr", "TEXT"),
+                    ("ttsScriptRu", "TEXT")
                 };
 
                 foreach (var (columnName, sqlType) in missingColumns)
@@ -505,19 +501,31 @@ FROM POI_old;";
                     }
                 }
 
-                // ✅ OPTIMIZED: Only update if columns actually needed filling
-                if (missingColumns.Any(c => columnNames.Contains(c.Item1)))
-                {
-                    await _database.ExecuteAsync(@"UPDATE POI
+                await _database.ExecuteAsync(@"UPDATE POI
 SET descriptionEn = COALESCE(descriptionEn, descriptionText),
-       descriptionZh = COALESCE(descriptionZh, descriptionText),
-      ttsScriptEn= COALESCE(ttsScriptEn, ttsScript, descriptionText),
-  ttsScriptZh   = COALESCE(ttsScriptZh, ttsScript, descriptionText)
+    descriptionZh = COALESCE(descriptionZh, descriptionText),
+    descriptionJa = COALESCE(descriptionJa, descriptionText),
+    descriptionKo = COALESCE(descriptionKo, descriptionText),
+    descriptionFr = COALESCE(descriptionFr, descriptionText),
+    descriptionRu = COALESCE(descriptionRu, descriptionText),
+    ttsScriptEn = COALESCE(ttsScriptEn, ttsScript, descriptionText),
+    ttsScriptZh = COALESCE(ttsScriptZh, ttsScript, descriptionText),
+    ttsScriptJa = COALESCE(ttsScriptJa, ttsScript, descriptionText),
+    ttsScriptKo = COALESCE(ttsScriptKo, ttsScript, descriptionText),
+    ttsScriptFr = COALESCE(ttsScriptFr, ttsScript, descriptionText),
+    ttsScriptRu = COALESCE(ttsScriptRu, ttsScript, descriptionText)
 WHERE descriptionEn IS NULL
    OR descriptionZh IS NULL
-  OR ttsScriptEn IS NULL
- OR ttsScriptZh IS NULL;");
-                }
+   OR descriptionJa IS NULL
+   OR descriptionKo IS NULL
+   OR descriptionFr IS NULL
+   OR descriptionRu IS NULL
+   OR ttsScriptEn IS NULL
+   OR ttsScriptZh IS NULL
+   OR ttsScriptJa IS NULL
+   OR ttsScriptKo IS NULL
+   OR ttsScriptFr IS NULL
+   OR ttsScriptRu IS NULL;");
             }
             catch (Exception ex)
             {

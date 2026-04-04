@@ -11,6 +11,7 @@ namespace VinhKhanhstreetfoods.Services
     /// - Pre-caching translations to avoid delays
     /// - Batch TTS processing
     /// - Connection pooling for translation service
+    /// - Thread-safe language switching with proper queue cleanup
     /// </summary>
     public class AudioManager
     {
@@ -32,6 +33,10 @@ namespace VinhKhanhstreetfoods.Services
 
         // OPTIMIZATION: Pre-resolved text cache to avoid translation delays during playback
         private readonly Dictionary<int, Dictionary<string, string>> _preResolvedCache = new();
+        
+        // FIX: Track language to detect rapid changes
+        private string _currentLanguage = "vi";
+        private readonly object _languageLock = new();
 
         public event EventHandler<POI>? AudioStarted;
         public event EventHandler<POI>? AudioCompleted;
@@ -61,7 +66,22 @@ namespace VinhKhanhstreetfoods.Services
         {
             try
             {
-                Debug.WriteLine($"[AudioManager] Preferred language changed to '{language}', stopping current playback and clearing queue");
+                lock (_languageLock)
+                {
+                    var normalizedNew = NormalizeLang(language);
+                    var normalizedCurrent = NormalizeLang(_currentLanguage);
+                    
+                    // OPTIMIZATION: Only reset if language actually changed
+                    if (normalizedNew == normalizedCurrent)
+                    {
+                        Debug.WriteLine($"[AudioManager] Language '{language}' is same as current, skipping reset");
+                        return;
+                    }
+
+                    _currentLanguage = normalizedNew;
+                    Debug.WriteLine($"[AudioManager] Preferred language changed to '{normalizedNew}', stopping current playback and clearing queue");
+                }
+                
                 StopCurrent();
             }
             catch (Exception ex)
@@ -118,10 +138,13 @@ namespace VinhKhanhstreetfoods.Services
             {
                 try
                 {
-                    await _queueSignal.WaitAsync(ct);
+                    // WAIT for signal with timeout to handle rapid language changes
+                    // If timeout expires, loop continues to check cancellation
+                    await _queueSignal.WaitAsync(TimeSpan.FromSeconds(2), ct);
                 }
                 catch (OperationCanceledException)
                 {
+                    Debug.WriteLine("[AudioManager] Queue worker cancelled");
                     return;
                 }
 
@@ -130,7 +153,7 @@ namespace VinhKhanhstreetfoods.Services
                 {
                     if (_audioQueue.Count == 0)
                     {
-                        continue;
+                        continue;  // No items, wait for next signal
                     }
 
                     poi = _audioQueue.Dequeue();
@@ -148,14 +171,25 @@ namespace VinhKhanhstreetfoods.Services
 
                 try
                 {
+                    // CONCURRENT CTS: Link with queue worker cancellation
+                    using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
+                        _playbackCts.Token, 
+                        ct
+                    );
+
                     if (!string.IsNullOrEmpty(poi.AudioFile) && File.Exists(poi.AudioFile))
                     {
-                        await PlayAudioFile(poi.AudioFile, _playbackCts.Token);
+                        await PlayAudioFile(poi.AudioFile, linkedCts.Token);
                     }
                     else
                     {
-                        var userLanguage = _settingsService.PreferredLanguage;
-    
+                        // CRITICAL: Get current language at playback time (not enqueue time)
+                        string userLanguage;
+                        lock (_languageLock)
+                        {
+                            userLanguage = _currentLanguage;
+                        }
+
                         // ? STEP 1: RESOLVE TEXT FIRST (before TTS)
                         // This ensures:
                         // - Correct language text is loaded
@@ -166,10 +200,11 @@ namespace VinhKhanhstreetfoods.Services
                         Debug.WriteLine($"[AudioManager] ? Resolved text for '{poi.Name}' in {userLanguage}: {finalText.Substring(0, Math.Min(50, finalText.Length))}...");
 
                         // ? STEP 2: Now safely call TTS with correct language text
-                        await _ttsSemaphore.WaitAsync(_playbackCts.Token);
+                        // Use linked cancellation token to cancel if language changed
+                        await _ttsSemaphore.WaitAsync(linkedCts.Token);
                         try
                         {
-                            await _ttsService.SpeakAsync(finalText, userLanguage, _playbackCts.Token);
+                            await _ttsService.SpeakAsync(finalText, userLanguage, linkedCts.Token);
                         }
                         finally
                         {
@@ -179,7 +214,7 @@ namespace VinhKhanhstreetfoods.Services
                 }
                 catch (OperationCanceledException)
                 {
-                    Debug.WriteLine("[AudioManager] Playback canceled");
+                    Debug.WriteLine("[AudioManager] Playback canceled (language changed or stopped)");
                 }
                 catch (Exception ex)
                 {
@@ -207,41 +242,22 @@ namespace VinhKhanhstreetfoods.Services
         {
             var normalizedTarget = NormalizeLang(targetLanguage);
 
-            // ? PRIORITY 1: Check offline DB columns FIRST (instant, NO await needed)
-            // This is fastest path for offline languages (en, zh)
-            if (normalizedTarget == "en" && !string.IsNullOrEmpty(poi.TtsScriptEn))
+            // PRIORITY 1: direct from POI DB multilingual columns
+            var offlineText = poi.GetTtsScriptByLanguage(normalizedTarget);
+            if (!string.IsNullOrWhiteSpace(offlineText))
             {
-                Debug.WriteLine($"[AudioManager] ? Using offline EN TtsScript for '{poi.Name}'");
-                return poi.TtsScriptEn;
+                Debug.WriteLine($"[AudioManager] Using DB multilingual text for '{poi.Name}' ({normalizedTarget})");
+                return offlineText;
             }
 
-            if (normalizedTarget == "zh" && !string.IsNullOrEmpty(poi.TtsScriptZh))
-            {
-                Debug.WriteLine($"[AudioManager] ? Using offline ZH TtsScript for '{poi.Name}'");
-                return poi.TtsScriptZh;
-            }
-
-            // Fallback to description if no TtsScript
-            if (normalizedTarget == "en" && !string.IsNullOrEmpty(poi.DescriptionEn))
-            {
-                Debug.WriteLine($"[AudioManager] ? Using offline EN description for '{poi.Name}'");
-                return poi.DescriptionEn;
-            }
-
-            if (normalizedTarget == "zh" && !string.IsNullOrEmpty(poi.DescriptionZh))
-            {
-                Debug.WriteLine($"[AudioManager] ? Using offline ZH description for '{poi.Name}'");
-                return poi.DescriptionZh;
-            }
-
-            // ? PRIORITY 2: Check POI pre-resolved cache (in-memory, instant)
+            // PRIORITY 2: Check POI pre-resolved cache (in-memory, instant)
             if (_preResolvedCache.TryGetValue(poi.Id, out var cache) && cache.TryGetValue(normalizedTarget, out var cachedText))
             {
                 Debug.WriteLine($"[AudioManager] Using pre-resolved cache for '{poi.Name}' ({normalizedTarget})");
                 return cachedText;
             }
 
-            // ? PRIORITY 3: Check per-POI short-memory cache (5 min TTL)
+            // PRIORITY 3: Check per-POI short-memory cache (5 min TTL)
             if (!string.IsNullOrEmpty(poi.CachedTranslatedTtsScript) &&
                 DateTime.UtcNow - poi.CachedTranslationTime < TimeSpan.FromMinutes(5))
             {
@@ -249,7 +265,7 @@ namespace VinhKhanhstreetfoods.Services
                 return poi.CachedTranslatedTtsScript;
             }
 
-            // ? PRIORITY 4: Call TranslationService (might hit API)
+            // PRIORITY 4: Resolve via translation service (DB/cache fallback strategy)
             try
             {
                 var resolved = await _translationService.ResolveNarrationTextAsync(poi, normalizedTarget, preferTtsScript: true);
@@ -257,7 +273,6 @@ namespace VinhKhanhstreetfoods.Services
                 poi.CachedTranslatedTtsScript = resolved;
                 poi.CachedTranslationTime = DateTime.UtcNow;
 
-                // Store in pre-resolved cache for next request
                 if (!_preResolvedCache.ContainsKey(poi.Id))
                 {
                     _preResolvedCache[poi.Id] = new Dictionary<string, string>();

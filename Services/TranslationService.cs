@@ -76,7 +76,10 @@ public class TranslationService : ITranslationService
         }
     }
 
-    public Task<int> DownloadLanguagePackAsync(string languageCode, CancellationToken cancellationToken = default)
+    public Task<int> DownloadLanguagePackAsync(
+        string languageCode,
+        IProgress<LanguagePackProgress>? progress = null,
+    CancellationToken cancellationToken = default)
         => Task.FromResult(0);
 
     public IReadOnlyList<string> GetOfflineBaseLanguages() => ["vi"];

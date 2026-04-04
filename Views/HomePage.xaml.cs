@@ -9,11 +9,26 @@ namespace VinhKhanhstreetfoods.Views;
 public partial class HomePage : ContentPage
 {
     private bool _isScannerVisible;
+    private bool _isDataLoaded;
 
     public HomePage(HomeViewModel viewModel)
     {
         InitializeComponent();
         BindingContext = viewModel;
+    }
+
+    protected override async void OnAppearing()
+    {
+        base.OnAppearing();
+
+        if (_isDataLoaded)
+            return;
+
+        if (BindingContext is HomeViewModel vm)
+        {
+            _isDataLoaded = true;
+            await vm.EnsureInitialDataLoadedAsync();
+        }
     }
 
     private async void OnQrButtonClicked(object sender, EventArgs e)

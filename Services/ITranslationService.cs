@@ -1,6 +1,14 @@
 namespace VinhKhanhstreetfoods.Services;
 
 /// <summary>
+/// Progress report callback for language pack downloads
+/// </summary>
+public record LanguagePackProgress(int CurrentCount, int TotalCount, string CurrentPOIName = "")
+{
+    public double ProgressPercentage => TotalCount > 0 ? (CurrentCount * 100.0 / TotalCount) : 0;
+}
+
+/// <summary>
 /// Handles text translation to different languages.
 /// Uses offline-first hybrid approach with API fallback.
 /// </summary>
@@ -15,7 +23,7 @@ public interface ITranslationService
     /// Resolve POI narration text using hybrid strategy:
     /// offline columns (vi/en/zh) first, then online API (ja/ko/fr/ru), then fallback.
     /// </summary>
-    Task<string> ResolveNarrationTextAsync(VinhKhanhstreetfoods.Models.POI poi, string targetLanguage, bool preferTtsScript = true);
+  Task<string> ResolveNarrationTextAsync(VinhKhanhstreetfoods.Models.POI poi, string targetLanguage, bool preferTtsScript = true);
 
     /// <summary>
     /// Check if translation service is available.
@@ -24,10 +32,13 @@ public interface ITranslationService
     Task<bool> IsAvailableAsync();
 
     /// <summary>
-    /// Prefetch and cache translation packs for API languages.
-    /// Returns number of cached items.
+  /// Prefetch and cache translation packs for API languages with progress reporting.
+    /// Returns number of successfully cached items (description + tts = 2 per POI).
     /// </summary>
-    Task<int> DownloadLanguagePackAsync(string languageCode, CancellationToken cancellationToken = default);
+    Task<int> DownloadLanguagePackAsync(
+        string languageCode,
+        IProgress<LanguagePackProgress>? progress = null,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Get language codes available for immediate offline use.

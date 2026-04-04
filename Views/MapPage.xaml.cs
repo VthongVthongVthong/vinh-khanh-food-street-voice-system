@@ -31,6 +31,8 @@ public partial class MapPage : ContentPage
         base.OnNavigatedTo(args);
         if (BindingContext is MapViewModel vm)
         {
+            _ = vm.EnsurePOIsLoadedAsync();
+
             vm.PropertyChanged += ViewModel_PropertyChanged;
             SubscribeToPoiCollection(vm.AllPOIs);
             MapWebView.Navigating += MapWebView_Navigating;

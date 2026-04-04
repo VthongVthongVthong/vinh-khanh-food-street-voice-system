@@ -41,7 +41,7 @@ namespace VinhKhanhstreetfoods
             builder.Services.AddSingleton<ITourRepository, TourRepository>();
             builder.Services.AddSingleton<SettingsService>();
             builder.Services.AddSingleton<TextToSpeechService>();
-            builder.Services.AddSingleton<ITranslationService, HybridTranslationService>();
+            builder.Services.AddSingleton<ITranslationService, TranslationService>();
             builder.Services.AddSingleton<AudioManager>();
             builder.Services.AddSingleton<MapService>();
 
@@ -50,7 +50,15 @@ namespace VinhKhanhstreetfoods
 
             // Register ViewModels
             builder.Services.AddSingleton<HomeViewModel>();
-            builder.Services.AddSingleton<POIDetailViewModel>();
+            builder.Services.AddSingleton<POIDetailViewModel>(sp =>
+            {
+                var audioManager = sp.GetRequiredService<AudioManager>();
+                var mapService = sp.GetRequiredService<MapService>();
+                var settingsService = sp.GetRequiredService<SettingsService>();
+                var translationService = sp.GetRequiredService<ITranslationService>();
+                var poiRepository = sp.GetRequiredService<IPOIRepository>();
+                return new POIDetailViewModel(audioManager, mapService, settingsService, translationService, poiRepository);
+            });
             builder.Services.AddSingleton<MapViewModel>();
             builder.Services.AddSingleton<SettingsViewModel>(sp =>
             {

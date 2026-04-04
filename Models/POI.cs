@@ -34,6 +34,26 @@ namespace VinhKhanhstreetfoods.Models
         public string? DescriptionZh { get; set; }
 
         /// <summary>
+        /// Offline Japanese description
+        /// </summary>
+        public string? DescriptionJa { get; set; }
+
+        /// <summary>
+        /// Offline Korean description
+        /// </summary>
+        public string? DescriptionKo { get; set; }
+
+        /// <summary>
+        /// Offline French description
+        /// </summary>
+        public string? DescriptionFr { get; set; }
+
+        /// <summary>
+        /// Offline Russian description
+        /// </summary>
+        public string? DescriptionRu { get; set; }
+
+        /// <summary>
         /// Default TTS script (usually in Vietnamese)
         /// </summary>
         public string? TtsScript { get; set; }
@@ -47,6 +67,26 @@ namespace VinhKhanhstreetfoods.Models
         /// Offline Simplified Chinese TTS script (hybrid translation mode)
         /// </summary>
         public string? TtsScriptZh { get; set; }
+
+        /// <summary>
+        /// Offline Japanese TTS script
+        /// </summary>
+        public string? TtsScriptJa { get; set; }
+
+        /// <summary>
+        /// Offline Korean TTS script
+        /// </summary>
+        public string? TtsScriptKo { get; set; }
+
+        /// <summary>
+        /// Offline French TTS script
+        /// </summary>
+        public string? TtsScriptFr { get; set; }
+
+        /// <summary>
+        /// Offline Russian TTS script
+        /// </summary>
+        public string? TtsScriptRu { get; set; }
 
         /// <summary>
         /// POI's default language for TTS (e.g., "vi-VN", "en-US")
@@ -110,10 +150,10 @@ namespace VinhKhanhstreetfoods.Models
             {
                 "en" => DescriptionEn ?? DescriptionText,      // English
                 "zh" => DescriptionZh ?? DescriptionText,      // Simplified Chinese
-                "ja" => DescriptionText,        // Japanese (not in DB yet, fallback to VI)
-                "ko" => DescriptionText,  // Korean (not in DB yet, fallback to VI)
-                "fr" => DescriptionText,                // French (not in DB yet, fallback to VI)
-                "ru" => DescriptionText,         // Russian (not in DB yet, fallback to VI)
+                "ja" => DescriptionJa ?? DescriptionText,        // Japanese (not in DB yet, fallback to VI)
+                "ko" => DescriptionKo ?? DescriptionText,  // Korean (not in DB yet, fallback to VI)
+                "fr" => DescriptionFr ?? DescriptionText,                // French (not in DB yet, fallback to VI)
+                "ru" => DescriptionRu ?? DescriptionText,         // Russian (not in DB yet, fallback to VI)
                 _ => DescriptionText   // Default: Vietnamese
             };
         }
@@ -128,12 +168,12 @@ namespace VinhKhanhstreetfoods.Models
 
             return normalized switch
             {
-                "en" => TtsScriptEn ?? TtsScript ?? DescriptionEn ?? DescriptionText,
-                "zh" => TtsScriptZh ?? TtsScript ?? DescriptionZh ?? DescriptionText,
-                "ja" => TtsScript ?? DescriptionText,           // Not in DB, fallback to VI
-                "ko" => TtsScript ?? DescriptionText,     // Not in DB, fallback to VI
-                "fr" => TtsScript ?? DescriptionText,      // Not in DB, fallback to VI
-                "ru" => TtsScript ?? DescriptionText,  // Not in DB, fallback to VI
+                "en" => TtsScriptEn ?? DescriptionEn ?? TtsScript ?? DescriptionText,
+                "zh" => TtsScriptZh ?? DescriptionZh ?? TtsScript ?? DescriptionText,
+                "ja" => TtsScriptJa ?? DescriptionJa ?? TtsScript ?? DescriptionText,
+                "ko" => TtsScriptKo ?? DescriptionKo ?? TtsScript ?? DescriptionText,
+                "fr" => TtsScriptFr ?? DescriptionFr ?? TtsScript ?? DescriptionText,
+                "ru" => TtsScriptRu ?? DescriptionRu ?? TtsScript ?? DescriptionText,
                 _ => TtsScript ?? DescriptionText       // Default: Vietnamese
             };
         }
