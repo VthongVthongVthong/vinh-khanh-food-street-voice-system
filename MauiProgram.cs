@@ -11,6 +11,8 @@ namespace VinhKhanhstreetfoods
 {
     public static class MauiProgram
     {
+        public static IServiceProvider? ServiceProvider { get; private set; }
+
         public static MauiApp CreateMauiApp()
         {
             var builder = MauiApp.CreateBuilder();
@@ -50,6 +52,7 @@ namespace VinhKhanhstreetfoods
 
             // Register ViewModels
             builder.Services.AddSingleton<HomeViewModel>();
+            builder.Services.AddTransient<CameraViewModel>();
             builder.Services.AddSingleton<POIDetailViewModel>(sp =>
             {
                 var audioManager = sp.GetRequiredService<AudioManager>();
@@ -70,6 +73,7 @@ namespace VinhKhanhstreetfoods
 
             // Register Views
             builder.Services.AddSingleton<HomePage>();
+            builder.Services.AddSingleton<CameraPage>();
             builder.Services.AddSingleton<POIDetailPage>();
             builder.Services.AddSingleton<MapPage>();
             builder.Services.AddSingleton<SettingsPage>();
@@ -78,6 +82,7 @@ namespace VinhKhanhstreetfoods
             builder.Services.AddSingleton<AppShell>();
 
             var app = builder.Build();
+            ServiceProvider = app.Services;
 
             // ✅ Add global exception handler
 #if DEBUG

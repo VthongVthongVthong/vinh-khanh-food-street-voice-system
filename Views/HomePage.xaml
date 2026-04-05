@@ -133,54 +133,5 @@
                     CornerRadius="8"
                     Padding="12" />
         </StackLayout>
-
-        <!-- QR Scanner Overlay -->
-        <Grid x:Name="QrScannerOverlay"
-              Grid.RowSpan="4"
-              BackgroundColor="#AA000000"
-              IsVisible="False">
-            <Border Padding="20"
-                    BackgroundColor="White"
-                    WidthRequest="320"
-                    HeightRequest="460"
-                    HorizontalOptions="Center"
-                    VerticalOptions="Center"
-                    Stroke="#1976D2"
-                    StrokeThickness="3">
-                <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="28" />
-                </Border.StrokeShape>
-                <Border.Shadow>
-                    <Shadow Brush="#66000000" Offset="0,12" Radius="26" />
-                </Border.Shadow>
-
-                <Grid RowDefinitions="Auto,*" RowSpacing="12">
-                    <Grid ColumnDefinitions="*,Auto">
-                        <Label Text="Quét mã QR"
-                               FontAttributes="Bold"
-                               FontSize="20"
-                               TextColor="#1a1a1a"
-                               VerticalOptions="Center" />
-                        <Button Grid.Column="1"
-                                Text="✕"
-                                FontSize="18"
-                                WidthRequest="44"
-                                HeightRequest="44"
-                                BackgroundColor="#EEEEEE"
-                                TextColor="#1a1a1a"
-                                CornerRadius="22"
-                                Clicked="OnCloseScannerClicked" />
-                    </Grid>
-
-                    <zxing:CameraBarcodeReaderView x:Name="QrCameraView"
-                                                   Grid.Row="1"
-                                                   HorizontalOptions="Fill"
-                                                   VerticalOptions="Fill"
-                                                   CameraLocation="Rear"
-                                                   IsDetecting="False"
-                                                   BarcodesDetected="OnBarcodesDetected" />
-                </Grid>
-            </Border>
-        </Grid>
     </Grid>
 </ContentPage>

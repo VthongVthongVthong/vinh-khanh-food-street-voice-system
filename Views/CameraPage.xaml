@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+           xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="VinhKhanhstreetfoods.Views.CameraPage"
+        Title="Quét mã QR"
+    NavigationPage.HasNavigationBar="False"
+          BackgroundColor="#000000">
+
+ <Grid>
+        <!-- Full Screen Camera -->
+  <Grid x:Name="CameraContainer"
+        HorizontalOptions="Fill"
+           VerticalOptions="Fill"
+    BackgroundColor="#000000" />
+
+        <!-- QR Frame: 4 Corner Lines Only -->
+        <Grid HorizontalOptions="Center"
+      VerticalOptions="Center"
+ WidthRequest="260"
+          HeightRequest="260"
+   InputTransparent="True">
+
+       <!-- Top Left Corner -->
+ <BoxView Color="White" WidthRequest="40" HeightRequest="4"
+  HorizontalOptions="Start" VerticalOptions="Start" />
+       <BoxView Color="White" WidthRequest="4" HeightRequest="40"
+      HorizontalOptions="Start" VerticalOptions="Start" />
+
+      <!-- Top Right Corner -->
+          <BoxView Color="White" WidthRequest="40" HeightRequest="4"
+  HorizontalOptions="End" VerticalOptions="Start" />
+   <BoxView Color="White" WidthRequest="4" HeightRequest="40"
+   HorizontalOptions="End" VerticalOptions="Start" />
+
+         <!-- Bottom Left Corner -->
+   <BoxView Color="White" WidthRequest="40" HeightRequest="4"
+   HorizontalOptions="Start" VerticalOptions="End" />
+        <BoxView Color="White" WidthRequest="4" HeightRequest="40"
+HorizontalOptions="Start" VerticalOptions="End" />
+
+  <!-- Bottom Right Corner -->
+         <BoxView Color="White" WidthRequest="40" HeightRequest="4"
+      HorizontalOptions="End" VerticalOptions="End" />
+ <BoxView Color="White" WidthRequest="4" HeightRequest="40"
+      HorizontalOptions="End" VerticalOptions="End" />
+        </Grid>
+
+        <!-- Back Button (Floating) -->
+     <Button x:Name="BackButton"
+       Text="✕"
+      HorizontalOptions="Start"
+          VerticalOptions="Start"
+       Margin="12"
+     Padding="0"
+            WidthRequest="48"
+  HeightRequest="48"
+     CornerRadius="24"
+    BackgroundColor="#AA000000"
+       TextColor="White"
+   FontSize="20"
+        ZIndex="10"
+ Clicked="OnBackClicked" />
+    </Grid>
+
+</ContentPage>
