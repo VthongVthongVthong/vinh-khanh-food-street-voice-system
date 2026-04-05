@@ -1,49 +1,25 @@
 ﻿using System.Diagnostics;
-using GTranslate.Translators;
 using VinhKhanhstreetfoods.Models;
 
 namespace VinhKhanhstreetfoods.Services;
 
 /// <summary>
-/// Legacy translation service.
-/// Kept for compatibility; HybridTranslationService is preferred.
+/// Offline-first translation service.
+/// Third-party unofficial runtime translation is disabled to keep startup/runtime stable.
 /// </summary>
 public class TranslationService : ITranslationService
 {
-    private readonly GoogleTranslator _translator = new();
-
-    public async Task<string> TranslateAsync(string text, string sourceLanguage, string targetLanguage)
+    public Task<string> TranslateAsync(string text, string sourceLanguage, string targetLanguage)
     {
-        if (string.IsNullOrWhiteSpace(text))
-            return text;
-
-        var src = NormalizeLang(sourceLanguage);
-        var tgt = NormalizeLang(targetLanguage);
-
-        if (string.IsNullOrWhiteSpace(tgt) ||
-            string.Equals(tgt, "vi", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(src, tgt, StringComparison.OrdinalIgnoreCase))
-        {
-            return text;
-        }
-
-        try
-        {
-            var result = await _translator.TranslateAsync(text, src, tgt);
-            return result?.Translation ?? text;
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"[TranslationService] Translation error ({src}->{tgt}): {ex.Message}");
-            return text;
-        }
+        // No external translator call: keep original text.
+        return Task.FromResult(text ?? string.Empty);
     }
 
     public async Task<string> ResolveNarrationTextAsync(POI poi, string targetLanguage, bool preferTtsScript = true)
     {
         var target = NormalizeLang(targetLanguage);
 
-        // OFFLINE-FIRST: always try POI DB multilingual columns before API
+        // OFFLINE-FIRST: always use POI DB multilingual columns.
         var offline = preferTtsScript
             ? poi.GetTtsScriptByLanguage(target)
             : poi.GetDescriptionByLanguage(target);
@@ -51,40 +27,29 @@ public class TranslationService : ITranslationService
         if (!string.IsNullOrWhiteSpace(offline))
             return offline;
 
-        var original = preferTtsScript
+        var fallback = preferTtsScript
             ? (!string.IsNullOrWhiteSpace(poi.TtsScript) ? poi.TtsScript! : poi.DescriptionText)
             : poi.DescriptionText;
 
-        var source = NormalizeLang(poi.TtsLanguage);
-
-        if (target == "vi" || target == source)
-            return original;
-
-        return await TranslateAsync(original, source, target);
+        Debug.WriteLine($"[TranslationService] No offline translation for '{target}', fallback to source text");
+        return fallback;
     }
 
-    public async Task<bool> IsAvailableAsync()
+    public Task<bool> IsAvailableAsync()
     {
-        try
-        {
-            var result = await _translator.TranslateAsync("ping", "en", "vi");
-            return !string.IsNullOrWhiteSpace(result?.Translation);
-        }
-        catch
-        {
-            return false;
-        }
+        // External online translator disabled.
+        return Task.FromResult(false);
     }
 
     public Task<int> DownloadLanguagePackAsync(
         string languageCode,
         IProgress<LanguagePackProgress>? progress = null,
-    CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default)
         => Task.FromResult(0);
 
-    public IReadOnlyList<string> GetOfflineBaseLanguages() => ["vi"];
+    public IReadOnlyList<string> GetOfflineBaseLanguages() => ["vi", "en", "zh", "ja", "ko", "fr", "ru"];
 
-    public IReadOnlyList<string> GetOnlineLanguages() => ["en", "zh", "ja", "ko", "fr", "ru"];
+    public IReadOnlyList<string> GetOnlineLanguages() => [];
 
     private static string NormalizeLang(string? code)
     {

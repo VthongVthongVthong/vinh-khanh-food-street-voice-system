@@ -17,7 +17,7 @@ namespace VinhKhanhstreetfoods
         {
             var builder = MauiApp.CreateBuilder();
 
-            // ✅ Load configuration - simplified and optimized
+            // ✅ Startup-safe configuration: no blocking package file reads on UI startup path
             var config = LoadConfigurationOptimized();
 
             builder
@@ -34,8 +34,9 @@ namespace VinhKhanhstreetfoods
             builder.Services.AddSingleton(config);
             builder.Services.AddSingleton<ConfigurationService>();
 
-            // ✅ CRITICAL: Register services as LAZY SINGLETONS
-            // This prevents heavy initialization on app startup
+            // ✅ Reuse static singleton instances to avoid double initialization work
+            builder.Services.AddSingleton(_ => LocalizationService.Instance);
+            builder.Services.AddSingleton(_ => LocalizationResourceManager.Instance);
             builder.Services.AddSingleton<LocationService>();
             builder.Services.AddSingleton<GeofenceEngine>();
             builder.Services.AddSingleton<POIRepository>();
@@ -84,6 +85,9 @@ namespace VinhKhanhstreetfoods
             var app = builder.Build();
             ServiceProvider = app.Services;
 
+            // Keep app bootstrap minimal: no startup warm-up work here.
+            // DB/Firebase/services initialize lazily after UI is shown.
+
             // ✅ Add global exception handler
 #if DEBUG
             AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
@@ -107,34 +111,12 @@ namespace VinhKhanhstreetfoods
         /// </summary>
         private static IConfiguration LoadConfigurationOptimized()
         {
-            try
-            {
-                using var stream = FileSystem.OpenAppPackageFileAsync("appsettings.json")
-                    .GetAwaiter()
-                    .GetResult();
+            // ⚡ ANR-safe: avoid synchronous FileSystem.OpenAppPackageFileAsync(...).GetResult() during app bootstrap.
+            // Keep startup configuration lightweight and non-blocking.
+            Debug.WriteLine("ℹ️ [MauiProgram] Using non-blocking startup configuration");
 
-                var builder = new ConfigurationBuilder();
-                builder.AddJsonStream(stream);
-
-                Debug.WriteLine("✅ [MauiProgram] Loaded appsettings.json from app package");
-                return builder.Build();
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"⚠️ [MauiProgram] Cannot load appsettings.json: {ex.Message}");
-                return CreateDefaultConfiguration();
-            }
-        }
-
-        private static IConfiguration CreateDefaultConfiguration()
-        {
-            Debug.WriteLine("ℹ️ [MauiProgram] Using default/fallback configuration (no real API keys)");
-
-            var configBuilder = new ConfigurationBuilder();
-
-            // Security-first fallback: never store real API keys in code.
-            // Real keys must be loaded only from appsettings.json.
-            configBuilder.AddInMemoryCollection(new Dictionary<string, string?>
+            var builder = new ConfigurationBuilder();
+            builder.AddInMemoryCollection(new Dictionary<string, string?>
             {
                 { "Environment", "Development" },
                 { "TrackAsiaApiKey", "" },
@@ -144,7 +126,13 @@ namespace VinhKhanhstreetfoods
                 { "Logging:LogLevel:Default", "Debug" }
             });
 
-            return configBuilder.Build();
+            return builder.Build();
+        }
+
+        private static IConfiguration CreateDefaultConfiguration()
+        {
+            // Keep for compatibility; routes to optimized startup-safe config.
+            return LoadConfigurationOptimized();
         }
 
         /// <summary>

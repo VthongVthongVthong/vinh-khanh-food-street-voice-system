@@ -80,74 +80,74 @@ namespace VinhKhanhstreetfoods.ViewModels
 
         public POI? SelectedPOI
         {
-            get => _selectedPOI;
+     get => _selectedPOI;
      set
-    {
-      if (Equals(_selectedPOI, value))
-   return;
+          {
+  if (Equals(_selectedPOI, value))
+     return;
 
-       _selectedPOI = value;
-                OnPropertyChanged();
+  _selectedPOI = value;
+            OnPropertyChanged();
     OnPropertyChanged(nameof(CurrentDescriptionText));
-    OnPropertyChanged(nameof(CurrentTtsScriptText));
+           OnPropertyChanged(nameof(CurrentTtsScriptText));
 
-           // ✅ Run async operation without blocking
-   _ = RefreshNarrationPreviewAsync();
+     _ = RefreshNarrationPreviewAsync();
        }
     }
 
         public IReadOnlyList<LanguageOption> LanguageOptions { get; }
 
         public string CurrentDescriptionText
-        {
-    get
       {
-         if (_selectedPOI is null)
-  return string.Empty;
+   get
+         {
+    if (_selectedPOI is null)
+     return string.Empty;
 
-                var language = SelectedNarrationLanguage?.CultureCode ?? _settingsService.PreferredLanguage;
-   return _selectedPOI.GetDescriptionByLanguage(language);
-      }
-        }
+     // Sync with app language, not just selected narration language
+        var language = _settingsService.PreferredLanguage;
+  return _selectedPOI.GetDescriptionByLanguage(language);
+ }
+   }
 
   public string CurrentTtsScriptText
         {
-  get
-    {
-       if (_selectedPOI is null)
-        return string.Empty;
+ get
+  {
+     if (_selectedPOI is null)
+           return string.Empty;
 
-        var language = SelectedNarrationLanguage?.CultureCode ?? _settingsService.PreferredLanguage;
-           return _selectedPOI.GetTtsScriptByLanguage(language);
-    }
+     // Sync with app language
+    var language = _settingsService.PreferredLanguage;
+    return _selectedPOI.GetTtsScriptByLanguage(language);
+       }
         }
 
         public LanguageOption? SelectedNarrationLanguage
      {
-            get => _selectedNarrationLanguage;
+  get => _selectedNarrationLanguage;
           set
-          {
-     if (Equals(_selectedNarrationLanguage, value))
-          return;
+         {
+    if (Equals(_selectedNarrationLanguage, value))
+    return;
 
-      _selectedNarrationLanguage = value;
-      OnPropertyChanged();
-      OnPropertyChanged(nameof(CurrentDescriptionText));
+ _selectedNarrationLanguage = value;
+           OnPropertyChanged();
+       OnPropertyChanged(nameof(CurrentDescriptionText));
       OnPropertyChanged(nameof(CurrentTtsScriptText));
 
-       var code = value?.CultureCode ?? "vi";
- _settingsService.PreferredLanguage = code;
-   _audioManager.StopCurrent();
-             IsPlaying = false;
+        var code = value?.CultureCode ?? "vi";
+      _settingsService.PreferredLanguage = code;
+  _audioManager.StopCurrent();
+       IsPlaying = false;
 
-             // ✅ Run async operation without blocking
-    _ = RefreshNarrationPreviewAsync();
- 
-     MainThread.BeginInvokeOnMainThread(() =>
-     {
-  StatusMessage = $"Đã đổi ngôn ngữ: {code}";
-   });
-      }
+   _ = RefreshNarrationPreviewAsync();
+    
+          MainThread.BeginInvokeOnMainThread(() =>
+    {
+  StatusMessage = $"Language changed: {code}";
+      });
+          }
         }
 
         public string NarrationPreviewText

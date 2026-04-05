@@ -2,20 +2,27 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:zxing="clr-namespace:ZXing.Net.Maui.Controls;assembly=ZXing.Net.Maui.Controls"
+             xmlns:converters="clr-namespace:VinhKhanhstreetfoods.Converters;assembly=VinhKhanhstreetfoods"
              x:Class="VinhKhanhstreetfoods.Views.HomePage"
-             Title="Phố ẩm thực Vĩnh Khánh"
+             Title="Food Street"
              BackgroundColor="#F8F8F8"
              Padding="0"
              xmlns:local="clr-namespace:VinhKhanhstreetfoods.ViewModels;assembly=VinhKhanhstreetfoods"
              xmlns:local2="clr-namespace:VinhKhanhstreetfoods.Models;assembly=VinhKhanhstreetfoods">
+
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <converters:POIDescriptionConverter x:Key="POIDescriptionConverter" />
+        </ResourceDictionary>
+    </ContentPage.Resources>
 
     <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="0">
 
         <!-- Header -->
         <Grid BackgroundColor="White" Padding="12" ColumnSpacing="8" ColumnDefinitions="*,Auto">
             <StackLayout Grid.Column="0" Spacing="2">
-                <Label Text="Vĩnh Khánh Street" FontSize="18" FontAttributes="Bold" TextColor="#1a1a1a" />
-                <Label Text="📍 Quận 4 - Âm thanh HD" FontSize="11" TextColor="#888" />
+                <Label x:Name="HeaderTitleLabel" FontSize="18" FontAttributes="Bold" TextColor="#1a1a1a" />
+                <Label x:Name="HeaderLocationLabel" FontSize="11" TextColor="#888" />
             </StackLayout>
             <Label Grid.Column="1" Text="🔔" FontSize="24" VerticalOptions="Center" />
         </Grid>
@@ -35,7 +42,7 @@
                        VerticalOptions="Center"
                        Margin="14,0" />
                 <Entry Grid.Column="1"
-                       Placeholder="Tìm kiếm địa điểm, món ăn..."
+                       x:Name="SearchEntry"
                        Text="{Binding SearchText}"
                        FontSize="14"
                        PlaceholderColor="#9E9E9E"
@@ -53,14 +60,14 @@
                         CornerRadius="24"
                         Padding="0"
                         Clicked="OnQrButtonClicked"
-                        ToolTipProperties.Text="Quét mã QR" />
+                        ToolTipProperties.Text="Scan QR code" />
             </Grid>
         </Border>
 
         <!-- POI List -->
         <RefreshView Grid.Row="2"
                      IsRefreshing="{Binding IsRefreshing}"
-                     Command="{Binding RefreshDataCommand}"
+                     Command="{Binding RefreshAppCommand}"
                      BackgroundColor="#F8F8F8">
             <CollectionView ItemsSource="{Binding NearbyPOIs}"
                             SelectionMode="Single"
@@ -79,13 +86,13 @@
                                 <Grid Grid.Column="1" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="4">
                                     <StackLayout Grid.Row="0" Orientation="Horizontal" Spacing="6">
                                         <Label Text="●" FontSize="10" TextColor="#DA1C5C" />
-                                        <Label Text="Mở cửa" FontSize="9" TextColor="#DA1C5C" VerticalOptions="Center" />
+                                        <Label Text="Open" FontSize="9" TextColor="#DA1C5C" VerticalOptions="Center" />
                                         <Label Text="●" FontSize="10" TextColor="#4CAF50" Margin="6,0,0,0" />
-                                        <Label Text="Còn chỗ" FontSize="9" TextColor="#4CAF50" VerticalOptions="Center" />
+                                        <Label Text="Available" FontSize="9" TextColor="#4CAF50" VerticalOptions="Center" />
                                     </StackLayout>
                                     <Label Grid.Row="1" Text="{Binding Name}" FontSize="13" FontAttributes="Bold" TextColor="#1a1a1a" LineBreakMode="TailTruncation" />
                                     <Label Grid.Row="2" Text="{Binding Address}" FontSize="10" TextColor="#888" LineBreakMode="TailTruncation" />
-                                    <Label Grid.Row="3" Text="{Binding DescriptionText}" FontSize="9" TextColor="#666" LineBreakMode="WordWrap" MaxLines="2" />
+                                    <Label Grid.Row="3" Text="{Binding ., Converter={StaticResource POIDescriptionConverter}}" FontSize="9" TextColor="#666" LineBreakMode="WordWrap" MaxLines="2" />
                                 </Grid>
                             </Grid>
                         </ContentView>
@@ -95,8 +102,9 @@
                     <DataTemplate>
                         <ContentView Padding="20" HorizontalOptions="Center" VerticalOptions="Center">
                             <StackLayout Spacing="10">
-                                <Label Text="😕 Không có dữ liệu" FontSize="16" FontAttributes="Bold" TextColor="#888" HorizontalOptions="Center" />
-                                <Label Text="Bật định vị để tải danh sách" FontSize="12" TextColor="#AAA" HorizontalOptions="Center" />
+                                <Label Text="😕" FontSize="24" HorizontalOptions="Center" />
+                                <Label Text="No data" FontSize="16" FontAttributes="Bold" TextColor="#888" HorizontalOptions="Center" />
+                                <Label Text="Pull down to refresh" FontSize="12" TextColor="#AAA" HorizontalOptions="Center" />
                             </StackLayout>
                         </ContentView>
                     </DataTemplate>
@@ -114,7 +122,7 @@
 
         <!-- Bottom Controls -->
         <StackLayout Grid.Row="3" Spacing="8" Padding="12" BackgroundColor="White">
-            <Button Text="▶️ BẬT ĐỊNH VỊ"
+            <Button x:Name="StartLocationButton"
                     Command="{Binding StartLocationServiceCommand}"
                     IsVisible="{Binding IsLocationServiceRunning, Converter={StaticResource InvertedBoolConverter}}"
                     BackgroundColor="#1976D2"
@@ -123,7 +131,7 @@
                     FontAttributes="Bold"
                     CornerRadius="8"
                     Padding="12" />
-            <Button Text="⏹️ TẮT ĐỊNH VỊ"
+            <Button x:Name="StopLocationButton"
                     Command="{Binding StopLocationServiceCommand}"
                     IsVisible="{Binding IsLocationServiceRunning}"
                     BackgroundColor="#FF8C00"

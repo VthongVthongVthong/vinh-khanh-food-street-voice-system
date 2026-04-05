@@ -52,3 +52,6 @@ TestResults/
 # ===== Node (if using frontend tools) =====
 node_modules/
 dist/
+/ANR_FIX_REPORT.md
+/ANR_PREVENTION_GUIDE.md
+/ANR_QUICK_FIX.md

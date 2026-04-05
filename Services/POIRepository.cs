@@ -22,6 +22,7 @@ namespace VinhKhanhstreetfoods.Services
         private static readonly TimeSpan AdminSyncThrottle = TimeSpan.FromMinutes(2);
         private static readonly TimeSpan RealtimeSyncInterval = TimeSpan.FromSeconds(4);
         private static readonly TimeSpan RealtimeSyncMaxInterval = TimeSpan.FromSeconds(20);
+        private static readonly TimeSpan InitialRealtimeSyncDelay = TimeSpan.FromSeconds(3);
 
         private readonly string _databasePath;
         private readonly HttpClient _httpClient;
@@ -92,11 +93,20 @@ namespace VinhKhanhstreetfoods.Services
 
             _realtimeSyncCts = new CancellationTokenSource();
             _realtimeSyncTask = Task.Run(() => RealtimeSyncLoopAsync(_realtimeSyncCts.Token));
-            Debug.WriteLine($"[POIRepository] Firebase realtime polling started (interval: {RealtimeSyncInterval.TotalSeconds}s)");
+            Debug.WriteLine($"[POIRepository] Firebase realtime polling scheduled (initial delay: {InitialRealtimeSyncDelay.TotalSeconds}s, interval: {RealtimeSyncInterval.TotalSeconds}s)");
         }
 
         private async Task RealtimeSyncLoopAsync(CancellationToken cancellationToken)
         {
+            try
+            {
+                await Task.Delay(InitialRealtimeSyncDelay, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+
             while (!cancellationToken.IsCancellationRequested)
             {
                 try

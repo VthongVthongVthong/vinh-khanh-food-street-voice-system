@@ -2,7 +2,7 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="VinhKhanhstreetfoods.Views.POIDetailPage"
-             Title="Chi Tiết Địa Điểm"
+             Title="POI"
              BackgroundColor="#F5F5F5"
              Shell.TabBarIsVisible="False"
              Shell.TitleColor="#1a1a1a"
@@ -10,25 +10,26 @@
 
     <Shell.BackButtonBehavior>
         <BackButtonBehavior
-            TextOverride="Quay lại ↺"
+            x:Name="BackBehavior"
+            TextOverride="Back"
             Command="{Binding GoBackCommand}" />
     </Shell.BackButtonBehavior>
 
     <ScrollView Padding="20">
         <StackLayout Spacing="20">
-            
+
             <!-- POI Header -->
             <Frame BackgroundColor="#283845"
                    CornerRadius="15"
                    Padding="20"
                    HasShadow="True">
                 <StackLayout Spacing="10">
-                    <Label Text="{Binding SelectedPOI.Name}" 
-                           FontSize="28" 
+                    <Label Text="{Binding SelectedPOI.Name}"
+                           FontSize="28"
                            FontAttributes="Bold"
                            TextColor="White"/>
-                    <Label Text="{Binding CurrentDescriptionText}" 
-                           FontSize="14" 
+                    <Label Text="{Binding CurrentDescriptionText}"
+                           FontSize="14"
                            TextColor="#E8E8E8"
                            LineBreakMode="WordWrap"/>
                 </StackLayout>
@@ -41,7 +42,8 @@
                    Padding="15"
                    HasShadow="True">
                 <StackLayout Spacing="10">
-                    <Label Text="📷 Hình Ảnh" 
+                    <Label x:Name="ImagesSectionLabel"
+                           Text="📷 Hình Ảnh" 
                            FontSize="16" 
                            FontAttributes="Bold"
                            TextColor="#283845"/>
@@ -64,16 +66,17 @@
                    Padding="15"
                    HasShadow="True">
                 <StackLayout Spacing="10">
-                    <Label Text="ℹ️ Thông Tin Chi Tiết" 
+                    <Label x:Name="DetailsSectionLabel"
+                           Text="ℹ️ Thông Tin Chi Tiết" 
                            FontSize="16" 
                            FontAttributes="Bold"
                            TextColor="#283845"/>
                     <StackLayout Padding="10" Spacing="8">
-                        <Label Text="{Binding SelectedPOI.Latitude, StringFormat='Vĩ độ: {0:F5}'}" 
+                        <Label Text="{Binding SelectedPOI.Latitude, StringFormat='Vĩ độ: {0:F5}'}"
                                FontSize="12"/>
-                        <Label Text="{Binding SelectedPOI.Longitude, StringFormat='Kinh độ: {0:F5}'}" 
+                        <Label Text="{Binding SelectedPOI.Longitude, StringFormat='Kinh độ: {0:F5}'}"
                                FontSize="12"/>
-                        <Label Text="{Binding SelectedPOI.TriggerRadius, StringFormat='Bán kính kích hoạt: {0}m'}" 
+                        <Label Text="{Binding SelectedPOI.TriggerRadius, StringFormat='Bán kính kích hoạt: {0}m'}"
                                FontSize="12"/>
                     </StackLayout>
                 </StackLayout>
@@ -86,33 +89,36 @@
                    Padding="15"
                    HasShadow="True">
                 <StackLayout Spacing="10">
-                    <Label Text="🎙️ Âm Thanh Hướng Dẫn" 
+                    <Label x:Name="AudioSectionLabel"
+                           Text="🎙️ Âm Thanh Hướng Dẫn" 
                            FontSize="16" 
                            FontAttributes="Bold"
                            TextColor="#283845"/>
 
-                    <Label Text="Ngôn ngữ thuyết minh"
+                    <Label x:Name="NarrationLanguageLabel"
+                           Text="Ngôn ngữ thuyết minh"
                            FontSize="12"
                            TextColor="#666666"/>
                     <Picker ItemsSource="{Binding LanguageOptions}"
                             SelectedItem="{Binding SelectedNarrationLanguage}"
                             ItemDisplayBinding="{Binding DisplayLabel}"
                             TextColor="#283845"
-                            Title="Chọn ngôn ngữ"/>
+                            x:Name="NarrationLanguagePicker"/>
 
                     <Label Text="{Binding CurrentTtsScriptText}"
                            FontSize="13"
                            TextColor="#374151"
                            LineBreakMode="WordWrap"/>
-                    <Label Text="{Binding StatusMessage}" 
-                           FontSize="12" 
+                    <Label Text="{Binding StatusMessage}"
+                           FontSize="12"
                            TextColor="#666666"/>
                 </StackLayout>
             </Frame>
 
             <!-- Action Buttons -->
             <StackLayout Spacing="10">
-                <Button Text="▶️ Phát Âm Thanh" 
+                <Button x:Name="PlayAudioButton"
+                        Text="▶️ Phát Âm Thanh" 
                         Command="{Binding PlayAudioCommand}"
                         IsEnabled="{Binding IsPlaying, Converter={StaticResource InvertedBoolConverter}}"
                         BackgroundColor="#283845"
@@ -121,7 +127,8 @@
                         FontAttributes="Bold"
                         CornerRadius="10"
                         Padding="15"/>
-                <Button Text="⏹️ Dừng Âm Thanh" 
+                <Button x:Name="StopAudioButton"
+                        Text="⏹️ Dừng Âm Thanh" 
                         Command="{Binding StopAudioCommand}"
                         IsEnabled="{Binding IsPlaying}"
                         BackgroundColor="#C9A36B"
@@ -130,7 +137,8 @@
                         FontAttributes="Bold"
                         CornerRadius="10"
                         Padding="15"/>
-                <Button Text="📍 Mở Bản Đồ" 
+                <Button x:Name="OpenMapButton"
+                        Text="📍 Mở Bản Đồ" 
                         Clicked="OnOpenMapPageClicked"
                         BackgroundColor="#666666"
                         TextColor="White"
@@ -138,7 +146,8 @@
                         FontAttributes="Bold"
                         CornerRadius="10"
                         Padding="15"/>
-                <Button Text="📤 Chia Sẻ" 
+                <Button x:Name="ShareButton"
+                        Text="📤 Chia Sẻ" 
                         Command="{Binding ShareCommand}"
                         BackgroundColor="#999999"
                         TextColor="White"

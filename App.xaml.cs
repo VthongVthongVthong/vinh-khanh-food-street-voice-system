@@ -17,7 +17,7 @@ public partial class App : Application
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"[App] ❌ FATAL error in constructor: {ex.Message}");
+            Debug.WriteLine($"[App] FATAL error in constructor: {ex.Message}");
             Debug.WriteLine($"[App] Stack trace: {ex.StackTrace}");
 
             if (ex.InnerException != null)
@@ -26,8 +26,44 @@ public partial class App : Application
                 Debug.WriteLine($"[App] Inner stack: {ex.InnerException.StackTrace}");
             }
 
-            // Re-throw to let system handle it
             throw;
         }
+    }
+
+    /// <summary>
+    /// ✅ ALL 3 STAGES on Background Thread (ANR-Safe!)
+    /// Called AFTER UI is shown
+    /// </summary>
+    protected override void OnStart()
+    {
+        base.OnStart();
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var locService = LocalizationService.Instance;
+                var resourceManager = LocalizationResourceManager.Instance;
+                var preferredLang = locService.CurrentLanguage;
+
+                // Ensure preferred language is active first
+                await resourceManager.PrefetchPreferredLanguageAsync(preferredLang);
+
+                // Force UI to redraw localized labels even if language value didn't change
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                {
+                    locService.NotifyLanguageRefreshed();
+                });
+
+                // Warm all others in cache without changing active language
+                await resourceManager.CacheAllLanguagesAsync();
+
+                Debug.WriteLine($"[App] Localization preload completed. Active={resourceManager.CurrentLanguage}, Cached={resourceManager.GetCachedLanguageCount()}");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[App] Localization preload error: {ex.Message}");
+            }
+        });
     }
 }

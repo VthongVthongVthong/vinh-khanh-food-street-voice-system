@@ -11,23 +11,26 @@
     NavBarHasShadow="True">
 
     <TabBar>
-     <ShellContent
-         Title="Trang chủ"
+        <ShellContent
+            x:Name="HomeTab"
+            Title="Home"
             Icon="home"
             ContentTemplate="{DataTemplate local:HomePage}"
-      Route="home" />
+            Route="home" />
 
         <ShellContent
-        Title="Bản đồ"
-        Icon="map"
-      ContentTemplate="{DataTemplate local:MapPage}"
+            x:Name="MapTab"
+            Title="Map"
+            Icon="map"
+            ContentTemplate="{DataTemplate local:MapPage}"
             Route="map" />
 
         <ShellContent
-            Title="Cài đặt"
-     Icon="settings"
-     ContentTemplate="{DataTemplate local:SettingsPage}"
-         Route="settings" />
+            x:Name="SettingsTab"
+            Title="Settings"
+            Icon="settings"
+            ContentTemplate="{DataTemplate local:SettingsPage}"
+            Route="settings" />
     </TabBar>
 
     <!-- Camera Page (Modal) -->

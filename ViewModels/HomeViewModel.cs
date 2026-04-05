@@ -41,13 +41,14 @@ namespace VinhKhanhstreetfoods.ViewModels
             _audioManager = audioManager ?? throw new ArgumentNullException(nameof(audioManager));
 
             NearbyPOIs = new ObservableCollection<POI>();
-            StatusMessage = "Ứng dụng sẵn sàng. Nhấn START để bắt đầu theo dõi vị trí.";
+            StatusMessage = LocalizationService.GetString("Home_Status_Ready") ?? "App ready. Press START to track location.";
             IsLoading = false;
 
             StartLocationServiceCommand = new Command(async () => await StartLocationService());
             StopLocationServiceCommand = new Command(async () => await StopLocationService());
             OpenDetailCommand = new Command<POI>(async poi => await OpenDetailAsync(poi));
             RefreshDataCommand = new Command(async () => await RefreshDataAsync(), () => !IsRefreshing);
+            RefreshAppCommand = new Command(async () => await RefreshAppAsync(), () => !IsRefreshing);
 
             _locationService.LocationUpdated += OnLocationUpdated;
             _geofenceEngine.POITriggered += OnPOITriggered;
@@ -138,6 +139,7 @@ namespace VinhKhanhstreetfoods.ViewModels
         public ICommand StopLocationServiceCommand { get; }
         public ICommand OpenDetailCommand { get; }
         public ICommand RefreshDataCommand { get; }
+        public ICommand RefreshAppCommand { get; }
 
         public async Task EnsureInitialDataLoadedAsync()
         {
@@ -152,21 +154,19 @@ namespace VinhKhanhstreetfoods.ViewModels
             try
             {
                 IsLoading = true;
-                StatusMessage = "Đang tải dữ liệu...";
+                StatusMessage = LocalizationService.GetString("Home_Status_Loading") ?? "Loading data...";
 
                 if (_poiRepository == null)
                 {
-                    StatusMessage = "Lỗi: Repository không được khởi tạo";
+                    StatusMessage = LocalizationService.GetString("Home_Status_Error_NoData") ?? "Error: Repository not initialized";
                     IsLoading = false;
                     return;
                 }
 
-                // ✅ CRITICAL FIX: Run DB query on background thread to prevent ANR
                 var allPOIs = await Task.Run(async () =>
                 {
                     if (_poiRepository is POIRepository poiRepo)
                     {
-                        // Don't wait for schema to finish - just initialize connection
                         await poiRepo.InitializeAsync();
                     }
                     return await _poiRepository.GetActivePOIsAsync();
@@ -176,22 +176,20 @@ namespace VinhKhanhstreetfoods.ViewModels
 
                 if (allPOIs == null || allPOIs.Count == 0)
                 {
-                    StatusMessage = "Không có điểm của lãi nào. Kiểm tra dữ liệu cơ sở dữ liệu.";
+                    StatusMessage = LocalizationService.GetString("Home_Status_Error_NoData") ?? "No restaurants. Check database data.";
                     IsLoading = false;
                     return;
                 }
 
-                // Switch back to main thread for UI updates
                 await MainThread.InvokeOnMainThreadAsync(() =>
                 {
                     _allPOIs.Clear();
                     _allPOIs.AddRange(allPOIs);
                     ApplyFilter();
-                    StatusMessage = $"Đã tải {allPOIs.Count} điểm của lãi. Nhấn START để bắt đầu.";
+                    StatusMessage = LocalizationService.GetString("Home_Status_Loaded")?.Replace("{0}", allPOIs.Count.ToString())
+                        ?? $"Loaded {allPOIs.Count} restaurants. Press START to begin.";
                 });
 
-                // ? Sync online in background (non-blocking) to keep offline-first UX
-                // Fire and forget
                 _ = TrySyncFromAdminInBackgroundAsync();
             }
             catch (Exception ex)
@@ -199,7 +197,7 @@ namespace VinhKhanhstreetfoods.ViewModels
                 System.Diagnostics.Debug.WriteLine($"[HomeViewModel] Error loading initial data: {ex.Message}\n{ex.StackTrace}");
                 await MainThread.InvokeOnMainThreadAsync(() =>
                 {
-                    StatusMessage = $"Lỗi tải dữ liệu: {ex.Message}";
+                    StatusMessage = $"Error loading data: {ex.Message}";
                 });
             }
             finally
@@ -225,7 +223,8 @@ namespace VinhKhanhstreetfoods.ViewModels
                     _allPOIs.Clear();
                     _allPOIs.AddRange(refreshed);
                     ApplyFilter();
-                    StatusMessage = $"Đã đồng bộ {updatedCount} địa điểm mới từ máy chủ.";
+                    StatusMessage = LocalizationService.GetString("Home_Status_Synced")?.Replace("{0}", updatedCount.ToString())
+                        ?? $"Synced {updatedCount} new locations from server.";
                 });
             }
             catch (Exception ex)
@@ -246,7 +245,7 @@ namespace VinhKhanhstreetfoods.ViewModels
             try
             {
                 IsRefreshing = true;
-                StatusMessage = "Đang làm mới dữ liệu từ máy chủ...";
+                StatusMessage = LocalizationService.GetString("Home_Status_Loading") ?? "Refreshing...";
 
                 var updatedCount = await _poiRepository.SyncPOIsFromAdminAsync(force: true);
                 var refreshed = await _poiRepository.GetActivePOIsAsync();
@@ -258,20 +257,67 @@ namespace VinhKhanhstreetfoods.ViewModels
                     ApplyFilter();
 
                     StatusMessage = updatedCount > 0
-                        ? $"Đã cập nhật {updatedCount} địa điểm từ server."
-                        : "Không có dữ liệu mới hoặc server chưa trả JSON.";
+                        ? LocalizationService.GetString("Home_Status_Synced")?.Replace("{0}", updatedCount.ToString())
+                        ?? $"Updated {updatedCount} locations."
+                        : LocalizationService.GetString("Home_Status_NoNew") ?? "No new data.";
                 });
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[HomeViewModel] Manual refresh error: {ex.Message}");
-                StatusMessage = "Làm mới thất bại. Kiểm tra mạng/API.";
+                StatusMessage = LocalizationService.GetString("Home_Status_RefreshFailed") ?? "Refresh failed. Check network.";
             }
             finally
             {
-                // ? FIX: Set IsRefreshing to false synchronously to avoid blocking
                 IsRefreshing = false;
             }
+        }
+
+        private async Task RefreshAppAsync()
+        {
+            if (IsRefreshing)
+                return;
+
+            try
+            {
+                IsRefreshing = true;
+                StatusMessage = LocalizationService.GetString("Home_Status_Loading") ?? "Refreshing app data...";
+
+                // Force data sync
+                var updatedCount = await _poiRepository.SyncPOIsFromAdminAsync(force: true);
+                var refreshed = await _poiRepository.GetActivePOIsAsync();
+
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                {
+                    _allPOIs.Clear();
+                    _allPOIs.AddRange(refreshed);
+                    ApplyFilter();
+
+                    StatusMessage = updatedCount > 0
+                        ? LocalizationService.GetString("Home_Status_Synced")?.Replace("{0}", updatedCount.ToString())
+                        ?? $"Updated {updatedCount} locations."
+                        : LocalizationService.GetString("Home_Status_NoNew") ?? "No new data.";
+                });
+
+                // Refresh UI components if needed
+                await RefreshUIComponentsAsync();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[HomeViewModel] App refresh error: {ex.Message}");
+                StatusMessage = LocalizationService.GetString("Home_Status_RefreshFailed") ?? "Refresh failed. Check network.";
+            }
+            finally
+            {
+                IsRefreshing = false;
+            }
+        }
+
+        private async Task RefreshUIComponentsAsync()
+        {
+            // Implement any additional UI component refresh logic here
+            // For now, we will just simulate a delay
+            await Task.Delay(500);
         }
 
         private void ApplyFilter()
@@ -322,27 +368,28 @@ namespace VinhKhanhstreetfoods.ViewModels
             var permission = await _locationService.CheckAndRequestLocationPermission();
             if (permission != PermissionStatus.Granted)
             {
-                StatusMessage = "Quyền truy cập vị trí bị từ chối";
+                StatusMessage = LocalizationService.GetString("Home_Status_Permission_Denied") ?? "Location permission denied";
                 return;
             }
 
             await _locationService.StartListening();
             IsLocationServiceRunning = true;
-            StatusMessage = "Đang theo dõi vị trí...";
+            StatusMessage = LocalizationService.GetString("Home_Status_LocationLoading") ?? "Tracking location...";
         }
 
         private async Task StopLocationService()
         {
             await _locationService.StopListening();
             IsLocationServiceRunning = false;
-            StatusMessage = "Dừng theo dõi vị trí";
+            StatusMessage = LocalizationService.GetString("Home_Status_LocationStopped") ?? "Location tracking stopped";
         }
 
         private void OnLocationUpdated(object sender, Location location)
         {
             UserLatitude = location.Latitude;
             UserLongitude = location.Longitude;
-            StatusMessage = $"Vị trí: {location.Latitude:F5}, {location.Longitude:F5}";
+            var msgFormat = LocalizationService.GetString("Home_Status_LocationUpdated") ?? "Location: {0:F5}, {1:F5}";
+            StatusMessage = string.Format(msgFormat, location.Latitude, location.Longitude);
 
             _ = _geofenceEngine.CheckPOIs(location);
         }
@@ -351,7 +398,8 @@ namespace VinhKhanhstreetfoods.ViewModels
         {
             MainThread.BeginInvokeOnMainThread(() =>
             {
-                StatusMessage = $"Phát hành: {poi.Name}";
+                var msgFormat = LocalizationService.GetString("Home_Status_POITriggered") ?? "Triggered: {0}";
+                StatusMessage = string.Format(msgFormat, poi.Name);
 
                 if (!NearbyPOIs.Contains(poi))
                     NearbyPOIs.Add(poi);
@@ -362,12 +410,19 @@ namespace VinhKhanhstreetfoods.ViewModels
 
         private void OnAudioStarted(object sender, POI poi)
         {
-            MainThread.BeginInvokeOnMainThread(() => { StatusMessage = $"Đang phát: {poi.Name}"; });
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                var msgFormat = LocalizationService.GetString("Home_Status_AudioStarted") ?? "Playing: {0}";
+                StatusMessage = string.Format(msgFormat, poi.Name);
+            });
         }
 
         private void OnAudioCompleted(object sender, POI poi)
         {
-            MainThread.BeginInvokeOnMainThread(() => { StatusMessage = "Hoàn tất phát âm thanh"; });
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                StatusMessage = LocalizationService.GetString("Home_Status_AudioCompleted") ?? "Audio playback completed";
+            });
         }
 
         private async void OnRepositoryPoisSynced(object? sender, int syncedCount)
@@ -380,7 +435,8 @@ namespace VinhKhanhstreetfoods.ViewModels
                     _allPOIs.Clear();
                     _allPOIs.AddRange(refreshed);
                     ApplyFilter();
-                    StatusMessage = $"Dữ liệu đã tự động cập nhật ({syncedCount} POI).";
+                    var msgFormat = LocalizationService.GetString("Home_Status_AutoUpdated") ?? "Data auto-updated ({0} POI).";
+                    StatusMessage = string.Format(msgFormat, syncedCount);
                 });
             }
             catch (Exception ex)

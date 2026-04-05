@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Text.Json;
 using VinhKhanhstreetfoods.Models;
+using VinhKhanhstreetfoods.Services;
 using VinhKhanhstreetfoods.ViewModels;
 
 namespace VinhKhanhstreetfoods.Views;
@@ -10,11 +11,19 @@ public partial class MapPage : ContentPage
 {
     private ObservableCollection<POI>? _currentPoiCollection;
     private int? _pendingPoiId;
+    private readonly LocalizationService _localizationService;
+    private readonly LocalizationResourceManager _resourceManager;
 
     public MapPage(MapViewModel viewModel)
     {
         InitializeComponent();
         BindingContext = viewModel;
+
+        _localizationService = LocalizationService.Instance;
+        _resourceManager = LocalizationResourceManager.Instance;
+        _localizationService.PropertyChanged += OnLanguageChanged;
+
+        ApplyLocalizedText();
     }
 
     public int PoiId
@@ -29,6 +38,13 @@ public partial class MapPage : ContentPage
     protected override void OnNavigatedTo(NavigatedToEventArgs args)
     {
         base.OnNavigatedTo(args);
+
+        _localizationService.PropertyChanged -= OnLanguageChanged;
+        _localizationService.PropertyChanged += OnLanguageChanged;
+
+        ApplyLocalizedText();
+        _ = ApplyMapLocalizedJsAsync();
+
         if (BindingContext is MapViewModel vm)
         {
             _ = vm.EnsurePOIsLoadedAsync();
@@ -83,6 +99,56 @@ public partial class MapPage : ContentPage
         UnsubscribePoiCollection();
         MapWebView.Navigating -= MapWebView_Navigating;
     }
+
+    protected override void OnDisappearing()
+    {
+        base.OnDisappearing();
+        _localizationService.PropertyChanged -= OnLanguageChanged;
+    }
+
+    private void OnLanguageChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(LocalizationService.CurrentLanguage))
+        {
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                ApplyLocalizedText();
+                _ = ApplyMapLocalizedJsAsync();
+            });
+        }
+    }
+
+    private void ApplyLocalizedText()
+    {
+        Title = _resourceManager.GetString("Map_Title");
+        HeaderTitleLabel.Text = $"🗺 {_resourceManager.GetString("Map_Title")}";
+        HeaderSubtitleLabel.Text = _resourceManager.GetString("Home_Featured_Desc");
+
+        CurrentLocationTitleLabel.Text = _resourceManager.GetString("Map_CurrentLocation");
+        CurrentLocationSubtitleLabel.Text = _resourceManager.GetString("Home_Location");
+
+        NearbyHeaderTitleLabel.Text = $"🏪 {_resourceManager.GetString("Map_Restaurants")}";
+        StatsHeaderLabel.Text = _resourceManager.GetString("Map_Restaurants");
+        StatsExploredLabel.Text = _resourceManager.GetString("POI_ViewOnMap");
+        StatsListenedLabel.Text = _resourceManager.GetString("Home_AudioBadge");
+    }
+
+    private async Task ApplyMapLocalizedJsAsync()
+    {
+        try
+        {
+            var detailText = EscapeJs(_resourceManager.GetString("POI_ViewOnMap"));
+            var js = $"setDetailButtonText('{detailText}');";
+            await MainThread.InvokeOnMainThreadAsync(() => MapWebView.EvaluateJavaScriptAsync(js));
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error applying map locale JS: {ex.Message}");
+        }
+    }
+
+    private static string EscapeJs(string value)
+        => (value ?? string.Empty).Replace("\\", "\\\\").Replace("'", "\\'").Replace("\n", " ").Replace("\r", " ");
 
     private void ViewModel_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
     {

@@ -2,23 +2,22 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="VinhKhanhstreetfoods.Views.MapPage"
-             Title="Bản Đồ"
+             Title="Map"
              BackgroundColor="#F5F6F8"
              NavigationPage.HasNavigationBar="False">
 
     <ScrollView x:Name="MainScrollView">
         <StackLayout x:Name="MainStackLayout" Spacing="15" Padding="15">
-            
+
             <!-- Header -->
             <Frame x:Name="HeaderFrame" BackgroundColor="White" CornerRadius="12" Padding="15" HasShadow="False">
                 <Grid ColumnDefinitions="Auto, *, Auto" VerticalOptions="Center">
                     <Image Source="map_icon.png" WidthRequest="30" HeightRequest="30" VerticalOptions="Center" Grid.Column="0" Margin="0,0,10,0" />
-                    <!-- Using text symbols if images don't exist -->
                     <Label Text="🗺" FontSize="30" VerticalOptions="Center" Grid.Column="0" Margin="0,0,10,0"/>
 
                     <StackLayout Grid.Column="1" VerticalOptions="Center">
-                        <Label Text="Bản Đồ Ẩm Thực" FontSize="20" FontAttributes="Bold" TextColor="#1F2937" />
-                        <Label Text="Khám phá nhà hàng trên phố Vĩnh Khánh" FontSize="12" TextColor="#6B7280" />
+                        <Label x:Name="HeaderTitleLabel" FontSize="20" FontAttributes="Bold" TextColor="#1F2937" />
+                        <Label x:Name="HeaderSubtitleLabel" FontSize="12" TextColor="#6B7280" />
                     </StackLayout>
 
                     <Frame Grid.Column="2" BackgroundColor="#0079D3" CornerRadius="20" Padding="10" HasShadow="False" WidthRequest="40" HeightRequest="40" VerticalOptions="Center" HorizontalOptions="Center">
@@ -35,8 +34,8 @@
                             <Label Text="📍" TextColor="White" FontSize="16" HorizontalOptions="Center" VerticalOptions="Center" />
                         </Frame>
                         <StackLayout Grid.Column="1" VerticalOptions="Center">
-                            <Label Text="Vị trí của bạn" FontSize="16" FontAttributes="Bold" TextColor="#1F2937" />
-                            <Label Text="Phố Vĩnh Khánh, Quận 4, TP.HCM" FontSize="12" TextColor="#6B7280" />
+                            <Label x:Name="CurrentLocationTitleLabel" FontSize="16" FontAttributes="Bold" TextColor="#1F2937" />
+                            <Label x:Name="CurrentLocationSubtitleLabel" FontSize="12" TextColor="#6B7280" />
                         </StackLayout>
                         <Frame Grid.Column="2" BackgroundColor="#F3F4F6" CornerRadius="15" Padding="5" HasShadow="False" WidthRequest="30" HeightRequest="30" VerticalOptions="Center" HorizontalOptions="Center">
                             <Label Text="🔄" TextColor="#0079D3" FontSize="14" HorizontalOptions="Center" VerticalOptions="Center">
@@ -58,9 +57,9 @@
                        HasShadow="False">
                     <WebView x:Name="MapWebView" HeightRequest="350">
                         <WebView.Source>
-                        <HtmlWebViewSource>
-                            <HtmlWebViewSource.Html>
-                                <![CDATA[
+                            <HtmlWebViewSource>
+                                <HtmlWebViewSource.Html>
+                                    <![CDATA[
                                 <!DOCTYPE html>
                                 <html>
                                 <head>
@@ -123,11 +122,16 @@
                                     center: [106.700981,10.776530],
                                     zoom: 15
                                 });
-                                
+
                                 let userMarker = null;
                                 let isLocationEnabled = false;
                                 const poiMarkers = new Map();
                                 let hasFirstFix = false;
+                                let detailButtonText = 'View details';
+
+                                function setDetailButtonText(text) {
+                                    detailButtonText = text || 'View details';
+                                }
 
                                 function focusPOI(id) {
                                     const marker = poiMarkers.get(id);
@@ -193,7 +197,7 @@
   <div class="poi-title">${p.name ?? ''}</div>
   <div class="poi-sub">${p.address ?? ''}</div>
   <div class="poi-desc">${(p.desc ?? '').slice(0, 90)}${(p.desc && p.desc.length > 90) ? '...' : ''}</div>
-  <button onclick="openPoiDetail(${p.id})">Xem chi tiết</button>
+  <button onclick="openPoiDetail(${p.id})">${detailButtonText}</button>
 </div>`;
 
                                         const marker = new mapboxgl.Marker({ element: el })
@@ -209,20 +213,20 @@
                                         map.fitBounds(bounds, { padding: 40, maxZoom: 17 });
                                     }
                                 }
-                                
+
                                 class CustomGeolocateControl {
                                     onAdd(map) {
                                         this.map = map;
                                         this.container = document.createElement('div');
                                         this.container.className = 'mapboxgl-ctrl mapboxgl-ctrl-group';
-                                        
+
                                         const btn = document.createElement('button');
                                         btn.className = 'mapboxgl-ctrl-icon mapboxgl-ctrl-geolocate';
                                         btn.id = 'auto-geolocate-btn';
                                         btn.type = 'button';
-                                        btn.title = 'Vị trí của tôi';
+                                        btn.title = 'My location';
                                         btn.onclick = () => recenterMap();
-                                        
+
                                         this.container.appendChild(btn);
                                         return this.container;
                                     }
@@ -231,21 +235,19 @@
                                         this.map = undefined;
                                     }
                                 }
-                                
-                                // Control
+
                                 map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
                                 map.addControl(new CustomGeolocateControl(), 'bottom-right');
-                                // removed auto recentre interval
                                 </script>
                                 </body>
                                 </html>
                                 ]]>
-                            </HtmlWebViewSource.Html>
-                        </HtmlWebViewSource>
-                    </WebView.Source>
-                </WebView>
+                                </HtmlWebViewSource.Html>
+                            </HtmlWebViewSource>
+                        </WebView.Source>
+                    </WebView>
                 </Frame>
-                
+
                 <Button x:Name="ToggleFullScreenBtn"
                         Text="⛶"
                         FontSize="20"
@@ -263,7 +265,7 @@
 
             <!-- Nearby Restaurants Header -->
             <Grid x:Name="NearbyHeaderGrid" ColumnDefinitions="Auto, *, Auto" VerticalOptions="Center" Margin="0,10,0,0">
-                <Label Text="🏪 Nhà hàng gần bạn" FontSize="18" FontAttributes="Bold" TextColor="#1F2937" Grid.Column="0" />
+                <Label x:Name="NearbyHeaderTitleLabel" FontSize="18" FontAttributes="Bold" TextColor="#1F2937" Grid.Column="0" />
                 <Label Text="{Binding AllPOIs.Count, StringFormat='{0} địa điểm'}" FontSize="12" TextColor="#0079D3" Grid.Column="2" VerticalOptions="Center" />
             </Grid>
 
@@ -273,29 +275,26 @@
                     <DataTemplate>
                         <Frame BackgroundColor="White" CornerRadius="15" Padding="0" HasShadow="True" Margin="0,0,15,5" WidthRequest="220">
                             <StackLayout>
-                                <!-- Map/Image placeholder -> We will just use a black box for now per reference design -->
                                 <Grid HeightRequest="120">
                                     <BoxView BackgroundColor="#111827" CornerRadius="15,15,0,0" />
-                                    <!-- Distance Badge -->
                                     <Frame BackgroundColor="#10B981" CornerRadius="10" Padding="8,4" HorizontalOptions="End" VerticalOptions="Start" Margin="10" HasShadow="False">
                                         <Label Text="1.2 km" TextColor="White" FontSize="10" FontAttributes="Bold" />
                                     </Frame>
                                 </Grid>
-                                
+
                                 <StackLayout Padding="12" Spacing="8">
                                     <Label Text="{Binding Name}" FontSize="14" FontAttributes="Bold" TextColor="#1F2937" LineBreakMode="TailTruncation" />
-                                    
+
                                     <StackLayout Orientation="Horizontal" Spacing="5">
                                         <Label Text="📍" FontSize="12" TextColor="#6B7280" />
                                         <Label Text="Phố Vĩnh Khánh, Quận 4, TP.HCM" FontSize="10" TextColor="#6B7280" LineBreakMode="TailTruncation" />
                                     </StackLayout>
-                                    
+
                                     <StackLayout Orientation="Horizontal" Spacing="5">
                                         <Label Text="💬" FontSize="12" TextColor="#0079D3" />
                                         <Label Text="Tiếng Việt" FontSize="10" TextColor="#0079D3" />
                                     </StackLayout>
-                                    
-                                    <!-- Buttons -->
+
                                     <Grid ColumnDefinitions="*, *" ColumnSpacing="10" Margin="0,5,0,0">
                                         <Frame Grid.Column="0" BackgroundColor="#AF45DB" CornerRadius="20" Padding="0" HasShadow="False" HeightRequest="30">
                                             <Label Text="🔊 Nghe hướng dẫn" TextColor="White" FontSize="10" HorizontalOptions="Center" VerticalOptions="Center" FontAttributes="Bold" />
@@ -312,26 +311,24 @@
             </CollectionView>
 
             <!-- Stats -->
-            <Label x:Name="StatsHeaderLabel" Text="Thống kê khám phá" FontSize="18" FontAttributes="Bold" TextColor="#1F2937" Margin="0,10,0,0" />
-            
+            <Label x:Name="StatsHeaderLabel" FontSize="18" FontAttributes="Bold" TextColor="#1F2937" Margin="0,10,0,0" />
+
             <Grid x:Name="StatsGrid" ColumnDefinitions="*, *" ColumnSpacing="15" Margin="0,0,0,20">
-                <!-- Explored Card -->
                 <Frame Grid.Column="0" BackgroundColor="#E6F4FC" CornerRadius="12" Padding="15" HasShadow="False">
                     <StackLayout Spacing="10">
                         <StackLayout Orientation="Horizontal" Spacing="5">
                             <Label Text="🪪" FontSize="14" TextColor="#0079D3" />
-                            <Label Text="Đã khám phá" FontSize="12" TextColor="#4B5563" />
+                            <Label x:Name="StatsExploredLabel" FontSize="12" TextColor="#4B5563" />
                         </StackLayout>
                         <Label Text="1" FontSize="32" FontAttributes="Bold" TextColor="#0079D3" />
                     </StackLayout>
                 </Frame>
-                
-                <!-- Guides Listened Card -->
+
                 <Frame Grid.Column="1" BackgroundColor="#FDF2F8" CornerRadius="12" Padding="15" HasShadow="False">
                     <StackLayout Spacing="10">
                         <StackLayout Orientation="Horizontal" Spacing="5">
                             <Label Text="🔊" FontSize="14" TextColor="#AF45DB" />
-                            <Label Text="Hướng dẫn đã nghe" FontSize="12" TextColor="#4B5563" />
+                            <Label x:Name="StatsListenedLabel" FontSize="12" TextColor="#4B5563" />
                         </StackLayout>
                         <Label Text="1" FontSize="32" FontAttributes="Bold" TextColor="#AF45DB" />
                     </StackLayout>

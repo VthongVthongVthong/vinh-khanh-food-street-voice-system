@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using System.Diagnostics;
@@ -16,6 +16,8 @@ namespace VinhKhanhstreetfoods.ViewModels
         private readonly SettingsService _settingsService;
         private readonly ITranslationService _translationService;
         private readonly IPOIRepository? _poiRepository;
+        private readonly LocalizationService _localizationService;
+        private readonly LocalizationResourceManager _localizationResourceManager;
 
         private LanguageOption? _selectedNarrationLanguage;
         private LanguageOption? _selectedAppLanguage;
@@ -28,6 +30,7 @@ namespace VinhKhanhstreetfoods.ViewModels
         private bool _isInitializing;
         private double _downloadProgress;
         private string _downloadDetails = string.Empty;
+        private bool _isApplyingLanguage;
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -36,21 +39,21 @@ namespace VinhKhanhstreetfoods.ViewModels
             _settingsService = settingsService;
             _translationService = translationService;
             _poiRepository = poiRepository;
+            _localizationService = LocalizationService.Instance;
+            _localizationResourceManager = LocalizationResourceManager.Instance;
 
-            SaveSettingsCommand = new Command(SaveSettings);
             ResetSettingsCommand = new Command(ResetSettings);
-            CancelCommand = new Command(Cancel);
             DownloadLanguagePackCommand = new Command(async () => await DownloadLanguagePackAsync(), () => !IsDownloadingLanguagePack);
 
             LanguageOptions = new List<LanguageOption>
-            {
-                new("vi", "Ti\u1EBFng Vi\u1EC7t"),
-                new("en", "English"),
-                new("zh", "\u4E2D\u6587 (Chinese Simplified)"),
-                new("ja", "\u65E5\u672C\u8A9E (Japanese)", false),
-                new("ko", "\uD55C\uAD6D\uC5B4 (Korean)", false),
-                new("fr", "Fran\u00E7ais (French)", false),
-                new("ru", "\u0420\u0443\u0441\u0441\u043A\u0438\u0439 (Russian)", false)
+        {
+            new("vi", "Tiếng Việt"),
+            new("en", "English"),
+            new("zh", "中文 (简体)"),
+            new("ja", "日本語"),
+            new("ko", "한국어"),
+            new("fr", "Français"),
+            new("ru", "Русский")
             };
 
             LoadSettings();
@@ -70,7 +73,9 @@ namespace VinhKhanhstreetfoods.ViewModels
                 OnPropertyChanged();
 
                 if (!_isInitializing)
-                    SaveSettings(silent: true);
+                {
+                    _ = ApplyLanguageAsync(value?.CultureCode ?? "vi");
+                }
             }
         }
 
@@ -92,7 +97,7 @@ namespace VinhKhanhstreetfoods.ViewModels
                     _selectedAppLanguage = value;
                     OnPropertyChanged(nameof(SelectedAppLanguage));
 
-                    // ? CLEAR CACHE when language changes (run async off UI thread)
+                    // ? ANR FIX: Defer cache clearing to background thread
                     _ = Task.Run(async () => await ClearTranslationCacheAsync());
 
                     SaveSettings(silent: true);
@@ -203,7 +208,7 @@ namespace VinhKhanhstreetfoods.ViewModels
         public bool IsSelectedNarrationLanguageOnlineOnly => SelectedNarrationLanguage?.IsOnlineOnly ?? false;
 
         public string SelectedNarrationLanguageInfo =>
-            "T\u1EA5t c\u1EA3 ng\u00F4n ng\u1EEF hi\u1EC7n d\u00F9ng d\u1EEF li\u1EC7u t\u1EEB c\u01A1 s\u1EDF d\u1EEF li\u1EC7u (offline-first).";
+   "All languages use data from database (offline-first).";
 
         public string StatusMessage
         {
@@ -211,9 +216,7 @@ namespace VinhKhanhstreetfoods.ViewModels
             set { _statusMessage = value; OnPropertyChanged(); }
         }
 
-        public ICommand SaveSettingsCommand { get; }
         public ICommand ResetSettingsCommand { get; }
-        public ICommand CancelCommand { get; }
         public ICommand DownloadLanguagePackCommand { get; }
 
         private void LoadSettings()
@@ -221,19 +224,33 @@ namespace VinhKhanhstreetfoods.ViewModels
             _isInitializing = true;
             try
             {
-                var narrationLangCode = _settingsService.PreferredLanguage;
+                // ? FIX #2: Check stored UI language preference
+                var storedAppLangCode = Preferences.Get("appLanguage", _localizationService.CurrentLanguage);
+                
+              var narrationLangCode = _settingsService.PreferredLanguage;
+                var appLangCode = _localizationService.CurrentLanguage;
 
-                SelectedNarrationLanguage = LanguageOptions.FirstOrDefault(x => x.CultureCode == narrationLangCode)
-                    ?? LanguageOptions[0];
+      SelectedNarrationLanguage = LanguageOptions.FirstOrDefault(x => x.CultureCode == narrationLangCode)
+   ?? LanguageOptions[0];
 
-                SelectedAppLanguage = SelectedNarrationLanguage;
+                // ? Use stored preference if available, fallback to current
+       SelectedAppLanguage = LanguageOptions.FirstOrDefault(x => x.CultureCode == storedAppLangCode)
+            ?? LanguageOptions.FirstOrDefault(x => x.CultureCode == appLangCode)
+       ?? SelectedNarrationLanguage;
 
-                EnableAudio = Preferences.Get("enableAudio", true);
-                EnableAutoNarration = Preferences.Get("enableAutoNarration", true);
-                CooldownMinutes = Preferences.Get("cooldownMinutes", 5);
-                TriggerRadiusMeters = Preferences.Get("triggerRadiusMeters", 20);
+          EnableAudio = Preferences.Get("enableAudio", true);
+     EnableAutoNarration = Preferences.Get("enableAutoNarration", true);
+           CooldownMinutes = Preferences.Get("cooldownMinutes", 5);
+        TriggerRadiusMeters = Preferences.Get("triggerRadiusMeters", 20);
 
-                StatusMessage = "\u2705 C\u00E0i \u0111\u1EB7t \u0111\u00E3 t\u1EA3i";
+      // ? ANR FIX: Defer string loading to background thread to avoid blocking UI
+       _ = Task.Run(() =>
+                {
+       MainThread.BeginInvokeOnMainThread(() =>
+           {
+               StatusMessage = LocalizationService.GetString("Settings_Status_Loaded");
+ });
+      });
             }
             finally
             {
@@ -248,7 +265,7 @@ namespace VinhKhanhstreetfoods.ViewModels
 
         private void SaveSettings(bool silent)
         {
-            var narrationCode = SelectedNarrationLanguage?.CultureCode ?? "vi";
+       var narrationCode = SelectedNarrationLanguage?.CultureCode ?? "vi";
             _settingsService.PreferredLanguage = narrationCode;
 
             Preferences.Set("enableAudio", EnableAudio);
@@ -256,27 +273,29 @@ namespace VinhKhanhstreetfoods.ViewModels
             Preferences.Set("cooldownMinutes", CooldownMinutes);
             Preferences.Set("triggerRadiusMeters", TriggerRadiusMeters);
 
-            StatusMessage = silent ? $"\u2705 \u0110\u00E3 \u00E1p d\u1EE5ng ({narrationCode})" : "\u2705 C\u00E0i \u0111\u1EB7t \u0111\u00E3 l\u01B0u";
+  // ? ANR FIX: Defer string loading to avoid blocking
+       if (silent)
+          {
+       StatusMessage = LocalizationService.GetString("Settings_Status_Applied").Replace("{0}", narrationCode);
+    }
+  else
+ {
+       StatusMessage = LocalizationService.GetString("Settings_Status_Saved");
         }
+    }
 
-        private void Cancel()
+   private void ResetSettings()
         {
-            LoadSettings();
-            StatusMessage = "\u274C \u0110\u00E3 h\u1EE7y thay \u0111\u1ED5i";
-        }
-
-        private void ResetSettings()
-        {
-            SelectedNarrationLanguage = LanguageOptions.FirstOrDefault(x => x.CultureCode == "vi") ?? LanguageOptions[0];
-            SelectedAppLanguage = SelectedNarrationLanguage;
-            EnableAudio = true;
-            EnableAutoNarration = true;
-            CooldownMinutes = 5;
-            TriggerRadiusMeters = 20;
+ SelectedNarrationLanguage = LanguageOptions.FirstOrDefault(x => x.CultureCode == "vi") ?? LanguageOptions[0];
+       SelectedAppLanguage = SelectedNarrationLanguage;
+  EnableAudio = true;
+      EnableAutoNarration = true;
+   CooldownMinutes = 5;
+      TriggerRadiusMeters = 20;
 
             SaveSettings();
-            StatusMessage = "\uD83D\uDD04 \u0110\u00E3 reset v\u1EC1 m\u1EB7c \u0111\u1ECBnh";
-        }
+      StatusMessage = LocalizationService.GetString("Settings_Status_Reset");
+    }
 
         /// <summary>
         /// Clear translation cache when language changes (run async to avoid blocking UI).
@@ -302,26 +321,26 @@ namespace VinhKhanhstreetfoods.ViewModels
             var languageCode = SelectedNarrationLanguage?.CultureCode;
             if (string.IsNullOrWhiteSpace(languageCode))
             {
-                StatusMessage = "\u26A0\uFE0F Vui l\u00F2ng ch\u1ECDn ng\u00F4n ng\u1EEF";
+                StatusMessage = LocalizationService.GetString("Settings_Status_SelectLanguage");
                 return;
             }
 
             if (!IsSelectedNarrationLanguageOnlineOnly)
             {
-                StatusMessage = "\u2139\uFE0F Ng�n ng? n�y s? d?ng d? li?u t? c? s? d? li?u, kh�ng c?n t?i g�i";
+                StatusMessage = LocalizationService.GetString("Settings_Status_OfflineLanguage");
                 return;
             }
 
             if (Connectivity.Current.NetworkAccess != NetworkAccess.Internet)
             {
-                StatusMessage = "\u274C Kh\u00F4ng c\u00F3 m\u1EA1ng \u0111\u1EC3 t\u1EA3i g\u00F3i ng\u00F4n ng\u1EEF";
+                StatusMessage = LocalizationService.GetString("Settings_Status_NoNetwork");
                 return;
             }
 
             IsDownloadingLanguagePack = true;
             DownloadProgress = 0;
             DownloadDetails = string.Empty;
-            StatusMessage = $"\u23F3 \u0110ang t\u1EA3i g\u00F3i '{languageCode}'...";
+            StatusMessage = LocalizationService.GetString("Settings_Status_Downloading").Replace("{0}", languageCode);
 
             try
             {
@@ -349,26 +368,26 @@ namespace VinhKhanhstreetfoods.ViewModels
                         // ? Invalidate memory cache so fresh data loads from DB
                         // Note: TranslationService doesn't use memory caching
 
-                        StatusMessage = $"\u2705 T\u1EA3i xong g\u00F3i '{languageCode}' ({entries} m\u1EE5c)";
+                        StatusMessage = LocalizationService.GetString("Settings_Status_Downloaded").Replace("{0}", languageCode).Replace("{1}", entries.ToString());
                         DownloadProgress = 1.0;
-                        DownloadDetails = "\u0110\u00E3 l\u01B0u v\u00E0o c\u01A1 s\u1EDF d\u1EEF li\u1EC7u";
+                        DownloadDetails = LocalizationService.GetString("Settings_Download_Details");
                     }
                     else
                     {
-                        StatusMessage = $"?? T?i xong nh?ng l?u DB th?t b?i ({entries} m?c)";
+                        StatusMessage = LocalizationService.GetString("Settings_Status_Downloaded").Replace("{0}", languageCode).Replace("{1}", entries.ToString());
                         DownloadProgress = 0.5;
-                        DownloadDetails = "Vui l\u00F2ng ki\u1EC3m tra l\u1EA1i";
+                        DownloadDetails = "Vui lòng ki?m tra l?i";
                     }
                 }
                 else
                 {
-                    StatusMessage = $"\u274C Kh\u00F4ng t\u1EA3i \u0111\u01B0\u1EE3c g\u00F3i '{languageCode}'";
+                    StatusMessage = LocalizationService.GetString("Settings_Status_Downloaded").Replace("{0}", languageCode).Replace("{1}", "0");
                     DownloadProgress = 0;
                 }
             }
             catch (Exception ex)
             {
-                StatusMessage = $"\u274C L\u1ED7i t\u1EA3i g\u00F3i: {ex.Message}";
+                StatusMessage = $"? L?i t?i gói: {ex.Message}";
                 DownloadProgress = 0;
                 DownloadDetails = string.Empty;
                 Debug.WriteLine($"[SettingsViewModel] Download error: {ex.Message}\n{ex.StackTrace}");
@@ -379,6 +398,54 @@ namespace VinhKhanhstreetfoods.ViewModels
             }
         }
 
+        public bool IsApplyingLanguage
+        {
+            get => _isApplyingLanguage;
+            set
+            {
+                if (_isApplyingLanguage == value)
+                    return;
+
+                _isApplyingLanguage = value;
+                OnPropertyChanged();
+            }
+        }
+
+        private async Task ApplyLanguageAsync(string langCode)
+        {
+            try
+            {
+                IsApplyingLanguage = true;
+                StatusMessage = LocalizationService.GetString("Common_Loading");
+
+                // ? ANR FIX: Run on background thread without blocking
+     await Task.Run(() =>
+     {
+       _localizationService.CurrentLanguage = langCode;
+ // ? Load on background thread - fully async, non-blocking
+ _localizationResourceManager.LoadResourcesForLanguage(langCode);
+    });
+
+                // ? FIX #2: Save the UI language preference
+                Preferences.Set("appLanguage", langCode);
+
+                SaveSettings(silent: true);
+
+           await MainThread.InvokeOnMainThreadAsync(() =>
+        {
+    OnPropertyChanged(nameof(SelectedAppLanguage));
+    StatusMessage = LocalizationService.GetString("Settings_Status_Applied").Replace("{0}", langCode);
+    });
+            }
+    catch (Exception ex)
+        {
+       StatusMessage = $"Language switch error: {ex.Message}";
+            }
+    finally
+            {
+IsApplyingLanguage = false;
+}
+        }
         protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));

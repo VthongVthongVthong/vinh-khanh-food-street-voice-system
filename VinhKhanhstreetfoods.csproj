@@ -33,6 +33,11 @@
         <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'tizen'">6.5</SupportedOSPlatformVersion>
     </PropertyGroup>
 
+    <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)'=='Debug|net9.0-android'">
+      <AndroidFastDeploymentType>None</AndroidFastDeploymentType>
+      <EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>
+    </PropertyGroup>
+
     <ItemGroup>
         <!-- App Icon -->
         <MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#512BD4" />
@@ -50,6 +55,9 @@
         <!-- Raw Assets (also remove the "Resources\Raw" prefix) -->
         <MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
         <MauiAsset Include="Data\poi_data_new.sqlite" LogicalName="poi_data_new.sqlite" />
+
+        <!-- Localization JSON assets -->
+        <MauiAsset Include="Resources\Localization\*.json" LogicalName="Resources/Localization/%(Filename)%(Extension)" />
         
         <!-- ✅ Embed appsettings.json for mobile deployment -->
         <MauiAsset Include="env\appsettings.json" LogicalName="appsettings.json" />
@@ -62,7 +70,6 @@
     <ItemGroup>
         <!-- MVVM Toolkit -->
         <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
-        <PackageReference Include="GTranslate" Version="2.3.1" />
         
         <!-- MAUI Core -->
         <PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
@@ -80,6 +87,12 @@
         <!-- Other dependencies -->
         <PackageReference Include="StackExchange.Redis" Version="2.11.8" />
         <PackageReference Include="ZXing.Net.Maui.Controls" Version="0.5.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <MauiXaml Update="Views\SettingsPage.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </MauiXaml>
     </ItemGroup>
 
 </Project>
