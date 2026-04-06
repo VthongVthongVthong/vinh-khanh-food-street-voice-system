@@ -19,12 +19,22 @@
     <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="0">
 
         <!-- Header -->
-        <Grid BackgroundColor="White" Padding="12" ColumnSpacing="8" ColumnDefinitions="*,Auto">
+        <Grid BackgroundColor="White" Padding="12" ColumnSpacing="8" ColumnDefinitions="*,Auto,Auto">
             <StackLayout Grid.Column="0" Spacing="2">
                 <Label x:Name="HeaderTitleLabel" FontSize="18" FontAttributes="Bold" TextColor="#1a1a1a" />
                 <Label x:Name="HeaderLocationLabel" FontSize="11" TextColor="#888" />
             </StackLayout>
             <Label Grid.Column="1" Text="🔔" FontSize="24" VerticalOptions="Center" />
+            <Button Grid.Column="2" 
+                    Text="🔄" 
+                    FontSize="20" 
+                    Padding="0"
+                    BackgroundColor="Transparent"
+                    Command="{Binding RefreshDataCommand}" 
+                    VerticalOptions="Center" 
+                    HeightRequest="40" 
+                    WidthRequest="40"
+                    ToolTipProperties.Text="Reload data from server" />
         </Grid>
 
         <!-- Search + QR actions -->
@@ -83,6 +93,8 @@
                         <ContentView Padding="12,8" Margin="12,0" BackgroundColor="White">
                             <Grid ColumnDefinitions="80,*" ColumnSpacing="12">
                                 <Border Grid.Column="0" 
+                                        WidthRequest="80"
+                                        HeightRequest="80"
                                         BackgroundColor="White"
                                         StrokeThickness="0"
                                         Padding="0"
@@ -94,6 +106,8 @@
                                            Aspect="AspectFill" />
                                 </Border>
                                 <BoxView Grid.Column="0" 
+                                         WidthRequest="80"
+                                         HeightRequest="80"
                                          Color="#E8E8E8" 
                                          CornerRadius="4"
        IsVisible="{Binding AvatarImageUrl, Converter={StaticResource IsNullOrEmptyConverter}}" />

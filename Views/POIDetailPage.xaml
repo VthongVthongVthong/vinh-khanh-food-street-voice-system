@@ -15,10 +15,28 @@
             Command="{Binding GoBackCommand}" />
     </Shell.BackButtonBehavior>
 
-    <ScrollView Padding="20">
-        <StackLayout Spacing="20">
+    <Grid RowDefinitions="Auto, *">
+        <!-- Header với nút Back -->
+        <Grid Grid.Row="0" Padding="15,10,15,10" ColumnDefinitions="Auto, *" BackgroundColor="White" Margin="0,0,0,5">
+            <Frame BackgroundColor="#F0F0F0" CornerRadius="20" Padding="0" HasShadow="False" WidthRequest="40" HeightRequest="40" VerticalOptions="Center">
+                <Frame.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding GoBackCommand}" />
+                </Frame.GestureRecognizers>
+                <Label Text="🔙" FontSize="18" HorizontalOptions="Center" VerticalOptions="Center" />
+            </Frame>
+            <Label Grid.Column="1" 
+                   Text="Chi tiết nhà hàng" 
+                   FontSize="18" 
+                   FontAttributes="Bold" 
+                   TextColor="#1a1a1a" 
+                   VerticalOptions="Center" 
+                   Margin="15,0,0,0"/>
+        </Grid>
 
-            <!-- POI Header -->
+        <ScrollView Grid.Row="1" Padding="20">
+            <StackLayout Spacing="20">
+
+                <!-- POI Header -->
             <Frame BackgroundColor="#283845"
                    CornerRadius="15"
                    Padding="20"
@@ -165,7 +183,7 @@
                         CornerRadius="10"
                         Padding="15"/>
             </StackLayout>
-
         </StackLayout>
-    </ScrollView>
+        </ScrollView>
+    </Grid>
 </ContentPage>

@@ -187,7 +187,7 @@ public partial class MapPage : ContentPage
 
     private async void UpdateMapLocation(double lat, double lng)
     {
-        if (lat == 0 && lng == 0) return;
+        if (lat == 0 || lng == 0) return;
 
         try
         {
@@ -211,7 +211,8 @@ public partial class MapPage : ContentPage
                 lat = p.Latitude,
                 lng = p.Longitude,
                 address = p.Address ?? string.Empty,
-                desc = p.DescriptionText
+                desc = p.DescriptionText,
+                imageUrl = p.AvatarImageUrl
             }) ?? Enumerable.Empty<object>();
 
             var json = JsonSerializer.Serialize(payload);

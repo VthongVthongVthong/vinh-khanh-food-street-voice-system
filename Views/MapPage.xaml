@@ -1,10 +1,19 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:converters="clr-namespace:VinhKhanhstreetfoods.Converters;assembly=VinhKhanhstreetfoods"
+             xmlns:viewmodels="clr-namespace:VinhKhanhstreetfoods.ViewModels"
              x:Class="VinhKhanhstreetfoods.Views.MapPage"
              Title="Map"
              BackgroundColor="#F5F6F8"
              NavigationPage.HasNavigationBar="False">
+
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <converters:IsNullOrEmptyConverter x:Key="IsNullOrEmptyConverter" />
+            <converters:StringNotNullOrEmptyConverter x:Key="StringNotNullOrEmptyConverter" />
+        </ResourceDictionary>
+    </ContentPage.Resources>
 
     <ScrollView x:Name="MainScrollView">
         <StackLayout x:Name="MainStackLayout" Spacing="15" Padding="15">
@@ -274,9 +283,18 @@
                 <CollectionView.ItemTemplate>
                     <DataTemplate>
                         <Frame BackgroundColor="White" CornerRadius="15" Padding="0" HasShadow="True" Margin="0,0,15,5" WidthRequest="220">
+                            <Frame.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:MapViewModel}}, Path=OpenDetailCommand}" CommandParameter="{Binding .}" />
+                            </Frame.GestureRecognizers>
                             <StackLayout>
                                 <Grid HeightRequest="120">
-                                    <BoxView BackgroundColor="#111827" CornerRadius="15,15,0,0" />
+                                    <Border StrokeThickness="0" BackgroundColor="Transparent" Padding="0" IsVisible="{Binding BannerImageUrl, Converter={StaticResource StringNotNullOrEmptyConverter}}">
+                                        <Border.StrokeShape>
+                                            <RoundRectangle CornerRadius="15,15,0,0" />
+                                        </Border.StrokeShape>
+                                        <Image Source="{Binding BannerImageUrl}" Aspect="AspectFill" />
+                                    </Border>
+                                    <BoxView BackgroundColor="#111827" CornerRadius="15,15,0,0" IsVisible="{Binding BannerImageUrl, Converter={StaticResource IsNullOrEmptyConverter}}" />
                                     <Frame BackgroundColor="#10B981" CornerRadius="10" Padding="8,4" HorizontalOptions="End" VerticalOptions="Start" Margin="10" HasShadow="False">
                                         <Label Text="1.2 km" TextColor="White" FontSize="10" FontAttributes="Bold" />
                                     </Frame>
@@ -297,9 +315,15 @@
 
                                     <Grid ColumnDefinitions="*, *" ColumnSpacing="10" Margin="0,5,0,0">
                                         <Frame Grid.Column="0" BackgroundColor="#AF45DB" CornerRadius="20" Padding="0" HasShadow="False" HeightRequest="30">
+                                            <Frame.GestureRecognizers>
+                                                <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:MapViewModel}}, Path=PlayAudioCommand}" CommandParameter="{Binding .}" />
+                                            </Frame.GestureRecognizers>
                                             <Label Text="🔊 Nghe hướng dẫn" TextColor="White" FontSize="10" HorizontalOptions="Center" VerticalOptions="Center" FontAttributes="Bold" />
                                         </Frame>
                                         <Frame Grid.Column="1" BackgroundColor="Transparent" BorderColor="#D1D5DB" CornerRadius="20" Padding="0" HasShadow="False" HeightRequest="30">
+                                            <Frame.GestureRecognizers>
+                                                <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:MapViewModel}}, Path=OpenDetailCommand}" CommandParameter="{Binding .}" />
+                                            </Frame.GestureRecognizers>
                                             <Label Text="ℹ️ Xem chi tiết" TextColor="#6B7280" FontSize="10" HorizontalOptions="Center" VerticalOptions="Center" />
                                         </Frame>
                                     </Grid>
