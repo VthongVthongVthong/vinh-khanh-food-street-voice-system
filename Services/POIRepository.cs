@@ -383,9 +383,10 @@ createdAt TEXT NOT NULL DEFAULT (datetime('now')),
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     imageUrl TEXT NOT NULL,
     caption TEXT,
- imageType TEXT CHECK (imageType IN ('avatar','banner','gallery')),
-    sortOrder INTEGER NOT NULL DEFAULT 0,
+    imageType TEXT CHECK (imageType IN ('avatar','banner','gallery')),
+    displayOrder INTEGER NOT NULL DEFAULT 0,
     poiId INTEGER NOT NULL,
+    createdAt TEXT DEFAULT (datetime('now')),
     FOREIGN KEY (poiId) REFERENCES POI(id)
 );";
 
@@ -613,6 +614,103 @@ FROM POI_old;";
    return await _database!.Table<POI>().Where(p => p.Id == id).FirstOrDefaultAsync();
         }
 
+        public async Task<Dictionary<int, string>> GetAllAvatarImagesAsync()
+        {
+            await InitializeAsync();
+            var result = new Dictionary<int, string>();
+
+            try
+            {
+                // Primary source: POIImage table (type = avatar)
+                var avatarRows = await _database!.Table<POIImage>()
+                    .Where(img => img.Type == "avatar")
+                    .OrderBy(img => img.POIId)
+                    .ThenBy(img => img.DisplayOrder)
+                    .ToListAsync();
+
+                foreach (var row in avatarRows)
+                {
+                    if (!string.IsNullOrWhiteSpace(row.ImageUrl) && !result.ContainsKey(row.POIId))
+                        result[row.POIId] = row.ImageUrl;
+                }
+
+                Debug.WriteLine($"[POIRepository] [AVATAR] Loaded {result.Count} avatars from POIImage table");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[POIRepository] [AVATAR] POIImage table read failed: {ex.Message}");
+            }
+
+            // Per-POI fallback: fill missing avatar from POI.ImageUrls first URL.
+            try
+            {
+                var pois = await _database!.Table<POI>().Where(p => p.IsActive == 1).ToListAsync();
+                var fallbackCount = 0;
+
+                foreach (var poi in pois)
+                {
+                    if (result.ContainsKey(poi.Id) || string.IsNullOrWhiteSpace(poi.ImageUrls))
+                        continue;
+
+                    try
+                    {
+                        var list = JsonSerializer.Deserialize<List<string>>(poi.ImageUrls) ?? new List<string>();
+                        var first = list.FirstOrDefault(u => !string.IsNullOrWhiteSpace(u));
+                        if (!string.IsNullOrWhiteSpace(first))
+                        {
+                            result[poi.Id] = first;
+                            fallbackCount++;
+                        }
+                    }
+                    catch
+                    {
+                        // ignore malformed JSON in ImageUrls
+                    }
+                }
+
+                if (fallbackCount > 0)
+                    Debug.WriteLine($"[POIRepository] [AVATAR] Fallback filled {fallbackCount} avatars from POI.ImageUrls");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[POIRepository] [AVATAR] Fallback from POI.ImageUrls failed: {ex.Message}");
+            }
+
+            return result;
+        }
+
+        public async Task<string?> GetPOIAvatarImageAsync(int poiId)
+        {
+            var all = await GetAllAvatarImagesAsync();
+            return all.TryGetValue(poiId, out var url) ? url : null;
+        }
+
+        public async Task<int> UpsertPOIImageAsync(POIImage image)
+        {
+            await InitializeAsync();
+            try
+            {
+                var existing = await _database!.Table<POIImage>()
+                    .Where(img => img.POIId == image.POIId && img.Type == image.Type)
+                    .FirstOrDefaultAsync();
+
+                if (existing is null)
+                {
+                    return await _database.InsertAsync(image);
+                }
+
+                existing.ImageUrl = image.ImageUrl;
+                existing.DisplayOrder = image.DisplayOrder;
+                existing.CreatedAt = DateTime.Now;
+                return await _database.UpdateAsync(existing);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[POIRepository] [AVATAR] Upsert error for POI={image.POIId}, Type={image.Type}: {ex.Message}");
+                return 0;
+            }
+        }
+
         public async Task<int> AddPOIAsync(POI poi)
         {
   await InitializeAsync();
@@ -690,15 +788,74 @@ FROM POI_old;";
                     return 0;
                 }
 
+                var poiImages = ParsePoiImagesFromPayload(payload);
+                Debug.WriteLine($"[POIRepository] [AVATAR] Parsed {poiImages.Count} POIImage rows from payload");
+
                 var now = DateTime.Now;
+                var inserted = 0;
+
                 await _database!.RunInTransactionAsync(db =>
                 {
                     foreach (var poi in pois)
                     {
                         ApplyDefaultsForPersistedPoi(poi, now);
-                        db.InsertOrReplace(poi);
+
+                        // Deterministic upsert for legacy schemas: clear same business key Id first.
+                        db.Execute("DELETE FROM POI WHERE id = ?", poi.Id);
+                        db.Insert(poi);
+                        inserted++;
                     }
                 });
+
+                // Hard dedupe by business key Id (keep latest rowid)
+                await _database.ExecuteAsync(@"DELETE FROM POI
+WHERE rowid NOT IN (
+    SELECT MAX(rowid)
+    FROM POI
+    WHERE Id IS NOT NULL
+    GROUP BY Id
+);");
+
+                // Attempt to enforce uniqueness for future syncs
+                try
+                {
+                    await _database.ExecuteAsync("CREATE UNIQUE INDEX IF NOT EXISTS IX_POI_Id_Unique ON POI(id);");
+                }
+                catch (Exception idxEx)
+                {
+                    Debug.WriteLine($"[POIRepository] Unique index IX_POI_Id_Unique skipped: {idxEx.Message}");
+                }
+
+                Debug.WriteLine($"[POIRepository] Sync upsert done. Inserted={inserted}");
+
+                if (poiImages.Count > 0)
+                {
+                    foreach (var image in poiImages)
+                    {
+                        try
+                        {
+                            var existingImage = await _database.Table<POIImage>()
+                                .Where(x => x.POIId == image.POIId && x.Type == image.Type)
+                                .FirstOrDefaultAsync();
+
+                            if (existingImage is null)
+                            {
+                                await _database.InsertAsync(image);
+                            }
+                            else
+                            {
+                                existingImage.ImageUrl = image.ImageUrl;
+                                existingImage.DisplayOrder = image.DisplayOrder;
+                                existingImage.CreatedAt = DateTime.Now;
+                                await _database.UpdateAsync(existingImage);
+                            }
+                        }
+                        catch (Exception imgEx)
+                        {
+                            Debug.WriteLine($"[POIRepository] [AVATAR] Upsert image failed for POI={image.POIId}, Type={image.Type}: {imgEx.Message}");
+                        }
+                    }
+                }
 
                 _lastFirebasePayloadHash = payloadHash;
                 _lastAdminSyncUtc = DateTime.UtcNow;
@@ -780,6 +937,7 @@ FROM POI_old;";
                 JsonElement poiArray;
                 if (root.ValueKind == JsonValueKind.Array)
                 {
+                    Debug.WriteLine("[POIRepository] Payload root is array - parsing directly as POIs");
                     poiArray = root;
                     return ParsePoiArray(poiArray);
                 }
@@ -790,12 +948,17 @@ FROM POI_old;";
                         return ParsePoiArray(extracted);
 
                     if (TryFindPoiObject(root, out var poiObject))
+                    {
+                        Debug.WriteLine("[POIRepository] Payload has POI object map - parsing object entries");
                         return ParseFirebasePoiMap(poiObject);
+                    }
 
-                    // Firebase RTDB format: { "1": {poi...}, "2": {poi...} }
+                    // Firebase RTDB fallback format: { "1": {poi...}, "2": {poi...} }
+                    Debug.WriteLine("[POIRepository] Fallback parse as root object map");
                     return ParseFirebasePoiMap(root);
                 }
 
+                Debug.WriteLine($"[POIRepository] Unsupported payload root kind: {root.ValueKind}");
                 return new List<POI>();
             }
             catch (Exception ex)
@@ -898,7 +1061,7 @@ FROM POI_old;";
                 TtsScriptRu = GetString(item, "ttsScriptRu", "tts_script_ru"),
                 TtsLanguage = GetString(item, "ttsLanguage", "tts_language", "language") ?? "vi",
                 AudioFile = GetString(item, "audioFile", "audio_file", "audioUrl", "audio_url"),
-                ImageUrls = GetString(item, "imageUrls", "image_urls") ?? "[]",
+                ImageUrls = NormalizeImageUrls(item),
                 MapLink = GetString(item, "mapLink", "map_link"),
                 TriggerRadius = GetIntOrDefault(item, 20, "triggerRadiusMeters", "trigger_radius_meters", "triggerRadius", "radius"),
                 Priority = GetIntOrDefault(item, 1, "priority"),
@@ -1047,16 +1210,19 @@ FROM POI_old;";
 
         private static bool TryFindPoiArray(JsonElement root, out JsonElement poiArray)
         {
-            var candidates = new[] { "data", "pois", "result", "items", "rows" };
+            // Support Firebase keys: POI, poi, pois, data...
+            var candidates = new[] { "POI", "poi", "pois", "data", "result", "items", "rows" };
             foreach (var key in candidates)
             {
                 if (TryGetPropertyIgnoreCase(root, key, out var value) && value.ValueKind == JsonValueKind.Array)
                 {
+                    Debug.WriteLine($"[POIRepository] Found POI array key='{key}', length={value.GetArrayLength()}");
                     poiArray = value;
                     return true;
                 }
             }
 
+            Debug.WriteLine("[POIRepository] No POI array key found in payload root object");
             poiArray = default;
             return false;
         }
@@ -1202,6 +1368,94 @@ WHERE descriptionEn IS NULL
        }
  }
 
+        private static List<POIImage> ParsePoiImagesFromPayload(string? payload)
+        {
+            var result = new List<POIImage>();
+            if (string.IsNullOrWhiteSpace(payload))
+                return result;
+
+            try
+{
+   using var document = JsonDocument.Parse(payload);
+   var root = document.RootElement;
+
+          // ? Chính xác: JSON có "POIImage" (s? ít) không ph?i "POIImages"
+     if (!TryGetPropertyIgnoreCase(root, "POIImage", out var imagesElement))
+     {
+        Debug.WriteLine("[POIRepository] [AVATAR] No POIImage key in payload");
+     return result;
+       }
+
+ if (imagesElement.ValueKind != JsonValueKind.Array)
+                {
+      Debug.WriteLine($"[POIRepository] [AVATAR] POIImage is not array. Kind={imagesElement.ValueKind}");
+             return result;
+    }
+
+    Debug.WriteLine($"[POIRepository] [AVATAR] POIImage array found with {imagesElement.GetArrayLength()} items");
+
+    foreach (var item in imagesElement.EnumerateArray())
+          {
+       // Skip null items (Firebase JSON có th? có null entries)
+          if (item.ValueKind != JsonValueKind.Object)
+               {
+   Debug.WriteLine("[POIRepository] [AVATAR] Skipping non-object item in POIImage array");
+              continue;
+       }
+
+      var mapped = MapJsonToPOIImage(item);
+           if (mapped is not null)
+           {
+      result.Add(mapped);
+       Debug.WriteLine($"[POIRepository] [AVATAR] Mapped POIImage: POI={mapped.POIId}, Type={mapped.Type}, URL={mapped.ImageUrl}");
+        }
+     }
+
+   Debug.WriteLine($"[POIRepository] [AVATAR] ParsePoiImagesFromPayload: {result.Count} images mapped successfully");
+            }
+      catch (Exception ex)
+            {
+   Debug.WriteLine($"[POIRepository] [AVATAR] ParsePoiImagesFromPayload error: {ex.Message}");
+   }
+
+   return result;
+        }
+
+        private static POIImage? MapJsonToPOIImage(JsonElement item)
+        {
+      var poiId = GetInt(item, "poiId", "poi_id");
+     var imageUrl = GetString(item, "imageUrl", "image_url");
+            var imageType = GetString(item, "imageType", "image_type", "type") ?? string.Empty;
+    var sortOrder = GetIntOrDefault(item, 0, "sortOrder", "sort_order", "displayOrder", "display_order");
+
+         if (poiId <= 0)
+   {
+     Debug.WriteLine("[POIRepository] [AVATAR] Skipping image: poiId is 0 or negative");
+    return null;
+      }
+
+       if (string.IsNullOrWhiteSpace(imageUrl))
+     {
+    Debug.WriteLine($"[POIRepository] [AVATAR] Skipping image for POI {poiId}: imageUrl is empty");
+    return null;
+            }
+
+      if (string.IsNullOrWhiteSpace(imageType))
+            {
+                Debug.WriteLine($"[POIRepository] [AVATAR] Skipping image for POI {poiId}: imageType is empty");
+    return null;
+  }
+
+        return new POIImage
+     {
+       POIId = poiId,
+  ImageUrl = imageUrl.Trim(),
+  Type = imageType.Trim().ToLowerInvariant(),
+    DisplayOrder = sortOrder,
+          CreatedAt = DateTime.Now
+            };
+        }
+
       private static string NormalizeLang(string? code)
         {
      if (string.IsNullOrWhiteSpace(code)) return "vi";
@@ -1210,16 +1464,56 @@ WHERE descriptionEn IS NULL
      return dash > 0 ? normalized[..dash] : normalized;
         }
 
+    private static string NormalizeImageUrls(JsonElement item)
+        {
+            if (item.ValueKind != JsonValueKind.Object)
+                return "[]";
+
+            try
+            {
+                var urls = new List<string>();
+
+                // Check for common array properties for image URLs
+                foreach (var property in item.EnumerateObject())
+                {
+                    if (property.Value.ValueKind == JsonValueKind.String && Uri.IsWellFormedUriString(property.Value.GetString(), UriKind.Absolute))
+                    {
+                        urls.Add(property.Value.GetString());
+                    }
+
+                    // Check for array elements (Firebase might return image URLs as an array)
+                    else if (property.Value.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var arrayItem in property.Value.EnumerateArray())
+                        {
+                            if (arrayItem.ValueKind == JsonValueKind.String && Uri.IsWellFormedUriString(arrayItem.GetString(), UriKind.Absolute))
+                            {
+                                urls.Add(arrayItem.GetString());
+                            }
+                        }
+                    }
+                }
+
+                // Remove duplicates and return as JSON array string
+                return JsonSerializer.Serialize(urls.Distinct().ToList());
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[POIRepository] Error normalizing image URLs: {ex.Message}");
+                return "[]";
+            }
+        }
+
         private class PragmaTableInfo
-  {
-      [Column("name")]
-  public string Name { get; set; } = string.Empty;
+        {
+            [Column("name")]
+            public string Name { get; set; } = string.Empty;
         }
 
         private class TableInfo
-    {
-     [Column("name")]
-   public string name { get; set; } = string.Empty;
- }
+        {
+            [Column("name")]
+            public string name { get; set; } = string.Empty;
+        }
     }
 }

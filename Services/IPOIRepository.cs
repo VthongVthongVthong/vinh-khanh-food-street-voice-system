@@ -22,6 +22,11 @@ public interface IPOIRepository
     Task<bool> HasDownloadedLanguagePackAsync(string languageCode);
     Task ClearCachedTranslationsAsync();
 
+    // Avatar image
+    Task<string?> GetPOIAvatarImageAsync(int poiId);
+    Task<int> UpsertPOIImageAsync(POIImage image);
+    Task<Dictionary<int, string>> GetAllAvatarImagesAsync();
+
     // Admin online sync (offline-first: safe to fail and continue with local DB)
     Task<int> SyncPOIsFromAdminAsync(bool force = false, CancellationToken cancellationToken = default);
     Task<DateTime?> GetLastAdminSyncTimeUtcAsync();

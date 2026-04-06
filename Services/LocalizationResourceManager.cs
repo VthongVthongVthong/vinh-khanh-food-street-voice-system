@@ -1,6 +1,8 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Globalization;
+using System.Reflection;
+using System.Text;
 using System.Text.Json;
 
 namespace VinhKhanhstreetfoods.Services
@@ -17,11 +19,36 @@ namespace VinhKhanhstreetfoods.Services
         private int _isPrefetching;
         private int _isCachingAllLanguages;
 
+        private static readonly JsonSerializerOptions JsonOptions = new()
+        {
+            PropertyNameCaseInsensitive = true
+        };
+
+        private static readonly Assembly ThisAssembly = typeof(LocalizationResourceManager).Assembly;
+        private static readonly Dictionary<string, string> EmbeddedResourceNames = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["vi"] = "VinhKhanhstreetfoods.Resources.Localization.strings-vi.json",
+            ["en"] = "VinhKhanhstreetfoods.Resources.Localization.strings-en.json",
+            ["zh"] = "VinhKhanhstreetfoods.Resources.Localization.strings-zh.json",
+            ["ja"] = "VinhKhanhstreetfoods.Resources.Localization.strings-ja.json",
+            ["ko"] = "VinhKhanhstreetfoods.Resources.Localization.strings-ko.json",
+            ["fr"] = "VinhKhanhstreetfoods.Resources.Localization.strings-fr.json",
+            ["ru"] = "VinhKhanhstreetfoods.Resources.Localization.strings-ru.json"
+        };
+
         public static LocalizationResourceManager Instance => _instance ??= new LocalizationResourceManager();
 
         public LocalizationResourceManager()
         {
-            // Keep constructor non-blocking.
+            try
+            {
+                var preferred = Preferences.Get("app_language", "vi");
+                _currentLanguage = NormalizeLanguage(preferred);
+            }
+            catch
+            {
+                _currentLanguage = "vi";
+            }
         }
 
         /// <summary>
@@ -42,7 +69,7 @@ namespace VinhKhanhstreetfoods.Services
 
             try
             {
-                await SetActiveLanguageAsync(preferredLanguage);
+                await SetActiveLanguageAsync(preferredLanguage).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -67,8 +94,9 @@ namespace VinhKhanhstreetfoods.Services
                 var languages = new[] { "vi", "en", "zh", "ja", "ko", "fr", "ru" };
                 foreach (var lang in languages)
                 {
-                    await EnsureLanguageLoadedAsync(lang);
-                    await Task.Delay(30);
+                    await EnsureLanguageLoadedAsync(lang).ConfigureAwait(false);
+                    // Keep this conservative to reduce startup CPU/disk bursts on Android
+                    await Task.Delay(120).ConfigureAwait(false);
                 }
             }
             catch (Exception ex)
@@ -101,7 +129,7 @@ namespace VinhKhanhstreetfoods.Services
         public async Task SetActiveLanguageAsync(string languageCode)
         {
             var normalizedLanguage = NormalizeLanguage(languageCode);
-            await EnsureLanguageLoadedAsync(normalizedLanguage);
+            await EnsureLanguageLoadedAsync(normalizedLanguage).ConfigureAwait(false);
 
             lock (_syncRoot)
             {
@@ -131,7 +159,7 @@ namespace VinhKhanhstreetfoods.Services
             var loadTask = _inflightLoads.GetOrAdd(normalizedLanguage, _ => LoadAndCacheLanguageAsync(normalizedLanguage));
             try
             {
-                await loadTask;
+                await loadTask.ConfigureAwait(false);
             }
             finally
             {
@@ -143,18 +171,20 @@ namespace VinhKhanhstreetfoods.Services
         {
             try
             {
-                var resourceText = await LoadJsonFileAsync(normalizedLanguage);
+                var resourceText = await LoadJsonFileAsync(normalizedLanguage).ConfigureAwait(false);
                 if (string.IsNullOrWhiteSpace(resourceText))
                 {
                     if (normalizedLanguage != "vi")
                     {
-                        await EnsureLanguageLoadedAsync("vi");
+                        await EnsureLanguageLoadedAsync("vi").ConfigureAwait(false);
                     }
                     return;
                 }
 
-                var resources = JsonSerializer.Deserialize<Dictionary<string, string>>(resourceText)
-                                ?? new Dictionary<string, string>();
+                // Keep deserialize off UI thread.
+                var resources = await Task.Run(() =>
+                    JsonSerializer.Deserialize<Dictionary<string, string>>(resourceText, JsonOptions)
+                    ?? new Dictionary<string, string>()).ConfigureAwait(false);
 
                 lock (_syncRoot)
                 {
@@ -188,7 +218,7 @@ namespace VinhKhanhstreetfoods.Services
                         {
                             try
                             {
-                                await SetActiveLanguageAsync(_currentLanguage);
+                                await SetActiveLanguageAsync(_currentLanguage).ConfigureAwait(false);
                             }
                             finally
                             {
@@ -265,6 +295,12 @@ namespace VinhKhanhstreetfoods.Services
 
         private static async Task<string> LoadJsonFileAsync(string normalizedLanguage)
         {
+            // 1) EmbeddedResource first
+            var embedded = await TryLoadFromEmbeddedResourceAsync(normalizedLanguage).ConfigureAwait(false);
+            if (!string.IsNullOrWhiteSpace(embedded))
+                return embedded;
+
+            // 2) MauiAsset fallback
             var candidates = new[]
             {
                 $"Resources/Localization/strings-{normalizedLanguage}.json",
@@ -276,13 +312,13 @@ namespace VinhKhanhstreetfoods.Services
             {
                 try
                 {
-                    await using var stream = await FileSystem.OpenAppPackageFileAsync(candidate);
-                    using var reader = new StreamReader(stream);
-                    var content = await reader.ReadToEndAsync();
+                    await using var stream = await FileSystem.OpenAppPackageFileAsync(candidate).ConfigureAwait(false);
+                    using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
+                    var content = await reader.ReadToEndAsync().ConfigureAwait(false);
 
                     if (!string.IsNullOrWhiteSpace(content))
                     {
-                        Debug.WriteLine($"[LocalizationResourceManager] Loaded JSON from: {candidate}");
+                        Debug.WriteLine($"[LocalizationResourceManager] Loaded JSON from MauiAsset: {candidate}");
                         return content;
                     }
                 }
@@ -290,6 +326,33 @@ namespace VinhKhanhstreetfoods.Services
                 {
                     // try next candidate
                 }
+            }
+
+            return string.Empty;
+        }
+
+        private static async Task<string> TryLoadFromEmbeddedResourceAsync(string normalizedLanguage)
+        {
+            try
+            {
+                if (!EmbeddedResourceNames.TryGetValue(normalizedLanguage, out var resourceName))
+                    return string.Empty;
+
+                await using var stream = ThisAssembly.GetManifestResourceStream(resourceName);
+                if (stream is null)
+                    return string.Empty;
+
+                using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
+                var content = await reader.ReadToEndAsync().ConfigureAwait(false);
+                if (!string.IsNullOrWhiteSpace(content))
+                {
+                    Debug.WriteLine($"[LocalizationResourceManager] Loaded JSON from EmbeddedResource: {resourceName}");
+                    return content;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[LocalizationResourceManager] EmbeddedResource load error ({normalizedLanguage}): {ex.Message}");
             }
 
             return string.Empty;

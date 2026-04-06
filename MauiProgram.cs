@@ -74,7 +74,7 @@ namespace VinhKhanhstreetfoods
 
             // Register Views
             builder.Services.AddSingleton<HomePage>();
-            builder.Services.AddSingleton<CameraPage>();
+            builder.Services.AddTransient<CameraPage>();
             builder.Services.AddSingleton<POIDetailPage>();
             builder.Services.AddSingleton<MapPage>();
             builder.Services.AddSingleton<SettingsPage>();

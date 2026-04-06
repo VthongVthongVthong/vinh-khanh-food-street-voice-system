@@ -32,9 +32,4 @@
             ContentTemplate="{DataTemplate local:SettingsPage}"
             Route="settings" />
     </TabBar>
-
-    <!-- Camera Page (Modal) -->
-    <ShellContent
-        Route="camera"
-        ContentTemplate="{DataTemplate local:CameraPage}" />
 </Shell>

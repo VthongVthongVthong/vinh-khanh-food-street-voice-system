@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             xmlns:zxing="clr-namespace:ZXing.Net.Maui.Controls;assembly=ZXing.Net.Maui.Controls"
              xmlns:converters="clr-namespace:VinhKhanhstreetfoods.Converters;assembly=VinhKhanhstreetfoods"
+             xmlns:local2="clr-namespace:VinhKhanhstreetfoods.Models;assembly=VinhKhanhstreetfoods"
              x:Class="VinhKhanhstreetfoods.Views.HomePage"
              Title="Food Street"
              BackgroundColor="#F8F8F8"
-             Padding="0"
-             xmlns:local="clr-namespace:VinhKhanhstreetfoods.ViewModels;assembly=VinhKhanhstreetfoods"
-             xmlns:local2="clr-namespace:VinhKhanhstreetfoods.Models;assembly=VinhKhanhstreetfoods">
+             Padding="0">
 
     <ContentPage.Resources>
         <ResourceDictionary>
             <converters:POIDescriptionConverter x:Key="POIDescriptionConverter" />
+            <converters:IsNullOrEmptyConverter x:Key="IsNullOrEmptyConverter" />
+            <converters:StringNotNullOrEmptyConverter x:Key="StringNotNullOrEmptyConverter" />
         </ResourceDictionary>
     </ContentPage.Resources>
 
@@ -82,7 +82,21 @@
                     <DataTemplate x:DataType="local2:POI">
                         <ContentView Padding="12,8" Margin="12,0" BackgroundColor="White">
                             <Grid ColumnDefinitions="80,*" ColumnSpacing="12">
-                                <BoxView Grid.Column="0" Color="#E8E8E8" CornerRadius="4" />
+                                <Border Grid.Column="0" 
+                                        BackgroundColor="White"
+                                        StrokeThickness="0"
+                                        Padding="0"
+                                             IsVisible="{Binding AvatarImageUrl, Converter={StaticResource StringNotNullOrEmptyConverter}}">
+                                    <Border.StrokeShape>
+                                        <RoundRectangle CornerRadius="4" />
+                                    </Border.StrokeShape>
+                                    <Image Source="{Binding AvatarImageUrl}" 
+                                           Aspect="AspectFill" />
+                                </Border>
+                                <BoxView Grid.Column="0" 
+                                         Color="#E8E8E8" 
+                                         CornerRadius="4"
+       IsVisible="{Binding AvatarImageUrl, Converter={StaticResource IsNullOrEmptyConverter}}" />
                                 <Grid Grid.Column="1" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="4">
                                     <StackLayout Grid.Row="0" Orientation="Horizontal" Spacing="6">
                                         <Label Text="●" FontSize="10" TextColor="#DA1C5C" />

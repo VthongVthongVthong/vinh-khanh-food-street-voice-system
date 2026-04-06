@@ -6,6 +6,8 @@ namespace VinhKhanhstreetfoods;
 
 public partial class App : Application
 {
+    private int _startupWarmupScheduled;
+
     public App()
     {
         try
@@ -31,34 +33,48 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// ✅ ALL 3 STAGES on Background Thread (ANR-Safe!)
-    /// Called AFTER UI is shown
+    /// Delay heavy localization warmup to avoid startup ANR on Android.
     /// </summary>
     protected override void OnStart()
     {
         base.OnStart();
 
+        if (Interlocked.Exchange(ref _startupWarmupScheduled, 1) == 1)
+            return;
+
         _ = Task.Run(async () =>
         {
             try
             {
+                // Let first frame/UI navigation settle before warmup work.
+                await Task.Delay(1200);
+
                 var locService = LocalizationService.Instance;
                 var resourceManager = LocalizationResourceManager.Instance;
                 var preferredLang = locService.CurrentLanguage;
 
-                // Ensure preferred language is active first
+                // Stage 1: ensure preferred language only
                 await resourceManager.PrefetchPreferredLanguageAsync(preferredLang);
 
-                // Force UI to redraw localized labels even if language value didn't change
                 await MainThread.InvokeOnMainThreadAsync(() =>
                 {
                     locService.NotifyLanguageRefreshed();
                 });
 
-                // Warm all others in cache without changing active language
-                await resourceManager.CacheAllLanguagesAsync();
-
-                Debug.WriteLine($"[App] Localization preload completed. Active={resourceManager.CurrentLanguage}, Cached={resourceManager.GetCachedLanguageCount()}");
+                // Stage 2: warm remaining languages lazily
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await Task.Delay(800);
+                        await resourceManager.CacheAllLanguagesAsync();
+                        Debug.WriteLine($"[App] Localization warm cache completed. Active={resourceManager.CurrentLanguage}, Cached={resourceManager.GetCachedLanguageCount()}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"[App] Localization cache-all error: {ex.Message}");
+                    }
+                });
             }
             catch (Exception ex)
             {

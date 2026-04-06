@@ -50,9 +50,18 @@
                     <CollectionView ItemsSource="{Binding SelectedPOI.ImageUrlList}">
                         <CollectionView.ItemTemplate>
                             <DataTemplate>
-                                <Label Text="📸 {Binding}" 
-                                       FontSize="12"
-                                       TextColor="#666666"/>
+                                <StackLayout Padding="5" Spacing="5">
+                                    <Border StrokeShape="RoundRectangle 10"
+                                            HeightRequest="200"
+                                            Padding="0">
+                                        <Image Source="{Binding .}"
+                                               Aspect="AspectFill"/>
+                                    </Border>
+                                    <Label Text="{Binding .}"
+                                           FontSize="11"
+                                           TextColor="#999999"
+                                           LineBreakMode="TailTruncation"/>
+                                </StackLayout>
                             </DataTemplate>
                         </CollectionView.ItemTemplate>
                     </CollectionView>

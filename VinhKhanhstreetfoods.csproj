@@ -58,6 +58,7 @@
 
         <!-- Localization JSON assets -->
         <MauiAsset Include="Resources\Localization\*.json" LogicalName="Resources/Localization/%(Filename)%(Extension)" />
+        <EmbeddedResource Include="Resources\Localization\*.json" />
         
         <!-- ✅ Embed appsettings.json for mobile deployment -->
         <MauiAsset Include="env\appsettings.json" LogicalName="appsettings.json" />

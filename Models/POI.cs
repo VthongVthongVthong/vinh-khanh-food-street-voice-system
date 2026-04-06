@@ -137,6 +137,12 @@ namespace VinhKhanhstreetfoods.Models
         [Ignore]
         public DateTime CachedTranslationTime { get; set; }
 
+        /// <summary>
+        /// Avatar image URL (loaded from POIImages table with type='avatar')
+        /// </summary>
+        [Ignore]
+        public string? AvatarImageUrl { get; set; }
+
         // ===== MULTILINGUAL HELPERS =====
         /// <summary>
         /// Get description in specific language from offline DB columns

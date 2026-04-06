@@ -341,6 +341,63 @@ namespace VinhKhanhstreetfoods.ViewModels
                     NearbyPOIs.Add(poi);
                 }
             });
+
+            // ✅ Load avatars in background after UI update
+            _ = Task.Run(() => LoadAvatarsForPOIsAsync(filtered));
+        }
+
+        /// <summary>
+        /// ✅ NEW: Bulk load all avatars at once (prevent N+1 queries)
+        /// </summary>
+        private async Task LoadAvatarsForPOIsAsync(List<POI> pois)
+        {
+            if (pois.Count == 0)
+                return;
+
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"[HomeViewModel] 🎯 AVATAR: Bulk loading avatars for {pois.Count} POIs");
+
+                var avatarDict = await _poiRepository.GetAllAvatarImagesAsync();
+
+                var loadedCount = 0;
+                var fallbackCount = 0;
+                foreach (var poi in pois)
+                {
+                    if (avatarDict.TryGetValue(poi.Id, out var avatarUrl) && !string.IsNullOrWhiteSpace(avatarUrl))
+                    {
+                        poi.AvatarImageUrl = avatarUrl;
+                        loadedCount++;
+                        continue;
+                    }
+
+                    // Fallback from POI.ImageUrls first item
+                    var firstImage = poi.ImageUrlList.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x));
+                    if (!string.IsNullOrWhiteSpace(firstImage))
+                    {
+                        poi.AvatarImageUrl = firstImage;
+                        fallbackCount++;
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[HomeViewModel] ⚠️ AVATAR: No image for POI {poi.Id} ({poi.Name}) -> UI placeholder");
+                    }
+                }
+
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                {
+                    var current = NearbyPOIs.ToList();
+                    NearbyPOIs.Clear();
+                    foreach (var p in current)
+                        NearbyPOIs.Add(p);
+
+                    System.Diagnostics.Debug.WriteLine($"[HomeViewModel] 📊 AVATAR: Loaded={loadedCount}, Fallback={fallbackCount}, Total={pois.Count}");
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[HomeViewModel] ❌ AVATAR: Load error: {ex.Message}");
+            }
         }
 
         private async Task OpenDetailAsync(POI? poi)
