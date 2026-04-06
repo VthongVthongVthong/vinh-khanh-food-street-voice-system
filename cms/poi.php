@@ -12,7 +12,7 @@ $errorMsg = null;
 
 // Hàm đồng bộ POI sang Firebase Realtime Database
 function syncPoiToFirebase($pdo, $id, $action = 'put') {
-    $url = "" . $id . ".json";
+    $url = "https://vinhkhanh-68a4b-default-rtdb.asia-southeast1.firebasedatabase.app/POI/" . $id . ".json";
     
     if ($action === 'delete') {
         $options = ["http" => ["method" => "DELETE"]];
@@ -21,6 +21,24 @@ function syncPoiToFirebase($pdo, $id, $action = 'put') {
         $stmt->execute([':id' => $id]);
         $poi = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$poi) return;
+        
+        // Tìm key của ImageUrls bất kể case (do SQLite có thể trả về ImageUrls, imageUrls, imageurls...)
+        $imgKey = null;
+        foreach ($poi as $k => $v) {
+            if (strtolower($k) === 'imageurls') {
+                $imgKey = $k;
+                break;
+            }
+        }
+        
+        if ($imgKey && is_string($poi[$imgKey])) {
+            $decoded = json_decode($poi[$imgKey], true);
+            if (is_array($decoded)) {
+                // Xoá key cũ để đảm bảo dùng đúng key mong muốn (chẳng hạn 'imageUrls')
+                unset($poi[$imgKey]);
+                $poi['imageUrls'] = $decoded; 
+            }
+        }
         
         $options = [
             "http" => [
@@ -38,7 +56,7 @@ function syncPoiToFirebase($pdo, $id, $action = 'put') {
 // Hàm đồng bộ POIImage sang Firebase Realtime Database
 function syncPoiImageToFirebase($pdo, $id, $action = 'put') {
     if (empty($id)) return; // Bảo vệ: không xóa hoặc ghi đè node gốc nếu ID rỗng
-    $url = "" . $id . ".json";
+    $url = "https://vinhkhanh-68a4b-default-rtdb.asia-southeast1.firebasedatabase.app/POIImage/" . $id . ".json";
     
     if ($action === 'delete') {
         $options = ["http" => ["method" => "DELETE"]];
@@ -133,6 +151,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         if ($uploadedAvatar) $currentImages[0] = $uploadedAvatar;
         if ($uploadedBanner) $currentImages[1] = $uploadedBanner;
         
+        $currentImages = array_values($currentImages);
         $imageUrlsToSave = json_encode($currentImages, JSON_UNESCAPED_SLASHES);
         
         if ($imageUrls !== $imageUrlsToSave) {
@@ -288,6 +307,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         if ($uploadedAvatar) $currentImages[0] = $uploadedAvatar;
         if ($uploadedBanner) $currentImages[1] = $uploadedBanner;
         
+        $currentImages = array_values($currentImages);
         $imageUrlsToSave = json_encode($currentImages, JSON_UNESCAPED_SLASHES);
         
         if ($imageUrls !== $imageUrlsToSave) {
