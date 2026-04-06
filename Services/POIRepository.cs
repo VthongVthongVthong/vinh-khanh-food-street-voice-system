@@ -14,9 +14,6 @@ namespace VinhKhanhstreetfoods.Services
     {
         private static readonly Uri[] AdminSyncUris =
         {
-            new("https://vinhkhanh-68a4b-default-rtdb.asia-southeast1.firebasedatabase.app/pois.json"),
-            new("https://vinhkhanh-68a4b-default-rtdb.asia-southeast1.firebasedatabase.app/POI.json"),
-            new("https://vinhkhanh-68a4b-default-rtdb.asia-southeast1.firebasedatabase.app/poi.json"),
             new("https://vinhkhanh-68a4b-default-rtdb.asia-southeast1.firebasedatabase.app/.json")
         };
         private static readonly TimeSpan AdminSyncThrottle = TimeSpan.FromMinutes(2);
@@ -492,13 +489,13 @@ FROM POI_old;";
 
       if (poiDataFromFile?.Count > 0)
             {
-            // 2?? Insert to‡n b? 20 POI
+            // 2?? Insert toÔøΩn b? 20 POI
    await _database!.InsertAllAsync(poiDataFromFile);
            Debug.WriteLine($"? Imported {poiDataFromFile.Count} POIs from poi_data_new.sqlite");
         return;
   }
 
-       // 3?? Fallback: n?u file khÙng cÛ, seed m?u
+       // 3?? Fallback: n?u file khÔøΩng cÔøΩ, seed m?u
             var initialPOIs = new List<POI>
                 {
           new POI
@@ -507,10 +504,10 @@ FROM POI_old;";
     Name = "?c Oanh",
                  Latitude = 10.760866,
              Longitude = 106.682495,
-         Address = "534 V?nh Kh·nh, P.8, Q.4",
+         Address = "534 V?nh KhÔøΩnh, P.8, Q.4",
             Phone = "0909123001",
-          DescriptionText = "Qu·n ?c l‚u ??i n?i ti?ng nh?t trÍn ph? ?m th?c V?nh Kh·nh.",
-                TtsScript = "Ch‡o m?ng b?n ??n ?c Oanh, qu·n ?c l‚u ??i n?i ti?ng nh?t trÍn ph? ?m th?c V?nh Kh·nh, qu?n 4.",
+          DescriptionText = "QuÔøΩn ?c lÔøΩu ??i n?i ti?ng nh?t trÔøΩn ph? ?m th?c V?nh KhÔøΩnh.",
+                TtsScript = "ChÔøΩo m?ng b?n ??n ?c Oanh, quÔøΩn ?c lÔøΩu ??i n?i ti?ng nh?t trÔøΩn ph? ?m th?c V?nh KhÔøΩnh, qu?n 4.",
               ImageUrls = "[\"https://cdn.vinhkhanh.vn/img/poi1-avatar.jpg\", \"https://cdn.vinhkhanh.vn/img/poi1-banner.jpg\"]",
         MapLink = "https://maps.app.goo.gl/oc-oanh",
             TriggerRadius = 20,
@@ -525,10 +522,10 @@ FROM POI_old;";
      Name = "?c Th?o",
        Latitude = 10.761234,
              Longitude = 106.682800,
-            Address = "383 V?nh Kh·nh, P.8, Q.4",
+            Address = "383 V?nh KhÔøΩnh, P.8, Q.4",
             Phone = "0388004422",
-    DescriptionText = "Qu·n ?c r?ng r„i, n?i ti?ng v?i c·c mÛn n??ng v‡ s?t tr?ng mu?i.",
-             TtsScript = "Ch‡o m?ng b?n ??n ?c Th?o, qu·n ?c r?ng r„i n?i ti?ng v?i c·c mÛn n??ng v‡ s?t tr?ng mu?i, t?i ??a ch? 383 V?nh Kh·nh.",
+    DescriptionText = "QuÔøΩn ?c r?ng rÔøΩi, n?i ti?ng v?i cÔøΩc mÔøΩn n??ng vÔøΩ s?t tr?ng mu?i.",
+             TtsScript = "ChÔøΩo m?ng b?n ??n ?c Th?o, quÔøΩn ?c r?ng rÔøΩi n?i ti?ng v?i cÔøΩc mÔøΩn n??ng vÔøΩ s?t tr?ng mu?i, t?i ??a ch? 383 V?nh KhÔøΩnh.",
     ImageUrls = "[\"https://cdn.vinhkhanh.vn/img/poi2-avatar.jpg\", \"https://cdn.vinhkhanh.vn/img/poi2-banner.jpg\"]",
       MapLink = "https://maps.app.goo.gl/oc-thao",
             TriggerRadius = 20,
@@ -555,7 +552,7 @@ FROM POI_old;";
             // B??c 1: M? file poi_data_new.sqlite t? app package
         using (var stream = await FileSystem.OpenAppPackageFileAsync("poi_data_new.sqlite"))
       {
-         // B??c 2: Copy stream th‡nh byte array
+         // B??c 2: Copy stream thÔøΩnh byte array
               var bytes = new byte[stream.Length];
   await stream.ReadAsync(bytes, 0, (int)stream.Length);
 
@@ -570,7 +567,7 @@ FROM POI_old;";
    // B??c 5: Query t?t c? POI
       var pois = await sourceDb.Table<POI>().ToListAsync();
 
-          // B??c 6: XÛa file t?m
+          // B??c 6: XÔøΩa file t?m
    File.Delete(tempPath);
 
         return pois;
@@ -679,6 +676,69 @@ FROM POI_old;";
             return result;
         }
 
+        public async Task<Dictionary<int, string>> GetAllBannerImagesAsync()
+        {
+            await InitializeAsync();
+            var result = new Dictionary<int, string>();
+
+            try
+            {
+                var bannerRows = await _database!.Table<POIImage>()
+                    .Where(img => img.Type == "banner")
+                    .OrderBy(img => img.POIId)
+                    .ThenBy(img => img.DisplayOrder)
+                    .ToListAsync();
+
+                foreach (var row in bannerRows)
+                {
+                    if (!string.IsNullOrWhiteSpace(row.ImageUrl) && !result.ContainsKey(row.POIId))
+                        result[row.POIId] = row.ImageUrl;
+                }
+
+                Debug.WriteLine($"[POIRepository] [BANNER] Loaded {result.Count} banners from POIImage table");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[POIRepository] [BANNER] POIImage table read failed: {ex.Message}");
+            }
+
+            // Per-POI fallback: use first ImageUrl
+            try
+            {
+                var pois = await _database!.Table<POI>().Where(p => p.IsActive == 1).ToListAsync();
+                var fallbackCount = 0;
+
+                foreach (var poi in pois)
+                {
+                    if (result.ContainsKey(poi.Id) || string.IsNullOrWhiteSpace(poi.ImageUrls))
+                        continue;
+
+                    try
+                    {
+                        var list = JsonSerializer.Deserialize<List<string>>(poi.ImageUrls) ?? new List<string>();
+                        var first = list.FirstOrDefault(u => !string.IsNullOrWhiteSpace(u));
+                        if (!string.IsNullOrWhiteSpace(first))
+                        {
+                            result[poi.Id] = first;
+                            fallbackCount++;
+                        }
+                    }
+                    catch
+                    {
+                    }
+                }
+
+                if (fallbackCount > 0)
+                    Debug.WriteLine($"[POIRepository] [BANNER] Fallback filled {fallbackCount} banners from POI.ImageUrls");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[POIRepository] [BANNER] Fallback from POI.ImageUrls failed: {ex.Message}");
+            }
+
+            return result;
+        }
+
         public async Task<string?> GetPOIAvatarImageAsync(int poiId)
         {
             var all = await GetAllAvatarImagesAsync();
@@ -764,15 +824,18 @@ FROM POI_old;";
 
                 await InitializeAsync();
   // ? Don't wait for schema - sync can proceed
-   var payload = await FetchFirebasePayloadAsync(cancellationToken);
+   var payload = await FetchFirebasePayloadAsync(force, cancellationToken);
                 if (string.IsNullOrWhiteSpace(payload) || string.Equals(payload.Trim(), "null", StringComparison.OrdinalIgnoreCase))
                 {
                     Debug.WriteLine("[POIRepository] Firebase returned null/empty at known paths. Check RTDB node path and rules.");
                     _lastAdminSyncUtc = DateTime.UtcNow;
+                    if (force) throw new Exception("Kh√¥ng t·∫£i ƒë∆∞·ª£c d·ªØ li·ªáu JSON, Firebase tr·∫£ v·ªÅ r·ªóng.");
                     return 0;
                 }
 
                 var payloadHash = ComputePayloadHash(payload);
+                // ALWAYS respect hash check, even if force=true. This prevents wasteful DB writes
+                // and UI flashes when the fetched payload is identical to what we already have.
                 if (string.Equals(payloadHash, _lastFirebasePayloadHash, StringComparison.Ordinal))
                 {
                     _lastAdminSyncUtc = DateTime.UtcNow;
@@ -796,13 +859,17 @@ FROM POI_old;";
 
                 await _database!.RunInTransactionAsync(db =>
                 {
+                    // Clean up duplicate shifts from previous autoincrement bug
+                    if (pois.Count > 0)
+                    {
+                        var firebaseIds = string.Join(",", pois.Select(p => p.Id));
+                        db.Execute($"DELETE FROM POI WHERE id NOT IN ({firebaseIds})");
+                    }
+
                     foreach (var poi in pois)
                     {
                         ApplyDefaultsForPersistedPoi(poi, now);
-
-                        // Deterministic upsert for legacy schemas: clear same business key Id first.
-                        db.Execute("DELETE FROM POI WHERE id = ?", poi.Id);
-                        db.Insert(poi);
+                        db.InsertOrReplace(poi);
                         inserted++;
                     }
                 });
@@ -871,6 +938,7 @@ WHERE rowid NOT IN (
             catch (Exception ex)
             {
                 Debug.WriteLine($"[POIRepository] Firebase sync error (fallback to offline DB): {ex.Message}");
+                if (force) throw new Exception($"L·ªói trong qu√° tr√¨nh c·∫≠p nh·∫≠t offline DB: {ex.Message}");
                 return 0;
             }
             finally
@@ -879,19 +947,33 @@ WHERE rowid NOT IN (
             }
         }
 
-        private async Task<string?> FetchFirebasePayloadAsync(CancellationToken cancellationToken)
+        private async Task<string?> FetchFirebasePayloadAsync(bool force, CancellationToken cancellationToken)
         {
-            foreach (var uri in AdminSyncUris)
+            Exception? lastException = null;
+            foreach (var baseUri in AdminSyncUris)
             {
+                var uri = baseUri;
                 try
                 {
+                    if (force)
+                    {
+                        var uriBuilder = new UriBuilder(baseUri);
+                        var query = uriBuilder.Query ?? string.Empty;
+                        if (query.StartsWith("?")) query = query.Substring(1);
+                        var separator = string.IsNullOrEmpty(query) ? "" : "&";
+                        uriBuilder.Query = $"{query}{separator}_t={DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}";
+                        uri = uriBuilder.Uri;
+                    }
+
                     using var request = new HttpRequestMessage(HttpMethod.Get, uri);
                     request.Headers.Accept.ParseAdd("application/json");
+                    request.Headers.CacheControl = new System.Net.Http.Headers.CacheControlHeaderValue { NoCache = true, NoStore = true };
 
                     using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
                     if (!response.IsSuccessStatusCode)
                     {
                         Debug.WriteLine($"[POIRepository] Firebase path failed: {uri} -> HTTP {(int)response.StatusCode}");
+                        if (force) lastException = new Exception($"HTTP {(int)response.StatusCode}: {response.ReasonPhrase}");
                         continue;
                     }
 
@@ -908,8 +990,12 @@ WHERE rowid NOT IN (
                 catch (Exception ex)
                 {
                     Debug.WriteLine($"[POIRepository] Firebase path error: {uri} -> {ex.Message}");
+                    if (force) lastException = ex;
                 }
             }
+
+            if (force && lastException != null)
+                throw new Exception($"Kh√¥ng th·ªÉ g·ªçi Firebase API: {lastException.Message}");
 
             return null;
         }
@@ -1116,7 +1202,7 @@ WHERE rowid NOT IN (
 
         private static void ApplyDefaultsForPersistedPoi(POI poi, DateTime now)
         {
-            poi.Name = string.IsNullOrWhiteSpace(poi.Name) ? "(KhÙng rı tÍn)" : poi.Name.Trim();
+            poi.Name = string.IsNullOrWhiteSpace(poi.Name) ? "(KhÔøΩng rÔøΩ tÔøΩn)" : poi.Name.Trim();
             poi.DescriptionText = string.IsNullOrWhiteSpace(poi.DescriptionText) ? poi.Name : poi.DescriptionText.Trim();
             poi.TtsScript ??= poi.DescriptionText;
             poi.TtsLanguage = string.IsNullOrWhiteSpace(poi.TtsLanguage) ? "vi" : poi.TtsLanguage;
@@ -1379,7 +1465,7 @@ WHERE descriptionEn IS NULL
    using var document = JsonDocument.Parse(payload);
    var root = document.RootElement;
 
-          // ? ChÌnh x·c: JSON cÛ "POIImage" (s? Ìt) khÙng ph?i "POIImages"
+          // ? ChÔøΩnh xÔøΩc: JSON cÔøΩ "POIImage" (s? ÔøΩt) khÔøΩng ph?i "POIImages"
      if (!TryGetPropertyIgnoreCase(root, "POIImage", out var imagesElement))
      {
         Debug.WriteLine("[POIRepository] [AVATAR] No POIImage key in payload");
@@ -1396,7 +1482,7 @@ WHERE descriptionEn IS NULL
 
     foreach (var item in imagesElement.EnumerateArray())
           {
-       // Skip null items (Firebase JSON cÛ th? cÛ null entries)
+       // Skip null items (Firebase JSON cÔøΩ th? cÔøΩ null entries)
           if (item.ValueKind != JsonValueKind.Object)
                {
    Debug.WriteLine("[POIRepository] [AVATAR] Skipping non-object item in POIImage array");

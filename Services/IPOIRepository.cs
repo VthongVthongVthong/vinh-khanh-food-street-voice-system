@@ -26,6 +26,9 @@ public interface IPOIRepository
     Task<string?> GetPOIAvatarImageAsync(int poiId);
     Task<int> UpsertPOIImageAsync(POIImage image);
     Task<Dictionary<int, string>> GetAllAvatarImagesAsync();
+    
+    // Banner image
+    Task<Dictionary<int, string>> GetAllBannerImagesAsync();
 
     // Admin online sync (offline-first: safe to fail and continue with local DB)
     Task<int> SyncPOIsFromAdminAsync(bool force = false, CancellationToken cancellationToken = default);

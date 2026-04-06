@@ -98,8 +98,19 @@ namespace VinhKhanhstreetfoods.Services
     try
     {
         var allLocales = await TextToSpeech.GetLocalesAsync();
-        _localeCache = allLocales?.ToDictionary(l => l.Language.ToLowerInvariant()) ?? new();
-     _localesCached = true;
+        _localeCache = new Dictionary<string, Locale>();
+        if (allLocales != null)
+        {
+            foreach (var l in allLocales)
+            {
+                var key = l.Language.ToLowerInvariant();
+                if (!_localeCache.ContainsKey(key))
+                {
+                    _localeCache[key] = l;
+                }
+            }
+        }
+        _localesCached = true;
         Debug.WriteLine($"[TextToSpeechService] Cached {_localeCache.Count} locales");
     }
     catch (Exception ex)

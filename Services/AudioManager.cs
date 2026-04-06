@@ -20,6 +20,8 @@ namespace VinhKhanhstreetfoods.Services
         private readonly TextToSpeechService _ttsService;
         private readonly ITranslationService _translationService;
         private readonly SettingsService _settingsService;
+        private readonly Plugin.Maui.Audio.IAudioManager _systemAudioManager;
+        private Plugin.Maui.Audio.IAudioPlayer? _currentAudioPlayer;
         private readonly SemaphoreSlim _ttsSemaphore = new(1, 1);  // Ensure only 1 TTS at a time
         private readonly SemaphoreSlim _queueSignal = new(0);
         private readonly CancellationTokenSource _queueWorkerCts = new();
@@ -42,16 +44,21 @@ namespace VinhKhanhstreetfoods.Services
         private readonly Dictionary<string, DateTime> _lastTranslationAttempt = new();
         private readonly TimeSpan _translationThrottle = TimeSpan.FromSeconds(2); // Min 2 sec between requests
 
+        // ElevenLabs API
+        private const string ELEVEN_LABS_API_KEY = "sk_8db9fdb8efa165866e85ccc071c5ef803364bbd93324fe05";
+        private const string ELEVEN_LABS_VOICE_ID = "EXAVITQu4vr4xnSDxMaL";
+
         public event EventHandler<POI>? AudioStarted;
         public event EventHandler<POI>? AudioCompleted;
 
-        public AudioManager(TextToSpeechService ttsService, ITranslationService translationService, SettingsService settingsService)
+        public AudioManager(TextToSpeechService ttsService, ITranslationService translationService, SettingsService settingsService, Plugin.Maui.Audio.IAudioManager systemAudioManager)
         {
             try
             {
                 _ttsService = ttsService;
                 _translationService = translationService;
                 _settingsService = settingsService;
+                _systemAudioManager = systemAudioManager;
 
                 // Initialize runtime language from persisted setting (avoid hardcoded vi on app start)
                 _currentLanguage = NormalizeLang(_settingsService.PreferredLanguage);
@@ -249,7 +256,15 @@ namespace VinhKhanhstreetfoods.Services
                                 }
                             }
 
-                            await _ttsService.SpeakAsync(finalText, userLanguage, linkedCts.Token);
+                            var langCode = NormalizeLang(userLanguage);
+                            if (langCode != "vi")
+                            {
+                                await PlayElevenLabsAudioAsync(finalText, linkedCts.Token);
+                            }
+                            else
+                            {
+                                await _ttsService.SpeakAsync(finalText, userLanguage, linkedCts.Token);
+                            }
                         }
                         finally
                         {
@@ -382,10 +397,78 @@ namespace VinhKhanhstreetfoods.Services
             return dashIndex > 0 ? trimmed[..dashIndex] : trimmed;
         }
 
-        private static async Task PlayAudioFile(string filePath, CancellationToken token)
+        private async Task PlayElevenLabsAudioAsync(string text, CancellationToken token)
         {
-            // TODO: replace with real player that supports cancellation
-            await Task.Delay(2000, token);
+            var tempFile = Path.Combine(FileSystem.CacheDirectory, "elevenlabs_temp.mp3");
+
+            try
+            {
+                using var client = new HttpClient();
+                client.DefaultRequestHeaders.Add("xi-api-key", ELEVEN_LABS_API_KEY);
+                
+                var requestBody = new
+                {
+                    text = text,
+                    model_id = "eleven_multilingual_v2"
+                };
+
+                var content = new StringContent(System.Text.Json.JsonSerializer.Serialize(requestBody), System.Text.Encoding.UTF8, "application/json");
+
+                using var response = await client.PostAsync($"https://api.elevenlabs.io/v1/text-to-speech/{ELEVEN_LABS_VOICE_ID}", content, token);
+                response.EnsureSuccessStatusCode();
+
+                using var stream = await response.Content.ReadAsStreamAsync(token);
+                using var fileStream = File.Create(tempFile);
+                await stream.CopyToAsync(fileStream, token);
+                fileStream.Close(); // Important: block saving completely before reading
+
+                await PlayAudioFile(tempFile, token);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[AudioManager] ElevenLabs API error: {ex.Message}");
+                // Fallback to Native TTS if API fails
+                await _ttsService.SpeakAsync(text, _currentLanguage, token);
+            }
+            finally
+            {
+                if (File.Exists(tempFile))
+                {
+                    try { File.Delete(tempFile); } catch { /* Ignore */ }
+                }
+            }
+        }
+
+        private async Task PlayAudioFile(string filePath, CancellationToken token)
+        {
+            Stream? audioStream = null;
+            try
+            {
+                audioStream = File.OpenRead(filePath);
+                _currentAudioPlayer = _systemAudioManager.CreatePlayer(audioStream);
+                
+                var tcs = new TaskCompletionSource();
+                using var registration = token.Register(() => 
+                {
+                    _currentAudioPlayer?.Stop();
+                    tcs.TrySetCanceled();
+                });
+
+                _currentAudioPlayer.PlaybackEnded += (s, e) => tcs.TrySetResult();
+                _currentAudioPlayer.Play();
+
+                await tcs.Task;
+            }
+            catch (OperationCanceledException)
+            {
+                Debug.WriteLine("[AudioManager] Audio file playback stopped");
+            }
+            finally
+            {
+                _currentAudioPlayer?.Dispose();
+                _currentAudioPlayer = null;
+                audioStream?.Dispose();
+            }
         }
 
         /// <summary>
@@ -396,6 +479,7 @@ namespace VinhKhanhstreetfoods.Services
         {
             _playbackCts?.Cancel();
             _ttsService.Stop();
+            _currentAudioPlayer?.Stop();
         }
 
         public void StopCurrent()
