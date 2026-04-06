@@ -5,7 +5,7 @@ namespace VinhKhanhstreetfoods.Models
     [Table("POI")]
     public class POI
     {
-        [PrimaryKey, AutoIncrement]
+        [PrimaryKey]
         public int Id { get; set; }
 
         [NotNull]
@@ -142,6 +142,12 @@ namespace VinhKhanhstreetfoods.Models
         /// </summary>
         [Ignore]
         public string? AvatarImageUrl { get; set; }
+
+        /// <summary>
+        /// Banner image URL (loaded from POIImages table with type='banner')
+        /// </summary>
+        [Ignore]
+        public string? BannerImageUrl { get; set; }
 
         // ===== MULTILINGUAL HELPERS =====
         /// <summary>
