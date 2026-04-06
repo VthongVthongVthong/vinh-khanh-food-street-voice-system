@@ -105,11 +105,17 @@ Language selection
 - **Responsive Design:** Adaptive layouts for different screen sizes
 
 ### Backend
-- **Technology Stack:** PHP (Web Admin CMS)
-- **Architecture Style:** Hybrid (Firebase Realtime Database + Custom CMS)
-- **Data Management:** Firebase Realtime Database (cloud) + PHP for content management
+- **Technology Stack:** PHP (cPanel Web Server), Firebase Realtime Database
+- **Architecture Style:** Hybrid (Custom CMS + BaaS Firebase)
+- **Responsibilities:** 
+  - Content management (CMS)
+  - Data validation and processing
+  - Synchronization with Firebase Realtime Database
 - **Authentication:** Admin login with role-based access (PHP session-based)
-- **Data Sync:** CMS pushes data to Firebase; mobile app fetches and syncs to local SQLite
+- **Data Flow:** 
+  - Admin → CMS (PHP on cPanel) & Firebase
+  - Mobile App → Firebase → Local SQLite
+- **Role:** Backend acts as content management and data synchronization layer, not runtime processing layer
 
 ### Infrastructure
 - **Hosting:** Cloud (Firebase)
