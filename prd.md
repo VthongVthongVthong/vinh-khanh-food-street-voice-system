@@ -105,10 +105,11 @@ Language selection
 - **Responsive Design:** Adaptive layouts for different screen sizes
 
 ### Backend
-- **Technology Stack:** ASP.NET Core
-- **API Requirements:** RESTful API
-- **Database:** SQLite (offline mode)
-SQL Server / Cloud DB (online mode)
+- **Technology Stack:** PHP (Web Admin CMS)
+- **Architecture Style:** Hybrid (Firebase Realtime Database + Custom CMS)
+- **Data Management:** Firebase Realtime Database (cloud) + PHP for content management
+- **Authentication:** Admin login with role-based access (PHP session-based)
+- **Data Sync:** CMS pushes data to Firebase; mobile app fetches and syncs to local SQLite
 
 ### Infrastructure
 - **Hosting:** Cloud (Firebase)
