@@ -45,7 +45,8 @@ namespace VinhKhanhstreetfoods
             builder.Services.AddSingleton<SettingsService>();
             builder.Services.AddSingleton<TextToSpeechService>();
             builder.Services.AddSingleton<ITranslationService, TranslationService>();
-            builder.Services.AddSingleton<AudioManager>();
+            builder.Services.AddSingleton(Plugin.Maui.Audio.AudioManager.Current);
+            builder.Services.AddSingleton<VinhKhanhstreetfoods.Services.AudioManager>();
             builder.Services.AddSingleton<MapService>();
 
             // HTTP client for API calls
