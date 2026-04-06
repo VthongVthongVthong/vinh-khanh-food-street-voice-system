@@ -250,22 +250,13 @@ namespace VinhKhanhstreetfoods.ViewModels
                 var updatedCount = await _poiRepository.SyncPOIsFromAdminAsync(force: true);
                 var refreshed = await _poiRepository.GetActivePOIsAsync();
 
-                await MainThread.InvokeOnMainThreadAsync(() =>
-                {
-                    _allPOIs.Clear();
-                    _allPOIs.AddRange(refreshed);
-                    ApplyFilter();
-
-                    StatusMessage = updatedCount > 0
-                        ? LocalizationService.GetString("Home_Status_Synced")?.Replace("{0}", updatedCount.ToString())
-                        ?? $"Updated {updatedCount} locations."
-                        : LocalizationService.GetString("Home_Status_NoNew") ?? "No new data.";
-                });
+                await MainThread.InvokeOnMainThreadAsync(() => { if (updatedCount > 0) { _allPOIs.Clear(); _allPOIs.AddRange(refreshed); ApplyFilter(); } StatusMessage = updatedCount > 0 ? LocalizationService.GetString("Home_Status_Synced")?.Replace("{0}", updatedCount.ToString()) ?? $"Updated {updatedCount} locations." : LocalizationService.GetString("Home_Status_NoNew") ?? "No new data."; });
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[HomeViewModel] Manual refresh error: {ex.Message}");
-                StatusMessage = LocalizationService.GetString("Home_Status_RefreshFailed") ?? "Refresh failed. Check network.";
+                StatusMessage = $"Lỗi: {ex.Message}";
+                await Application.Current!.MainPage!.DisplayAlert("Lỗi Đồng Bộ", ex.Message, "OK");
             }
             finally
             {
@@ -287,17 +278,7 @@ namespace VinhKhanhstreetfoods.ViewModels
                 var updatedCount = await _poiRepository.SyncPOIsFromAdminAsync(force: true);
                 var refreshed = await _poiRepository.GetActivePOIsAsync();
 
-                await MainThread.InvokeOnMainThreadAsync(() =>
-                {
-                    _allPOIs.Clear();
-                    _allPOIs.AddRange(refreshed);
-                    ApplyFilter();
-
-                    StatusMessage = updatedCount > 0
-                        ? LocalizationService.GetString("Home_Status_Synced")?.Replace("{0}", updatedCount.ToString())
-                        ?? $"Updated {updatedCount} locations."
-                        : LocalizationService.GetString("Home_Status_NoNew") ?? "No new data.";
-                });
+                await MainThread.InvokeOnMainThreadAsync(() => { if (updatedCount > 0) { _allPOIs.Clear(); _allPOIs.AddRange(refreshed); ApplyFilter(); } StatusMessage = updatedCount > 0 ? LocalizationService.GetString("Home_Status_Synced")?.Replace("{0}", updatedCount.ToString()) ?? $"Updated {updatedCount} locations." : LocalizationService.GetString("Home_Status_NoNew") ?? "No new data."; });
 
                 // Refresh UI components if needed
                 await RefreshUIComponentsAsync();
@@ -506,3 +487,4 @@ namespace VinhKhanhstreetfoods.ViewModels
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }
+

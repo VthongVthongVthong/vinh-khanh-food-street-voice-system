@@ -94,9 +94,6 @@ namespace VinhKhanhstreetfoods.ViewModels
 
                 if (!_isInitializing)
                 {
-                    _selectedAppLanguage = value;
-                    OnPropertyChanged(nameof(SelectedAppLanguage));
-
                     // ? ANR FIX: Defer cache clearing to background thread
                     _ = Task.Run(async () => await ClearTranslationCacheAsync());
 

@@ -12,6 +12,7 @@ namespace VinhKhanhstreetfoods.ViewModels
         private readonly IPOIRepository _poiRepository;
         private readonly MapService _mapService;
         private readonly LocationService _locationService;
+        private readonly AudioManager _audioManager;
 
         private ObservableCollection<POI> _allPOIs;
         private POI _selectedPOI;
@@ -23,11 +24,12 @@ namespace VinhKhanhstreetfoods.ViewModels
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
-        public MapViewModel(IPOIRepository poiRepository, MapService mapService, LocationService locationService)
+        public MapViewModel(IPOIRepository poiRepository, MapService mapService, LocationService locationService, AudioManager audioManager)
         {
             _poiRepository = poiRepository ?? throw new ArgumentNullException(nameof(poiRepository));
             _mapService = mapService ?? throw new ArgumentNullException(nameof(mapService));
             _locationService = locationService ?? throw new ArgumentNullException(nameof(locationService));
+            _audioManager = audioManager ?? throw new ArgumentNullException(nameof(audioManager));
 
             AllPOIs = new ObservableCollection<POI>();
             StatusMessage = "Tải bản đồ...";
@@ -35,6 +37,8 @@ namespace VinhKhanhstreetfoods.ViewModels
 
             OpenMapCommand = new Command(async () => await OpenMap());
             RefreshCommand = new Command(async () => await RefreshPOIs());
+            OpenDetailCommand = new Command<POI>(async (poi) => await OpenDetailAsync(poi));
+            PlayAudioCommand = new Command<POI>((poi) => PlayAudio(poi));
 
             // Subscribe to events with null checks
             if (_locationService != null)
@@ -119,6 +123,8 @@ namespace VinhKhanhstreetfoods.ViewModels
 
         public ICommand OpenMapCommand { get; }
         public ICommand RefreshCommand { get; }
+        public ICommand OpenDetailCommand { get; }
+        public ICommand PlayAudioCommand { get; }
 
         private async Task LoadPOIs()
         {
@@ -132,13 +138,35 @@ namespace VinhKhanhstreetfoods.ViewModels
                     return;
                 }
 
-                var pois = await _poiRepository.GetAllPOIsAsync();
+                var pois = await _poiRepository.GetActivePOIsAsync();
 
                 if (pois == null || pois.Count == 0)
                 {
                     StatusMessage = "No POIs loaded";
                     System.Diagnostics.Debug.WriteLine("[MapViewModel] No POIs found in database");
                     return;
+                }
+
+                // Load banner & avatar images
+                try
+                {
+                    var bannerDict = await _poiRepository.GetAllBannerImagesAsync();
+                    var avatarDict = await _poiRepository.GetAllAvatarImagesAsync();
+                    foreach (var poi in pois)
+                    {
+                        if (bannerDict.TryGetValue(poi.Id, out var bannerUrl) && !string.IsNullOrWhiteSpace(bannerUrl))
+                        {
+                            poi.BannerImageUrl = bannerUrl;
+                        }
+                        if (avatarDict.TryGetValue(poi.Id, out var avatarUrl) && !string.IsNullOrWhiteSpace(avatarUrl))
+                        {
+                            poi.AvatarImageUrl = avatarUrl;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[MapViewModel] Error loading images: {ex.Message}");
                 }
 
                 MainThread.BeginInvokeOnMainThread(() =>
@@ -171,7 +199,22 @@ namespace VinhKhanhstreetfoods.ViewModels
                 if (updatedCount <= 0)
                     return;
 
-                var refreshed = await _poiRepository.GetAllPOIsAsync();
+                var refreshed = await _poiRepository.GetActivePOIsAsync();
+
+                try
+                {
+                    var bannerDict = await _poiRepository.GetAllBannerImagesAsync();
+                    var avatarDict = await _poiRepository.GetAllAvatarImagesAsync();
+                    foreach (var poi in refreshed)
+                    {
+                        if (bannerDict.TryGetValue(poi.Id, out var bannerUrl) && !string.IsNullOrWhiteSpace(bannerUrl))
+                            poi.BannerImageUrl = bannerUrl;
+                        if (avatarDict.TryGetValue(poi.Id, out var avatarUrl) && !string.IsNullOrWhiteSpace(avatarUrl))
+                            poi.AvatarImageUrl = avatarUrl;
+                    }
+                }
+                catch { }
+
                 MainThread.BeginInvokeOnMainThread(() =>
                 {
                     AllPOIs = new ObservableCollection<POI>(refreshed);
@@ -240,6 +283,36 @@ namespace VinhKhanhstreetfoods.ViewModels
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[MapViewModel] Error in OnPropertyChanged({propertyName}): {ex.Message}");
+            }
+        }
+
+        private async Task OpenDetailAsync(POI poi)
+        {
+            if (poi == null) return;
+            
+            try
+            {
+                await Shell.Current.GoToAsync($"//home/detail?poiId={poi.Id}", true);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[MapViewModel] Navigation error: {ex.Message}");
+            }
+        }
+
+        private void PlayAudio(POI poi)
+        {
+            if (poi == null) return;
+
+            try
+            {
+                _audioManager.AddToQueue(poi);
+                StatusMessage = "🔊 Đang phát âm thanh...";
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[MapViewModel] Play audio error: {ex.Message}");
+                StatusMessage = $"❌ Lỗi: {ex.Message}";
             }
         }
     }
