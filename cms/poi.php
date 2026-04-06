@@ -1475,7 +1475,7 @@ try {
                 if (lang === 'vi') {
                     // Dùng Gemini TTS cho tiếng Việt
                     const response = await fetch(
-                        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=AIzaSyDBZd4Ay2V4ewhEz471uXhA8phbXzACXgY",
+                        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=",
                         {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
