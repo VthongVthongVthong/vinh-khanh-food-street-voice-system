@@ -92,6 +92,12 @@
     </ItemGroup>
 
     <ItemGroup>
+      <MauiXaml Update="AppShell.xaml">
+        <Generator>MSBuild:Compile</Generator>
+  </MauiXaml>
+      <MauiXaml Update="App.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </MauiXaml>
       <MauiXaml Update="Pages\HybridPOIPopupOverlay.xaml">
         <Generator>MSBuild:Compile</Generator>
       </MauiXaml>
@@ -102,9 +108,9 @@
         <Generator>MSBuild:Compile</Generator>
       </MauiXaml>
       <MauiXaml Update="Views\POIPopup.xaml">
-        <Generator>MSBuild:Compile</Generator>
+    <Generator>MSBuild:Compile</Generator>
       </MauiXaml>
-      <MauiXaml Update="Views\SettingsPage.xaml">
+ <MauiXaml Update="Views\SettingsPage.xaml">
         <Generator>MSBuild:Compile</Generator>
       </MauiXaml>
     </ItemGroup>

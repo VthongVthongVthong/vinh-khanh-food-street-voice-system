@@ -9,7 +9,6 @@ namespace VinhKhanhstreetfoods.Views
     public partial class HybridPOIPopup : ContentView
     {
        private readonly HybridPOIPopupViewModel _viewModel;
-   private GestureRecognizer? _swipeRecognizer;
 
         public HybridPOIPopup(HybridPOIPopupViewModel viewModel)
        {

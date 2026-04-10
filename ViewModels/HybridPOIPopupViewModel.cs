@@ -59,15 +59,17 @@ namespace VinhKhanhstreetfoods.ViewModels
 
      public POI? SelectedPOI
  {
-  get => _selectedPOI ?? _popupService.SelectedPOI;
+        get => _selectedPOI ?? _popupService.SelectedPOI;
   set
       {
      if (_selectedPOI == value)
- return;
+      return;
 
   _selectedPOI = value;
  OnPropertyChanged();
-     }
+     OnPropertyChanged(nameof(BannerImageUrl));
+           OnPropertyChanged(nameof(AvatarImageUrl));
+      }
       }
 
   public string SelectedLanguage
@@ -153,30 +155,56 @@ get => _isLoadingAudio;
 
      try
   {
-   _selectedPOI = poi;
+      _selectedPOI = poi;
        SelectedLanguage = "vi"; // Reset language on selection
      IsPlayingAudio = false;
 
+ // Load images
+      await LoadPOIImagesAsync(poi);
+
     // Notify UI of selection change
      OnPropertyChanged(nameof(SelectedPOI));
+     OnPropertyChanged(nameof(BannerImageUrl));
+      OnPropertyChanged(nameof(AvatarImageUrl));
 
    // Notify popup service
      await _popupService.SelectPOIAsync(poi);
 
-      System.Diagnostics.Debug.WriteLine($"[HybridPOIPopupViewModel] Selected POI: {poi.Name}");
+      System.Diagnostics.Debug.WriteLine($"[HybridPOIPopupViewModel] Selected POI: {poi.Name} | Banner: {_bannerImageUrl} | Avatar: {_avatarImageUrl}");
  }
-  catch (Exception ex)
+    catch (Exception ex)
     {
 System.Diagnostics.Debug.WriteLine($"[HybridPOIPopupViewModel] Error selecting POI: {ex.Message}");
   }
-     }
+        }
 
    /// <summary>
-   /// Image loading removed - images no longer displayed in popup
+   /// Load banner and avatar images for POI
      /// </summary>
       private async Task LoadPOIImagesAsync(POI poi)
   {
-  // Images removed from UI - skip loading
+      try
+  {
+          // ? FIX: Proper image URL parsing with fallbacks
+          var images = ExtractImageUrlsFromPOI(poi);
+       
+          _bannerImageUrl = images.Count > 1 ? images[1] : (images.Count > 0 ? images[0] : null);
+ _avatarImageUrl = images.Count > 0 ? images[0] : null;
+          
+  // Fallback to default if still empty
+     if (string.IsNullOrWhiteSpace(_bannerImageUrl))
+       _bannerImageUrl = GetDefaultBannerUrl();
+          
+   if (string.IsNullOrWhiteSpace(_avatarImageUrl))
+     _avatarImageUrl = GetDefaultAvatarUrl();
+
+  System.Diagnostics.Debug.WriteLine($"[HybridPOIPopupViewModel] Loaded images for {poi.Name}: banner={_bannerImageUrl}, avatar={_avatarImageUrl}");
+     }
+     catch (Exception ex)
+  {
+System.Diagnostics.Debug.WriteLine($"[HybridPOIPopupViewModel] Error loading images: {ex.Message}");
+    }
+
   await Task.CompletedTask;
         }
 
@@ -305,8 +333,9 @@ System.Diagnostics.Debug.WriteLine($"[HybridPOIPopupViewModel] Error playing aud
         {
 MainThread.BeginInvokeOnMainThread(() =>
  {
-      _selectedPOI = args.NewPOI;
+        _selectedPOI = args.NewPOI;
     OnPropertyChanged(nameof(SelectedPOI));
+             LoadPOIImagesAsync(args.NewPOI);
      });
     }
 

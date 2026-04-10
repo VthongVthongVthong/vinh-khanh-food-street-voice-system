@@ -4,44 +4,32 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:local="clr-namespace:VinhKhanhstreetfoods.Views"
-    xmlns:pages="clr-namespace:VinhKhanhstreetfoods.Pages"
-  FlyoutBehavior="Disabled"
+    FlyoutBehavior="Disabled"
     BackgroundColor="White"
     TitleColor="#1a1a1a"
     ForegroundColor="#000000"
-  NavBarHasShadow="True">
+    NavBarHasShadow="True">
 
-    <Grid RowDefinitions="*, Auto" ColumnDefinitions="*">
-        <!-- Main TabBar Content -->
-        <TabBar Grid.Row="0">
-       <ShellContent
-         x:Name="HomeTab"
-    Title="Home"
-      Icon="home"
-ContentTemplate="{DataTemplate local:HomePage}"
-    Route="home" />
+    <TabBar>
+     <ShellContent
+     x:Name="HomeTab"
+  Title="Home"
+          Icon="home"
+         ContentTemplate="{DataTemplate local:HomePage}"
+          Route="home" />
 
-<ShellContent
-    x:Name="MapTab"
-  Title="Map"
-    Icon="map"
-     ContentTemplate="{DataTemplate local:MapPage}"
-    Route="map" />
+        <ShellContent
+            x:Name="MapTab"
+            Title="Map"
+            Icon="map"
+ ContentTemplate="{DataTemplate local:MapPage}"
+          Route="map" />
 
-  <ShellContent
+        <ShellContent
       x:Name="SettingsTab"
-      Title="Settings"
-    Icon="settings"
- ContentTemplate="{DataTemplate local:SettingsPage}"
-      Route="settings" />
+  Title="Settings"
+     Icon="settings"
+         ContentTemplate="{DataTemplate local:SettingsPage}"
+       Route="settings" />
     </TabBar>
-
-      <!-- Hybrid Popup Overlay (on top) -->
-        <pages:HybridPOIPopupOverlay 
-       x:Name="PopupOverlay"
-      Grid.Row="0"
-  Grid.RowSpan="2"
-      BackgroundColor="Transparent"
-            IsVisible="False" />
-    </Grid>
 </Shell>
