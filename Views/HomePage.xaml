@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:converters="clr-namespace:VinhKhanhstreetfoods.Converters;assembly=VinhKhanhstreetfoods"
              xmlns:local2="clr-namespace:VinhKhanhstreetfoods.Models;assembly=VinhKhanhstreetfoods"
+             xmlns:components="clr-namespace:VinhKhanhstreetfoods.Views.Components"
              x:Class="VinhKhanhstreetfoods.Views.HomePage"
              Title="Food Street"
              BackgroundColor="#F8F8F8"
@@ -16,9 +17,10 @@
         </ResourceDictionary>
     </ContentPage.Resources>
 
-    <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="0">
+    <Grid>
+        <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="0">
 
-        <!-- Header -->
+            <!-- Header -->
         <Grid BackgroundColor="White" Padding="12" ColumnSpacing="8" ColumnDefinitions="*,Auto,Auto">
             <StackLayout Grid.Column="0" Spacing="2">
                 <Label x:Name="HeaderTitleLabel" FontSize="18" FontAttributes="Bold" TextColor="#1a1a1a" />
@@ -149,25 +151,29 @@
                            HorizontalOptions="Center" />
 
         <!-- Bottom Controls -->
-        <StackLayout Grid.Row="3" Spacing="8" Padding="12" BackgroundColor="White">
-            <Button x:Name="StartLocationButton"
-                    Command="{Binding StartLocationServiceCommand}"
-                    IsVisible="{Binding IsLocationServiceRunning, Converter={StaticResource InvertedBoolConverter}}"
-                    BackgroundColor="#1976D2"
-                    TextColor="White"
-                    FontSize="13"
-                    FontAttributes="Bold"
-                    CornerRadius="8"
-                    Padding="12" />
-            <Button x:Name="StopLocationButton"
-                    Command="{Binding StopLocationServiceCommand}"
-                    IsVisible="{Binding IsLocationServiceRunning}"
-                    BackgroundColor="#FF8C00"
-                    TextColor="White"
-                    FontSize="13"
-                    FontAttributes="Bold"
-                    CornerRadius="8"
-                    Padding="12" />
-        </StackLayout>
+            <StackLayout Grid.Row="3" Spacing="8" Padding="12" BackgroundColor="White">
+                <Button x:Name="StartLocationButton"
+                        Command="{Binding StartLocationServiceCommand}"
+                        IsVisible="{Binding IsLocationServiceRunning, Converter={StaticResource InvertedBoolConverter}}"
+                        BackgroundColor="#1976D2"
+                        TextColor="White"
+                        FontSize="13"
+                        FontAttributes="Bold"
+                        CornerRadius="8"
+                        Padding="12" />
+                <Button x:Name="StopLocationButton"
+                        Command="{Binding StopLocationServiceCommand}"
+                        IsVisible="{Binding IsLocationServiceRunning}"
+                        BackgroundColor="#FF8C00"
+                        TextColor="White"
+                        FontSize="13"
+                        FontAttributes="Bold"
+                        CornerRadius="8"
+                        Padding="12" />
+            </StackLayout>
+        </Grid>
+
+        <!-- Global Now Playing Bar overlay -->
+        <components:NowPlayingBar VerticalOptions="End" Margin="0,0,0,80" />
     </Grid>
 </ContentPage>

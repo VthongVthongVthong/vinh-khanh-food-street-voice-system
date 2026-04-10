@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:converters="clr-namespace:VinhKhanhstreetfoods.Converters;assembly=VinhKhanhstreetfoods"
+             x:Class="VinhKhanhstreetfoods.Views.Components.NowPlayingBar"
+             IsVisible="{Binding IsVisible}"
+             x:Name="RootView">
+    
+    <ContentView.Resources>
+        <ResourceDictionary>
+            <converters:InvertedBoolConverter x:Key="InvertedBoolConverter" />
+            <converters:IsNullOrEmptyConverter x:Key="IsNullOrEmptyConverter" />
+        </ResourceDictionary>
+    </ContentView.Resources>
+
+    <Frame BackgroundColor="#1F2937"
+           CornerRadius="12"
+           Padding="10,8"
+           Margin="15,0,15,15"
+           HasShadow="True"
+           BorderColor="Transparent"
+           VerticalOptions="End">
+        
+        <Frame.GestureRecognizers>
+            <TapGestureRecognizer Command="{Binding OpenDetailCommand}" />
+        </Frame.GestureRecognizers>
+
+        <Grid ColumnDefinitions="Auto, *, Auto, Auto" ColumnSpacing="12" VerticalOptions="Center">
+            
+            <!-- Avatar -->
+            <Border Grid.Column="0" 
+                    WidthRequest="44" 
+                    HeightRequest="44" 
+                    StrokeThickness="0"
+                    BackgroundColor="#374151"
+                    VerticalOptions="Center">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="22" />
+                </Border.StrokeShape>
+                <Grid>
+                    <!-- Fallback -->
+                    <Label Text="🎵" FontSize="20" HorizontalOptions="Center" VerticalOptions="Center" TextColor="#D1D5DB" />
+                    <!-- Image -->
+                    <Image Source="{Binding PoiAvatarUrl}" Aspect="AspectFill" 
+                           IsVisible="{Binding PoiAvatarUrl, Converter={StaticResource InvertedBoolConverter}, ConverterParameter='StringNotEmpty'}" />
+                </Grid>
+            </Border>
+
+            <!-- Info -->
+            <StackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">
+                <Label Text="{Binding PoiName}" 
+                       FontSize="13" 
+                       FontAttributes="Bold" 
+                       TextColor="White" 
+                       LineBreakMode="TailTruncation" />
+                <Label Text="{Binding LanguageText}" 
+                       FontSize="10" 
+                       TextColor="#9CA3AF" />
+            </StackLayout>
+
+            <!-- Play/Pause Button -->
+            <Button Grid.Column="2"
+                    Text="{Binding PlayPauseIcon}"
+                    Command="{Binding TogglePlayCommand}"
+                    BackgroundColor="Transparent"
+                    TextColor="#F97316"
+                    FontSize="24"
+                    Padding="0"
+                    VerticalOptions="Center"
+                    HeightRequest="44"
+                    WidthRequest="44" />
+
+            <!-- Close Button -->
+            <Button Grid.Column="3"
+                    Text="✕"
+                    Command="{Binding CloseCommand}"
+                    BackgroundColor="Transparent"
+                    TextColor="#6B7280"
+                    FontSize="20"
+                    Padding="0"
+                    VerticalOptions="Center"
+                    HeightRequest="44"
+                    WidthRequest="30" />
+        </Grid>
+    </Frame>
+</ContentView>

@@ -56,6 +56,7 @@ namespace VinhKhanhstreetfoods
 
             // Register ViewModels
             builder.Services.AddSingleton<HomeViewModel>();
+            builder.Services.AddSingleton<NowPlayingViewModel>();
             builder.Services.AddTransient<CameraViewModel>();
             builder.Services.AddSingleton<POIPopupViewModel>(sp =>
             {

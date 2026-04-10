@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:converters="clr-namespace:VinhKhanhstreetfoods.Converters;assembly=VinhKhanhstreetfoods"
              xmlns:viewmodels="clr-namespace:VinhKhanhstreetfoods.ViewModels"
+             xmlns:components="clr-namespace:VinhKhanhstreetfoods.Views.Components"
              x:Class="VinhKhanhstreetfoods.Views.MapPage"
              Title="Map"
              BackgroundColor="#F5F6F8"
@@ -15,7 +16,8 @@
         </ResourceDictionary>
     </ContentPage.Resources>
 
-    <ScrollView x:Name="MainScrollView">
+    <Grid>
+        <ScrollView x:Name="MainScrollView">
         <StackLayout x:Name="MainStackLayout" Spacing="15" Padding="15">
 
             <!-- Header -->
@@ -360,5 +362,7 @@
             </Grid>
 
         </StackLayout>
-    </ScrollView>
+        </ScrollView>
+        <components:NowPlayingBar Margin="0,0,0,20" />
+    </Grid>
 </ContentPage>
