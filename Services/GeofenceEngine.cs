@@ -1,167 +1,202 @@
 using VinhKhanhstreetfoods.Models;
+using System.Collections.Concurrent;
 
 namespace VinhKhanhstreetfoods.Services
 {
     public class GeofenceEngine
     {
-        private readonly IPOIRepository _poiRepository;
+      private readonly IPOIRepository _poiRepository;
         private readonly AudioManager _audioManager;
-        private readonly Dictionary<int, DateTime> _poiCooldowns = new();
-        private readonly TimeSpan _cooldownPeriod = TimeSpan.FromMinutes(5);
-        private readonly TimeSpan _debouncePeriod = TimeSpan.FromSeconds(5);
+        private readonly HybridPopupService _hybridPopupService;
+    private readonly Dictionary<int, DateTime> _poiCooldowns = new();
+        private readonly TimeSpan _cooldownPeriod = TimeSpan.FromSeconds(5);
+ private readonly TimeSpan _debouncePeriod = TimeSpan.FromSeconds(5);
         private readonly SemaphoreSlim _checkLock = new(1, 1);
         private readonly TimeSpan _refreshPoisInterval = TimeSpan.FromSeconds(15);
 
         private DateTime _lastPoiRefresh = DateTime.MinValue;
         private List<POI> _cachedActivePois = new();
+        private Location _lastUserLocation;
 
         public event EventHandler<POI> POITriggered;
 
-        public GeofenceEngine(IPOIRepository poiRepository, AudioManager audioManager)
+        public GeofenceEngine(IPOIRepository poiRepository, AudioManager audioManager, HybridPopupService hybridPopupService)
         {
-            _poiRepository = poiRepository;
-            _audioManager = audioManager;
+ _poiRepository = poiRepository;
+       _audioManager = audioManager;
+          _hybridPopupService = hybridPopupService;
         }
 
-        public async Task CheckPOIs(Location userLocation)
+  public async Task CheckPOIs(Location userLocation)
+  {
+         if (userLocation == null)
+    {
+             System.Diagnostics.Debug.WriteLine("[GeofenceEngine] ? User location is null");
+  return;
+         }
+
+        System.Diagnostics.Debug.WriteLine($"[GeofenceEngine] ?? User at {userLocation.Latitude:F6}, {userLocation.Longitude:F6}");
+            _lastUserLocation = userLocation;
+
+       if (!await _checkLock.WaitAsync(0))
+      {
+      System.Diagnostics.Debug.WriteLine("[GeofenceEngine] ? Previous check still running, skipping");
+        return;
+      }
+
+try
+            {
+     var allPOIs = await GetActivePoisWithCacheAsync();
+
+        if (allPOIs == null || allPOIs.Count == 0)
+    {
+     System.Diagnostics.Debug.WriteLine("[GeofenceEngine] ?? No active POIs");
+return;
+          }
+
+           System.Diagnostics.Debug.WriteLine($"[GeofenceEngine] ?? Checking {allPOIs.Count} POIs");
+
+       // ? FIX: Use concurrent processing to avoid main thread blocking
+          var triggeredPois = new ConcurrentBag<(POI poi, double distance)>();
+              
+        await Task.Run(() =>
         {
-            if (userLocation == null)
-            {
-                System.Diagnostics.Debug.WriteLine("[GeofenceEngine] User location is null");
-                return;
-            }
+          Parallel.ForEach(allPOIs, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, poi =>
+   {
+          try
+         {
+    var distance = CalculateDistance(
+   userLocation.Latitude, userLocation.Longitude,
+  poi.Latitude, poi.Longitude);
 
-            if (!await _checkLock.WaitAsync(0))
-            {
-                // Skip this tick if previous check still running to avoid backlog/ANR pressure
-                return;
-            }
+          poi.DistanceFromUser = distance;
 
-            try
-            {
-                var allPOIs = await GetActivePoisWithCacheAsync();
+         // Check cooldown ONLY if we might trigger
+              if (distance > poi.TriggerRadius)
+          {
+      return; // Out of range, skip
+      }
 
-                if (allPOIs == null || allPOIs.Count == 0)
+   lock (_poiCooldowns)
+                  {
+   if (_poiCooldowns.TryGetValue(poi.Id, out var lastTriggered))
+          {
+    var timeSinceLast = DateTime.Now - lastTriggered;
+          if (timeSinceLast < _cooldownPeriod)
+           {
+       return; // Still in cooldown
+   }
+         }
+   }
+
+          // Check debounce
+          var timeSinceLastTrigger = DateTime.Now - poi.LastTriggered;
+                 if (timeSinceLastTrigger < _debouncePeriod)
+                 {
+      return; // Debounced
+           }
+
+       // POI is triggerable - add to results
+   triggeredPois.Add((poi, distance));
+    }
+      catch (Exception poiEx)
+             {
+       System.Diagnostics.Debug.WriteLine($"[GeofenceEngine] ?? Error checking POI {poi?.Id}: {poiEx.Message}");
+       }
+       });
+       });
+
+           // ? Handle all triggered POIs on main thread
+                foreach (var (poi, distance) in triggeredPois)
                 {
-                    System.Diagnostics.Debug.WriteLine("[GeofenceEngine] No active POIs found");
-                    return;
-                }
-
-                foreach (var poi in allPOIs)
-                {
-                    try
-                    {
-                        if (_poiCooldowns.TryGetValue(poi.Id, out var lastTriggered))
-                        {
-                            if (DateTime.Now - lastTriggered < _cooldownPeriod)
-                                continue;
-                        }
-
-                        var distance = CalculateDistance(
-                            userLocation.Latitude, userLocation.Longitude,
-                            poi.Latitude, poi.Longitude);
-
-                        poi.DistanceFromUser = distance;
-
-                        if (distance <= poi.TriggerRadius)
-                        {
-                            if (DateTime.Now - poi.LastTriggered < _debouncePeriod)
-                                continue;
-
-                            await TriggerPOI(poi);
-                        }
-                    }
-                    catch (Exception poiEx)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"[GeofenceEngine] Error checking POI {poi?.Id}: {poiEx.Message}");
-                    }
-                }
+         System.Diagnostics.Debug.WriteLine($"[GeofenceEngine] ?? TRIGGER: {poi.Name} ({distance:F1}m)");
+       await TriggerPOI(poi, distance);
             }
-            catch (Exception ex)
+
+    if (triggeredPois.Count == 0)
+         {
+         System.Diagnostics.Debug.WriteLine("[GeofenceEngine] ? No POIs in range");
+          }
+            }
+     catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[GeofenceEngine] Error in CheckPOIs: {ex.Message}\n{ex.StackTrace}");
-            }
+           System.Diagnostics.Debug.WriteLine($"[GeofenceEngine] ? Error: {ex.Message}");
+      }
             finally
-            {
-                _checkLock.Release();
+         {
+         _checkLock.Release();
             }
-        }
+    }
 
-        private async Task<List<POI>> GetActivePoisWithCacheAsync()
+     private async Task<List<POI>> GetActivePoisWithCacheAsync()
         {
             var now = DateTime.UtcNow;
-            if (_cachedActivePois.Count > 0 && now - _lastPoiRefresh < _refreshPoisInterval)
-            {
-                return _cachedActivePois;
-            }
+         if (_cachedActivePois.Count > 0 && now - _lastPoiRefresh < _refreshPoisInterval)
+         {
+    return _cachedActivePois;
+      }
 
             var pois = await _poiRepository.GetActivePOIsAsync();
-            _cachedActivePois = pois ?? new List<POI>();
-            _lastPoiRefresh = now;
-            return _cachedActivePois;
+     _cachedActivePois = pois ?? new List<POI>();
+        _lastPoiRefresh = now;
+            System.Diagnostics.Debug.WriteLine($"[GeofenceEngine] ?? Cached {_cachedActivePois.Count} POIs");
+        return _cachedActivePois;
         }
 
         private double CalculateDistance(double lat1, double lon1, double lat2, double lon2)
         {
-            const double R = 6371000;
-            var dLat = ToRadians(lat2 - lat1);
-            var dLon = ToRadians(lon2 - lon1);
+      const double R = 6371000;
+ var dLat = ToRadians(lat2 - lat1);
+    var dLon = ToRadians(lon2 - lon1);
 
-            var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
-                   Math.Cos(ToRadians(lat1)) * Math.Cos(ToRadians(lat2)) *
-                   Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
+ var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+       Math.Cos(ToRadians(lat1)) * Math.Cos(ToRadians(lat2)) *
+            Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
 
-            var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+  var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
             return R * c;
         }
 
-        private double ToRadians(double degrees) => degrees * Math.PI / 180;
+      private double ToRadians(double degrees) => degrees * Math.PI / 180;
 
-        private async Task TriggerPOI(POI poi)
+        private async Task TriggerPOI(POI poi, double distance)
         {
-            try
+  try
             {
-                if (poi == null)
-                {
-                    System.Diagnostics.Debug.WriteLine("[GeofenceEngine] Cannot trigger null POI");
-                    return;
-                }
+     if (poi == null)
+        {
+        return;
+          }
 
-                poi.LastTriggered = DateTime.Now;
-                _poiCooldowns[poi.Id] = DateTime.Now;
+   poi.LastTriggered = DateTime.Now;
+       lock (_poiCooldowns)
+         {
+_poiCooldowns[poi.Id] = DateTime.Now;
+   }
 
-                try
-                {
-                    _audioManager.AddToQueue(poi);
-                }
-                catch (Exception audioEx)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[GeofenceEngine] Warning: Could not add POI to audio queue: {audioEx.Message}");
-                }
+     // ? FIX: Call popup service with minimal delay
+           await _hybridPopupService.HandleIncomingPOIAsync(poi, distance);
 
-                // Fire-and-forget DB update so trigger path stays lightweight
-                _ = Task.Run(async () =>
-                {
-                    try
-                    {
-                        await _poiRepository.UpdatePOIAsync(poi);
-                    }
-                    catch (Exception updateEx)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"[GeofenceEngine] Warning: Could not update POI last triggered time: {updateEx.Message}");
-                    }
-                });
+         // Fire-and-forget DB update
+        _ = Task.Run(async () =>
+   {
+          try
+         {
+     await _poiRepository.UpdatePOIAsync(poi);
+   }
+               catch (Exception updateEx)
+      {
+   System.Diagnostics.Debug.WriteLine($"[GeofenceEngine] ?? POI update error: {updateEx.Message}");
+     }
+        });
 
-                POITriggered?.Invoke(this, poi);
-
-                System.Diagnostics.Debug.WriteLine($"[GeofenceEngine] POI Triggered: {poi.Name} at {DateTime.Now}");
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[GeofenceEngine] Error in TriggerPOI: {ex.Message}");
-            }
-
-            await Task.CompletedTask;
+        POITriggered?.Invoke(this, poi);
+                System.Diagnostics.Debug.WriteLine($"[GeofenceEngine] ? {poi.Name} event fired");
+     }
+      catch (Exception ex)
+          {
+        System.Diagnostics.Debug.WriteLine($"[GeofenceEngine] ? Trigger error: {ex.Message}");
+   }
         }
 
         public void ResetCooldown(int poiId) => _poiCooldowns.Remove(poiId);

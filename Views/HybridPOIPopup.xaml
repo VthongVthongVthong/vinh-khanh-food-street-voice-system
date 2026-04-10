@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    x:Class="VinhKhanhstreetfoods.Views.HybridPOIPopup"
+    BackgroundColor="Transparent">
+
+    <Grid 
+        RowDefinitions="*" 
+        ColumnDefinitions="*"
+   Padding="20"
+        VerticalOptions="End"
+        HorizontalOptions="Center">
+
+    <!-- Popup Container with Shadow and Rounded Corners -->
+     <Frame 
+   Grid.Row="0" 
+        Grid.Column="0"
+   CornerRadius="20"
+  BorderColor="#E5E5E5"
+       HasShadow="True"
+        Padding="20"
+    Margin="0,0,0,20"
+ BackgroundColor="White"
+WidthRequest="380"
+     MaximumWidthRequest="380">
+
+       <StackLayout Spacing="0" Padding="0">
+
+     <!-- Content Area -->
+     <StackLayout Padding="0" Spacing="12">
+
+  <!-- POI Name -->
+      <Label 
+           Text="{Binding SelectedPOI.Name}"
+  FontSize="18"
+      FontAttributes="Bold"
+ TextColor="#283845"
+     LineBreakMode="TailTruncation"
+   HorizontalTextAlignment="Center" />
+
+ <!-- Description (Short) -->
+  <Label 
+           Text="{Binding SelectedPOI.DescriptionText}"
+      FontSize="13"
+    TextColor="#666666"
+ LineBreakMode="TailTruncation"
+     MaxLines="3"
+      HorizontalTextAlignment="Center"
+     Margin="0,0,0,8" />
+
+            <!-- NEW: Horizontal POI List -->
+        <Label 
+Text="Nearby POIs"
+     FontSize="12"
+        FontAttributes="Bold"
+    TextColor="#999999"
+        Margin="0,8,0,4" />
+
+       <CollectionView 
+      x:Name="POICollectionView"
+     ItemsSource="{Binding ActivePOIs}"
+    SelectionMode="Single"
+  SelectedItem="{Binding SelectedPOI}"
+  SelectionChangedCommand="{Binding SelectPOICommand}"
+    SelectionChangedCommandParameter="{Binding SelectedItem, Source={RelativeSource Self}}"
+         HeightRequest="80"
+      Margin="0,0,0,12">
+
+            <CollectionView.ItemsLayout>
+      <LinearItemsLayout 
+       Orientation="Horizontal"
+         ItemSpacing="10" />
+          </CollectionView.ItemsLayout>
+
+       <CollectionView.ItemTemplate>
+       <DataTemplate>
+     <Frame 
+  CornerRadius="12"
+     Padding="8"
+       Margin="0"
+       BorderColor="#E5E5E5"
+HasShadow="False"
+          BackgroundColor="#FAFAFA"
+      WidthRequest="70"
+        HeightRequest="70"
+            IsClippedToBounds="True">
+
+         <Grid RowDefinitions="50,*" ColumnDefinitions="*" RowSpacing="4">
+   <!-- Thumbnail -->
+<BoxView 
+Grid.Row="0"
+        Color="#E0E0E0"
+      />
+
+   <!-- Short Name -->
+       <Label 
+          Grid.Row="1"
+              Text="{Binding Name, StringFormat='{0:G3}'}"
+  FontSize="10"
+    TextColor="#333333"
+   LineBreakMode="TailTruncation"
+          HorizontalTextAlignment="Center"
+         VerticalTextAlignment="Center" />
+  </Grid>
+    </Frame>
+     </DataTemplate>
+     </CollectionView.ItemTemplate>
+        </CollectionView>
+
+   <!-- Queue Indicator -->
+            <Label 
+           Text="{Binding QueueIndicator}"
+    FontSize="11"
+            TextColor="#EA580C"
+            FontAttributes="Bold"
+    IsVisible="{Binding ShowQueueIndicator}"
+     HorizontalTextAlignment="Center"
+           Margin="0,4,0,8" />
+
+            <!-- Language Selector -->
+    <StackLayout Spacing="6">
+       <Label 
+      Text="Select Language for Narration"
+     FontSize="12"
+      FontAttributes="Bold"
+        TextColor="#999999"
+        Margin="0,8,0,0" />
+        
+  <Frame
+          CornerRadius="8"
+         BorderColor="#E5E5E5"
+     HasShadow="False"
+Padding="0"
+      Margin="0">
+     <Picker 
+        x:Name="LanguagePicker"
+    ItemsSource="{Binding AvailableLanguages}"
+            SelectedItem="{Binding SelectedLanguage}"
+        Title="Select Language"
+  BackgroundColor="#F9F9F9"
+           TextColor="#283845"
+    TitleColor="#999999" />
+         </Frame>
+ </StackLayout>
+
+      <!-- Action Buttons Row -->
+   <Grid 
+      ColumnDefinitions="*, *" 
+  ColumnSpacing="10"
+        Margin="0,12,0,0">
+
+   <!-- Close Button -->
+  <Button 
+    Grid.Column="0"
+        Text="❌ Close"
+            Command="{Binding CloseCommand}"
+            BackgroundColor="#F5F5F5"
+        TextColor="#666666"
+  FontSize="13"
+      FontAttributes="Bold"
+       Padding="10,12"
+         CornerRadius="10"
+  BorderColor="#E5E5E5"
+         BorderWidth="1" />
+
+  <!-- Play Audio Button -->
+     <StackLayout 
+ Grid.Column="1"
+   Spacing="0">
+           <Button 
+       x:Name="PlayButton"
+       Text="🔊 Play"
+         Command="{Binding PlayCommand}"
+    BackgroundColor="#EA580C"
+        TextColor="White"
+ FontSize="13"
+    FontAttributes="Bold"
+    Padding="10,12"
+     CornerRadius="10"
+         Opacity="{Binding IsLoadingAudio, Converter={StaticResource BoolToOpacityConverter}}"
+ IsEnabled="{Binding IsLoadingAudio, Converter={StaticResource InvertedBoolConverter}}" />
+           
+        <!-- Loading Indicator -->
+  <ActivityIndicator 
+           IsRunning="{Binding IsLoadingAudio}"
+    IsVisible="{Binding IsLoadingAudio}"
+  Color="#EA580C"
+        Margin="0,-36,0,0"
+         Scale="0.8" />
+        </StackLayout>
+      </Grid>
+
+     <!-- Playing Status -->
+          <Label 
+  Text="🎵 Now playing audio..."
+             FontSize="11"
+  TextColor="#EA580C"
+          FontAttributes="Bold"
+  IsVisible="{Binding IsPlayingAudio}"
+          HorizontalTextAlignment="Center"
+    Margin="0,8,0,0" />
+
+       </StackLayout>
+
+</StackLayout>
+     </Frame>
+    </Grid>
+</ContentView>

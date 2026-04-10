@@ -15,6 +15,15 @@
                 PlayingColor="#283845"
                 IdleColor="#3A506B" />
 
+            <converters:IsNotNullOrEmptyConverter
+                x:Key="IsNotNullOrEmptyConverter" />
+
+            <converters:IsNullOrEmptyConverter
+                x:Key="IsNullOrEmptyConverter" />
+
+            <converters:BoolToOpacityConverter
+                x:Key="BoolToOpacityConverter" />
+
             <Style TargetType="Shell">
                 <Setter Property="Shell.NavBarHasShadow" Value="True"/>
             </Style>

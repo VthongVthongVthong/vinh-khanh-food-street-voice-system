@@ -39,6 +39,8 @@ namespace VinhKhanhstreetfoods
             builder.Services.AddSingleton(_ => LocalizationResourceManager.Instance);
             builder.Services.AddSingleton<LocationService>();
             builder.Services.AddSingleton<GeofenceEngine>();
+            builder.Services.AddSingleton<Services.PopupService>(_ => Services.PopupService.Instance);
+            builder.Services.AddSingleton<HybridPopupService>(_ => HybridPopupService.Instance);
             builder.Services.AddSingleton<POIRepository>();
             builder.Services.AddSingleton<IPOIRepository>(sp => sp.GetRequiredService<POIRepository>());
             builder.Services.AddSingleton<ITourRepository, TourRepository>();
@@ -55,6 +57,18 @@ namespace VinhKhanhstreetfoods
             // Register ViewModels
             builder.Services.AddSingleton<HomeViewModel>();
             builder.Services.AddTransient<CameraViewModel>();
+            builder.Services.AddSingleton<POIPopupViewModel>(sp =>
+            {
+                var audioManager = sp.GetRequiredService<AudioManager>();
+                var popupService = sp.GetRequiredService<Services.PopupService>();
+                return new POIPopupViewModel(audioManager, popupService);
+            });
+            builder.Services.AddSingleton<HybridPOIPopupViewModel>(sp =>
+            {
+                var audioManager = sp.GetRequiredService<AudioManager>();
+                var hybridPopupService = sp.GetRequiredService<HybridPopupService>();
+                return new HybridPOIPopupViewModel(audioManager, hybridPopupService);
+            });
             builder.Services.AddSingleton<POIDetailViewModel>(sp =>
             {
                 var audioManager = sp.GetRequiredService<AudioManager>();
@@ -79,6 +93,13 @@ namespace VinhKhanhstreetfoods
             builder.Services.AddSingleton<POIDetailPage>();
             builder.Services.AddSingleton<MapPage>();
             builder.Services.AddSingleton<SettingsPage>();
+            builder.Services.AddSingleton<Views.POIPopup>();
+            // ✅ REMOVED: Old POIPopupOverlay (used navigation stack)
+            // builder.Services.AddSingleton<Pages.POIPopupOverlay>();
+       
+       // ✅ ONLY: New HybridPOIPopupOverlay (lightweight overlay view)
+         builder.Services.AddSingleton<Views.HybridPOIPopup>();
+builder.Services.AddSingleton<Pages.HybridPOIPopupOverlay>();
 
             // Register Shell
             builder.Services.AddSingleton<AppShell>();

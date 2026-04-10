@@ -9,18 +9,18 @@ namespace VinhKhanhstreetfoods.Views;
 [QueryProperty(nameof(PoiId), "poiId")]
 public partial class MapPage : ContentPage
 {
-    private ObservableCollection<POI>? _currentPoiCollection;
-    private int? _pendingPoiId;
+private ObservableCollection<POI>? _currentPoiCollection;
+  private int? _pendingPoiId;
     private readonly LocalizationService _localizationService;
     private readonly LocalizationResourceManager _resourceManager;
 
     public MapPage(MapViewModel viewModel)
-    {
+  {
         InitializeComponent();
         BindingContext = viewModel;
 
         _localizationService = LocalizationService.Instance;
-        _resourceManager = LocalizationResourceManager.Instance;
+  _resourceManager = LocalizationResourceManager.Instance;
         _localizationService.PropertyChanged += OnLanguageChanged;
 
         ApplyLocalizedText();
@@ -28,11 +28,11 @@ public partial class MapPage : ContentPage
 
     public int PoiId
     {
-        set
+      set
         {
             _pendingPoiId = value;
             _ = TryFocusPendingPoiAsync();
-        }
+  }
     }
 
     protected override void OnNavigatedTo(NavigatedToEventArgs args)
@@ -45,23 +45,23 @@ public partial class MapPage : ContentPage
         ApplyLocalizedText();
         _ = ApplyMapLocalizedJsAsync();
 
-        if (BindingContext is MapViewModel vm)
+  if (BindingContext is MapViewModel vm)
         {
             _ = vm.EnsurePOIsLoadedAsync();
 
-            vm.PropertyChanged += ViewModel_PropertyChanged;
+     vm.PropertyChanged += ViewModel_PropertyChanged;
             SubscribeToPoiCollection(vm.AllPOIs);
             MapWebView.Navigating += MapWebView_Navigating;
 
-            Dispatcher.DispatchDelayed(TimeSpan.FromMilliseconds(600), async () =>
-            {
-                if (vm.UserLatitude != 0 && vm.UserLongitude != 0)
+   Dispatcher.DispatchDelayed(TimeSpan.FromMilliseconds(600), async () =>
+          {
+         if (vm.UserLatitude != 0 && vm.UserLongitude != 0)
                     UpdateMapLocation(vm.UserLatitude, vm.UserLongitude);
 
-                UpdateTrackingState(vm.IsTracking);
-                await RenderPOIsAsync(vm.AllPOIs);
-                await TryFocusPendingPoiAsync();
-            });
+       UpdateTrackingState(vm.IsTracking);
+      await RenderPOIsAsync(vm.AllPOIs);
+    await TryFocusPendingPoiAsync();
+});
         }
     }
 
@@ -71,20 +71,20 @@ public partial class MapPage : ContentPage
 #if ANDROID
         if (MapWebView.Handler?.PlatformView is Android.Webkit.WebView nativeWebView)
         {
-            nativeWebView.Touch += (sender, e) =>
+       nativeWebView.Touch += (sender, e) =>
             {
-                if (e.Event?.ActionMasked == Android.Views.MotionEventActions.Down ||
-                    e.Event?.ActionMasked == Android.Views.MotionEventActions.Move)
-                {
-                    nativeWebView.Parent?.RequestDisallowInterceptTouchEvent(true);
-                }
-                else if (e.Event?.ActionMasked == Android.Views.MotionEventActions.Up ||
-                         e.Event?.ActionMasked == Android.Views.MotionEventActions.Cancel)
-                {
-                    nativeWebView.Parent?.RequestDisallowInterceptTouchEvent(false);
-                }
+             if (e.Event?.ActionMasked == Android.Views.MotionEventActions.Down ||
+      e.Event?.ActionMasked == Android.Views.MotionEventActions.Move)
+    {
+       nativeWebView.Parent?.RequestDisallowInterceptTouchEvent(true);
+          }
+      else if (e.Event?.ActionMasked == Android.Views.MotionEventActions.Up ||
+  e.Event?.ActionMasked == Android.Views.MotionEventActions.Cancel)
+            {
+              nativeWebView.Parent?.RequestDisallowInterceptTouchEvent(false);
+      }
                 e.Handled = false;
-            };
+          };
         }
 #endif
     }
@@ -92,58 +92,58 @@ public partial class MapPage : ContentPage
     protected override void OnNavigatedFrom(NavigatedFromEventArgs args)
     {
         base.OnNavigatedFrom(args);
-        if (BindingContext is MapViewModel vm)
+   if (BindingContext is MapViewModel vm)
         {
-            vm.PropertyChanged -= ViewModel_PropertyChanged;
+   vm.PropertyChanged -= ViewModel_PropertyChanged;
         }
-        UnsubscribePoiCollection();
+     UnsubscribePoiCollection();
         MapWebView.Navigating -= MapWebView_Navigating;
     }
 
     protected override void OnDisappearing()
     {
         base.OnDisappearing();
-        _localizationService.PropertyChanged -= OnLanguageChanged;
+    _localizationService.PropertyChanged -= OnLanguageChanged;
     }
 
     private void OnLanguageChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(LocalizationService.CurrentLanguage))
         {
-            MainThread.BeginInvokeOnMainThread(() =>
-            {
-                ApplyLocalizedText();
-                _ = ApplyMapLocalizedJsAsync();
+    MainThread.BeginInvokeOnMainThread(() =>
+      {
+           ApplyLocalizedText();
+          _ = ApplyMapLocalizedJsAsync();
             });
         }
     }
 
     private void ApplyLocalizedText()
-    {
+  {
         Title = _resourceManager.GetString("Map_Title");
-        HeaderTitleLabel.Text = $"🗺 {_resourceManager.GetString("Map_Title")}";
-        HeaderSubtitleLabel.Text = _resourceManager.GetString("Home_Featured_Desc");
+        HeaderTitleLabel.Text = $"?? {_resourceManager.GetString("Map_Title")}";
+HeaderSubtitleLabel.Text = _resourceManager.GetString("Home_Featured_Desc");
 
-        CurrentLocationTitleLabel.Text = _resourceManager.GetString("Map_CurrentLocation");
+    CurrentLocationTitleLabel.Text = _resourceManager.GetString("Map_CurrentLocation");
         CurrentLocationSubtitleLabel.Text = _resourceManager.GetString("Home_Location");
 
-        NearbyHeaderTitleLabel.Text = $"🏪 {_resourceManager.GetString("Map_Restaurants")}";
+      NearbyHeaderTitleLabel.Text = $"?? {_resourceManager.GetString("Map_Restaurants")}";
         StatsHeaderLabel.Text = _resourceManager.GetString("Map_Restaurants");
         StatsExploredLabel.Text = _resourceManager.GetString("POI_ViewOnMap");
-        StatsListenedLabel.Text = _resourceManager.GetString("Home_AudioBadge");
+   StatsListenedLabel.Text = _resourceManager.GetString("Home_AudioBadge");
     }
 
     private async Task ApplyMapLocalizedJsAsync()
     {
         try
         {
-            var detailText = EscapeJs(_resourceManager.GetString("POI_ViewOnMap"));
-            var js = $"setDetailButtonText('{detailText}');";
+     var detailText = EscapeJs(_resourceManager.GetString("POI_ViewOnMap"));
+      var js = $"setDetailButtonText('{detailText}');";
             await MainThread.InvokeOnMainThreadAsync(() => MapWebView.EvaluateJavaScriptAsync(js));
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Error applying map locale JS: {ex.Message}");
+          System.Diagnostics.Debug.WriteLine($"Error applying map locale JS: {ex.Message}");
         }
     }
 
@@ -152,22 +152,22 @@ public partial class MapPage : ContentPage
 
     private void ViewModel_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(MapViewModel.UserLatitude) || e.PropertyName == nameof(MapViewModel.UserLongitude))
+      if (e.PropertyName == nameof(MapViewModel.UserLatitude) || e.PropertyName == nameof(MapViewModel.UserLongitude))
         {
-            if (BindingContext is MapViewModel vm)
-                UpdateMapLocation(vm.UserLatitude, vm.UserLongitude);
+       if (BindingContext is MapViewModel vm)
+     UpdateMapLocation(vm.UserLatitude, vm.UserLongitude);
         }
         else if (e.PropertyName == nameof(MapViewModel.IsTracking))
         {
             if (BindingContext is MapViewModel vm)
-                UpdateTrackingState(vm.IsTracking);
+    UpdateTrackingState(vm.IsTracking);
         }
         else if (e.PropertyName == nameof(MapViewModel.AllPOIs))
-        {
-            if (BindingContext is MapViewModel vm)
-            {
-                SubscribeToPoiCollection(vm.AllPOIs);
-                _ = RenderPOIsAsync(vm.AllPOIs);
+  {
+   if (BindingContext is MapViewModel vm)
+         {
+   SubscribeToPoiCollection(vm.AllPOIs);
+     _ = RenderPOIsAsync(vm.AllPOIs);
             }
         }
     }
@@ -175,14 +175,14 @@ public partial class MapPage : ContentPage
     private async void UpdateTrackingState(bool isTracking)
     {
         try
-        {
-            string js = $"setTrackingState({isTracking.ToString().ToLower()});";
-            await MapWebView.EvaluateJavaScriptAsync(js);
+      {
+     string js = $"setTrackingState({isTracking.ToString().ToLower()});";
+        await MapWebView.EvaluateJavaScriptAsync(js);
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Error updating tracking state script: {ex.Message}");
-        }
+     System.Diagnostics.Debug.WriteLine($"Error updating tracking state script: {ex.Message}");
+ }
     }
 
     private async void UpdateMapLocation(double lat, double lng)
@@ -191,50 +191,50 @@ public partial class MapPage : ContentPage
 
         try
         {
-            string js = $"updateLocation({lat.ToString(System.Globalization.CultureInfo.InvariantCulture)}, {lng.ToString(System.Globalization.CultureInfo.InvariantCulture)});";
-            await MapWebView.EvaluateJavaScriptAsync(js);
+   string js = $"updateLocation({lat.ToString(System.Globalization.CultureInfo.InvariantCulture)}, {lng.ToString(System.Globalization.CultureInfo.InvariantCulture)});";
+    await MapWebView.EvaluateJavaScriptAsync(js);
         }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Error updating map script: {ex.Message}");
+catch (Exception ex)
+    {
+       System.Diagnostics.Debug.WriteLine($"Error updating map script: {ex.Message}");
         }
-    }
+  }
 
     private async Task RenderPOIsAsync(IEnumerable<POI>? pois)
     {
         try
-        {
+   {
             var payload = pois?.Select(p => new
             {
-                id = p.Id,
+          id = p.Id,
                 name = p.Name,
-                lat = p.Latitude,
-                lng = p.Longitude,
-                address = p.Address ?? string.Empty,
-                desc = p.DescriptionText,
-                imageUrl = p.AvatarImageUrl
-            }) ?? Enumerable.Empty<object>();
+    lat = p.Latitude,
+lng = p.Longitude,
+     address = p.Address ?? string.Empty,
+      desc = p.DescriptionText,
+   imageUrl = p.AvatarImageUrl
+        }) ?? Enumerable.Empty<object>();
 
-            var json = JsonSerializer.Serialize(payload);
-            var js = $"renderPOIs({json});";
-            await MainThread.InvokeOnMainThreadAsync(() => MapWebView.EvaluateJavaScriptAsync(js));
-            await TryFocusPendingPoiAsync();
+    var json = JsonSerializer.Serialize(payload);
+   var js = $"renderPOIs({json});";
+     await MainThread.InvokeOnMainThreadAsync(() => MapWebView.EvaluateJavaScriptAsync(js));
+    await TryFocusPendingPoiAsync();
         }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Error rendering POIs: {ex.Message}");
+      catch (Exception ex)
+      {
+ System.Diagnostics.Debug.WriteLine($"Error rendering POIs: {ex.Message}");
         }
     }
 
-    private void SubscribeToPoiCollection(ObservableCollection<POI>? collection)
+  private void SubscribeToPoiCollection(ObservableCollection<POI>? collection)
     {
         if (_currentPoiCollection == collection)
-            return;
+    return;
 
-        UnsubscribePoiCollection();
-        _currentPoiCollection = collection;
+    UnsubscribePoiCollection();
+      _currentPoiCollection = collection;
         if (_currentPoiCollection != null)
-            _currentPoiCollection.CollectionChanged += PoiCollectionChanged;
+_currentPoiCollection.CollectionChanged += PoiCollectionChanged;
     }
 
     private void UnsubscribePoiCollection()
@@ -242,37 +242,37 @@ public partial class MapPage : ContentPage
         if (_currentPoiCollection != null)
             _currentPoiCollection.CollectionChanged -= PoiCollectionChanged;
         _currentPoiCollection = null;
-    }
+  }
 
     private void PoiCollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
     {
-        if (BindingContext is MapViewModel vm)
-            _ = RenderPOIsAsync(vm.AllPOIs);
+ if (BindingContext is MapViewModel vm)
+         _ = RenderPOIsAsync(vm.AllPOIs);
     }
 
     private async Task TryFocusPendingPoiAsync()
     {
-        if (_pendingPoiId is null)
-            return;
+ if (_pendingPoiId is null)
+   return;
 
         if (BindingContext is not MapViewModel vm)
-            return;
+          return;
 
         var targetId = _pendingPoiId.Value;
         var poi = vm.AllPOIs?.FirstOrDefault(p => p.Id == targetId);
         if (poi == null)
-            return;
+   return;
 
         try
         {
-            string js = $"focusPOI({targetId});";
+    string js = $"focusPOI({targetId});";
             await MainThread.InvokeOnMainThreadAsync(() => MapWebView.EvaluateJavaScriptAsync(js));
-            _pendingPoiId = null;
+          _pendingPoiId = null;
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Error focusing POI: {ex.Message}");
-        }
+          System.Diagnostics.Debug.WriteLine($"Error focusing POI: {ex.Message}");
+      }
     }
 
     private async void MapWebView_Navigating(object? sender, WebNavigatingEventArgs e)
@@ -282,64 +282,64 @@ public partial class MapPage : ContentPage
 
         if (e.Url.StartsWith("app://poi?", StringComparison.OrdinalIgnoreCase))
         {
-            e.Cancel = true;
+ e.Cancel = true;
             var query = new Uri(e.Url).Query.TrimStart('?');
             var idValue = query.Split('&', StringSplitOptions.RemoveEmptyEntries)
-                               .Select(p => p.Split('='))
-                               .FirstOrDefault(p => p.Length == 2 && p[0] == "id")?[1];
+.Select(p => p.Split('='))
+          .FirstOrDefault(p => p.Length == 2 && p[0] == "id")?[1];
 
-            if (int.TryParse(idValue, out var poiId))
-            {
-                await Shell.Current.GoToAsync($"detail?poiId={poiId}");
+    if (int.TryParse(idValue, out var poiId))
+     {
+       await Shell.Current.GoToAsync($"detail?poiId={poiId}");
             }
-        }
+  }
     }
 
     private bool _isFullScreen = false;
     private void OnToggleFullScreenClicked(object sender, EventArgs e)
     {
-        _isFullScreen = !_isFullScreen;
+     _isFullScreen = !_isFullScreen;
 
-        if (_isFullScreen)
+    if (_isFullScreen)
         {
-            Shell.SetTabBarIsVisible(this, false);
-            NavigationPage.SetHasNavigationBar(this, false);
-            
+     Shell.SetTabBarIsVisible(this, false);
+      NavigationPage.SetHasNavigationBar(this, false);
+
             HeaderFrame.IsVisible = false;
-            LocationCardFrame.IsVisible = false;
-            NearbyHeaderGrid.IsVisible = false;
-            POIsCollectionView.IsVisible = false;
-            StatsHeaderLabel.IsVisible = false;
-            StatsGrid.IsVisible = false;
-            
-            MainStackLayout.Padding = 0;
+   LocationCardFrame.IsVisible = false;
+   NearbyHeaderGrid.IsVisible = false;
+ POIsCollectionView.IsVisible = false;
+        StatsHeaderLabel.IsVisible = false;
+StatsGrid.IsVisible = false;
+
+ MainStackLayout.Padding = 0;
             MapFrame.CornerRadius = 0;
-            
+
             MainScrollView.Orientation = ScrollOrientation.Neither;
-            
-            MapWebView.HeightRequest = DeviceDisplay.MainDisplayInfo.Height / DeviceDisplay.MainDisplayInfo.Density;
-            ToggleFullScreenBtn.Text = "✖";
-            ToggleFullScreenBtn.Margin = new Thickness(10, 45, 10, 10);
-        }
+
+ MapWebView.HeightRequest = DeviceDisplay.MainDisplayInfo.Height / DeviceDisplay.MainDisplayInfo.Density;
+          ToggleFullScreenBtn.Text = "?";
+      ToggleFullScreenBtn.Margin = new Thickness(10, 45, 10, 10);
+  }
         else
-        {
+   {
             Shell.SetTabBarIsVisible(this, true);
-            
-            HeaderFrame.IsVisible = true;
-            LocationCardFrame.IsVisible = true;
-            NearbyHeaderGrid.IsVisible = true;
-            POIsCollectionView.IsVisible = true;
-            StatsHeaderLabel.IsVisible = true;
+
+    HeaderFrame.IsVisible = true;
+  LocationCardFrame.IsVisible = true;
+         NearbyHeaderGrid.IsVisible = true;
+ POIsCollectionView.IsVisible = true;
+StatsHeaderLabel.IsVisible = true;
             StatsGrid.IsVisible = true;
-            
-            MainStackLayout.Padding = 15;
-            MapFrame.CornerRadius = 15;
-            
+
+  MainStackLayout.Padding = 15;
+    MapFrame.CornerRadius = 15;
+
             MainScrollView.Orientation = ScrollOrientation.Vertical;
-            
+
             MapWebView.HeightRequest = 350;
-            ToggleFullScreenBtn.Text = "⛶";
-            ToggleFullScreenBtn.Margin = new Thickness(10);
-        }
+            ToggleFullScreenBtn.Text = "?";
+       ToggleFullScreenBtn.Margin = new Thickness(10);
+      }
     }
 }
