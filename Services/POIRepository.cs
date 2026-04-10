@@ -383,8 +383,7 @@ createdAt TEXT NOT NULL DEFAULT (datetime('now')),
     imageType TEXT CHECK (imageType IN ('avatar','banner','gallery')),
     displayOrder INTEGER NOT NULL DEFAULT 0,
     poiId INTEGER NOT NULL,
-    createdAt TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (poiId) REFERENCES POI(id)
+    createdAt TEXT DEFAULT (datetime('now'))
 );";
 
         private const string createVisitLogSchema = @"CREATE TABLE IF NOT EXISTS VisitLog (
@@ -393,9 +392,7 @@ createdAt TEXT NOT NULL DEFAULT (datetime('now')),
     latitude REAL NOT NULL,
     longitude REAL NOT NULL,
     userId INTEGER NOT NULL,
- poiId INTEGER NOT NULL,
- FOREIGN KEY (userId) REFERENCES User(id),
-    FOREIGN KEY (poiId) REFERENCES POI(id)
+ poiId INTEGER NOT NULL
 );";
 
      private const string createAudioPlayLogSchema = @"CREATE TABLE IF NOT EXISTS AudioPlayLog (
@@ -403,9 +400,7 @@ createdAt TEXT NOT NULL DEFAULT (datetime('now')),
   playTime TEXT NOT NULL DEFAULT (datetime('now')),
     durationListened REAL,
     userId INTEGER NOT NULL,
-    poiId INTEGER NOT NULL,
-    FOREIGN KEY (userId) REFERENCES User(id),
-    FOREIGN KEY (poiId) REFERENCES POI(id)
+    poiId INTEGER NOT NULL
 );";
 
         private const string createTranslationCacheSchema = @"CREATE TABLE IF NOT EXISTS TranslationCache (
@@ -415,8 +410,7 @@ createdAt TEXT NOT NULL DEFAULT (datetime('now')),
     isTtsScript INTEGER NOT NULL DEFAULT 0,
     translatedText TEXT NOT NULL,
     isDownloadedPack INTEGER NOT NULL DEFAULT 0,
-    updatedAt TEXT NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (poiId) REFERENCES POI(id)
+    updatedAt TEXT NOT NULL DEFAULT (datetime('now'))
 );";
 
         private async Task MigrateFromOldSchemaIfNeeded()
@@ -810,12 +804,8 @@ FROM POI_old;";
 
         public async Task<int> SyncPOIsFromAdminAsync(bool force = false, CancellationToken cancellationToken = default)
         {
-            if (Connectivity.Current.NetworkAccess != NetworkAccess.Internet)
-            {
-                Debug.WriteLine("[POIRepository] Offline mode: skip Firebase sync");
-                return 0;
-            }
-
+            // Removed Connectivity.Current.NetworkAccess check for Android emulator/device compatibility.
+            // If offline, the HttpClient will simply fail gracefully.
             await _adminSyncLock.WaitAsync(cancellationToken);
             try
             {
@@ -823,8 +813,14 @@ FROM POI_old;";
                     return 0;
 
                 await InitializeAsync();
-  // ? Don't wait for schema - sync can proceed
-   var payload = await FetchFirebasePayloadAsync(force, cancellationToken);
+                // Wait for schema before syncing so we don't hit locked database or missing columns
+                // on slower Android devices during startup.
+                if (_schemaInitializationTask != null && !_schemaInitializationTask.IsCompleted)
+                {
+                    await _schemaInitializationTask;
+                }
+
+                var payload = await FetchFirebasePayloadAsync(force, cancellationToken);
                 if (string.IsNullOrWhiteSpace(payload) || string.Equals(payload.Trim(), "null", StringComparison.OrdinalIgnoreCase))
                 {
                     Debug.WriteLine("[POIRepository] Firebase returned null/empty at known paths. Check RTDB node path and rules.");
@@ -863,18 +859,42 @@ FROM POI_old;";
                     if (pois.Count > 0)
                     {
                         var firebaseIds = string.Join(",", pois.Select(p => p.Id));
+                        
+                        // Xóa các record con bị mồ côi do ràng buộc khoá ngoại (FOREIGN KEY constraint)
+                        db.Execute($"DELETE FROM POIImage WHERE poiId NOT IN ({firebaseIds})");
+                        db.Execute($"DELETE FROM AudioPlayLog WHERE poiId NOT IN ({firebaseIds})");
+                        db.Execute($"DELETE FROM VisitLog WHERE poiId NOT IN ({firebaseIds})");
+                        db.Execute($"DELETE FROM TranslationCache WHERE poiId NOT IN ({firebaseIds})");
+                        // Tạm thời Disable foreign_keys để xử lý dedupe rowid (hạn chế lỗi Android sqlite)
+                        db.Execute("PRAGMA foreign_keys = OFF;");
                         db.Execute($"DELETE FROM POI WHERE id NOT IN ({firebaseIds})");
                     }
 
                     foreach (var poi in pois)
                     {
                         ApplyDefaultsForPersistedPoi(poi, now);
-                        db.InsertOrReplace(poi);
+                        
+                        var existing = db.Find<POI>(poi.Id);
+                        if (existing != null)
+                        {
+                            db.Update(poi);
+                        }
+                        else
+                        {
+                            db.Insert(poi);
+                        }
+                        
                         inserted++;
+                    }
+                    
+                    if (pois.Count > 0)
+                    {
+                        db.Execute("PRAGMA foreign_keys = ON;");
                     }
                 });
 
                 // Hard dedupe by business key Id (keep latest rowid)
+                await _database.ExecuteAsync("PRAGMA foreign_keys = OFF;");
                 await _database.ExecuteAsync(@"DELETE FROM POI
 WHERE rowid NOT IN (
     SELECT MAX(rowid)
@@ -882,6 +902,7 @@ WHERE rowid NOT IN (
     WHERE Id IS NOT NULL
     GROUP BY Id
 );");
+                await _database.ExecuteAsync("PRAGMA foreign_keys = ON;");
 
                 // Attempt to enforce uniqueness for future syncs
                 try
