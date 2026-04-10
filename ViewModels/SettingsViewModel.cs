@@ -328,12 +328,9 @@ namespace VinhKhanhstreetfoods.ViewModels
                 return;
             }
 
-            if (Connectivity.Current.NetworkAccess != NetworkAccess.Internet)
-            {
-                StatusMessage = LocalizationService.GetString("Settings_Status_NoNetwork");
-                return;
-            }
-
+            // Removed Connectivity.Current.NetworkAccess check for Android emulator/device compatibility.
+            // If offline, the HttpClient will simply fail gracefully.
+            
             IsDownloadingLanguagePack = true;
             DownloadProgress = 0;
             DownloadDetails = string.Empty;
