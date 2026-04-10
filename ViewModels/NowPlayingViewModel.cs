@@ -118,7 +118,7 @@ public class NowPlayingViewModel : INotifyPropertyChanged
     {
         if (_currentPoi != null)
         {
-            await Shell.Current.GoToAsync($"poiDetail?poiId={_currentPoi.Id}");
+            await Shell.Current.GoToAsync($"detail?poiId={_currentPoi.Id}");
         }
     }
 
