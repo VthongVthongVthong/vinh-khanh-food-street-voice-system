@@ -1,4 +1,4 @@
-﻿using CommunityToolkit.Maui;
+using CommunityToolkit.Maui;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using VinhKhanhstreetfoods.Services;
@@ -17,7 +17,7 @@ namespace VinhKhanhstreetfoods
         {
             var builder = MauiApp.CreateBuilder();
 
-            // ✅ Startup-safe configuration: no blocking package file reads on UI startup path
+            // ? Startup-safe configuration: no blocking package file reads on UI startup path
             var config = LoadConfigurationOptimized();
 
             builder
@@ -30,11 +30,11 @@ namespace VinhKhanhstreetfoods
                     fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
                 });
 
-            // ✅ Register configuration service
+            // ? Register configuration service
             builder.Services.AddSingleton(config);
             builder.Services.AddSingleton<ConfigurationService>();
 
-            // ✅ Reuse static singleton instances to avoid double initialization work
+            // ? Reuse static singleton instances to avoid double initialization work
             builder.Services.AddSingleton(_ => LocalizationService.Instance);
             builder.Services.AddSingleton(_ => LocalizationResourceManager.Instance);
             builder.Services.AddSingleton<LocationService>();
@@ -94,10 +94,10 @@ namespace VinhKhanhstreetfoods
             builder.Services.AddSingleton<MapPage>();
             builder.Services.AddSingleton<SettingsPage>();
             builder.Services.AddSingleton<Views.POIPopup>();
-            // ✅ REMOVED: Old POIPopupOverlay (used navigation stack)
+            // ? REMOVED: Old POIPopupOverlay (used navigation stack)
             // builder.Services.AddSingleton<Pages.POIPopupOverlay>();
        
-       // ✅ ONLY: New HybridPOIPopupOverlay (lightweight overlay view)
+       // ? ONLY: New HybridPOIPopupOverlay (lightweight overlay view)
          builder.Services.AddSingleton<Views.HybridPOIPopup>();
 builder.Services.AddSingleton<Pages.HybridPOIPopupOverlay>();
 
@@ -110,16 +110,16 @@ builder.Services.AddSingleton<Pages.HybridPOIPopupOverlay>();
             // Keep app bootstrap minimal: no startup warm-up work here.
             // DB/Firebase/services initialize lazily after UI is shown.
 
-            // ✅ Add global exception handler
+            // ? Add global exception handler
 #if DEBUG
             AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
             {
-                Debug.WriteLine($"❌ [FATAL] Unhandled exception: {e.ExceptionObject}");
+                Debug.WriteLine($"? [FATAL] Unhandled exception: {e.ExceptionObject}");
             };
 
             TaskScheduler.UnobservedTaskException += (sender, e) =>
             {
-                Debug.WriteLine($"❌ [FATAL] Unobserved task exception: {e.Exception}");
+                Debug.WriteLine($"? [FATAL] Unobserved task exception: {e.Exception}");
                 e.SetObserved();
             };
 #endif
@@ -128,14 +128,14 @@ builder.Services.AddSingleton<Pages.HybridPOIPopupOverlay>();
         }
 
         /// <summary>
-        /// ✅ OPTIMIZED: Load configuration from app resources
+        /// ? OPTIMIZED: Load configuration from app resources
         /// Falls back to in-memory defaults if file not found
         /// </summary>
         private static IConfiguration LoadConfigurationOptimized()
         {
-            // ⚡ ANR-safe: avoid synchronous FileSystem.OpenAppPackageFileAsync(...).GetResult() during app bootstrap.
+            // ? ANR-safe: avoid synchronous FileSystem.OpenAppPackageFileAsync(...).GetResult() during app bootstrap.
             // Keep startup configuration lightweight and non-blocking.
-            Debug.WriteLine("ℹ️ [MauiProgram] Using non-blocking startup configuration");
+            Debug.WriteLine("?? [MauiProgram] Using non-blocking startup configuration");
 
             var builder = new ConfigurationBuilder();
             builder.AddInMemoryCollection(new Dictionary<string, string?>
@@ -170,3 +170,4 @@ builder.Services.AddSingleton<Pages.HybridPOIPopupOverlay>();
         }
     }
 }
+

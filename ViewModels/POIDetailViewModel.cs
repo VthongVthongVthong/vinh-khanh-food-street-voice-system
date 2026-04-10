@@ -90,6 +90,7 @@ namespace VinhKhanhstreetfoods.ViewModels
             OnPropertyChanged();
     OnPropertyChanged(nameof(CurrentDescriptionText));
            OnPropertyChanged(nameof(CurrentTtsScriptText));
+                OnPropertyChanged(nameof(QRCodeContent));
 
      _ = RefreshNarrationPreviewAsync();
        }
@@ -123,6 +124,15 @@ namespace VinhKhanhstreetfoods.ViewModels
        }
         }
 
+        public string QRCodeContent
+        {
+            get
+            {
+                if (_selectedPOI == null) return string.Empty;
+                return $"vinhkhanh://poi?id={_selectedPOI.Id}&action=play";
+            }
+        }
+
         public LanguageOption? SelectedNarrationLanguage
      {
   get => _selectedNarrationLanguage;
@@ -135,6 +145,7 @@ namespace VinhKhanhstreetfoods.ViewModels
            OnPropertyChanged();
        OnPropertyChanged(nameof(CurrentDescriptionText));
       OnPropertyChanged(nameof(CurrentTtsScriptText));
+                OnPropertyChanged(nameof(QRCodeContent));
 
         var code = value?.CultureCode ?? "vi";
       _settingsService.PreferredLanguage = code;
@@ -415,6 +426,7 @@ var shell = Shell.Current;
          // ✅ Force refresh data (not just update picker) and description
   OnPropertyChanged(nameof(CurrentDescriptionText));
   OnPropertyChanged(nameof(CurrentTtsScriptText));
+                OnPropertyChanged(nameof(QRCodeContent));
    _ = RefreshNarrationPreviewAsync();
       }
 
@@ -510,3 +522,5 @@ var shell = Shell.Current;
         }
     }
 }
+
+

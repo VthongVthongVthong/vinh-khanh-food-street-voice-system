@@ -6,6 +6,10 @@ using VinhKhanhstreetfoods.ViewModels;
 namespace VinhKhanhstreetfoods.Views;
 
 [QueryProperty(nameof(PoiId), "poiId")]
+[QueryProperty(nameof(AutoPlay), "autoplay")]
+[QueryProperty(nameof(Language), "lang")]
+[QueryProperty(nameof(AutoPlay), "autoplay")]
+[QueryProperty(nameof(Language), "lang")]
 public partial class POIDetailPage : ContentPage
 {
     private readonly POIDetailViewModel _viewModel;
@@ -13,6 +17,8 @@ public partial class POIDetailPage : ContentPage
     private readonly LocalizationService _localizationService;
     private readonly LocalizationResourceManager _resourceManager;
     private int _poiId;
+    private bool _autoPlay;
+    private string _language;
 
     public POIDetailPage(POIDetailViewModel viewModel, POIRepository poiRepository)
     {
@@ -36,6 +42,18 @@ public partial class POIDetailPage : ContentPage
             _poiId = value;
             _ = LoadPoiAsync(_poiId);
         }
+    }
+
+    public bool AutoPlay
+    {
+        get => _autoPlay;
+        set => _autoPlay = value;
+    }
+
+    public string Language
+    {
+        get => _language;
+        set => _language = value;
     }
 
     protected override void OnAppearing()
@@ -82,6 +100,25 @@ public partial class POIDetailPage : ContentPage
     {
         var poi = await _poiRepository.GetPOIByIdAsync(id);
         _viewModel.SelectedPOI = poi;
+        
+        if (!string.IsNullOrEmpty(Language))
+        {
+            var matchLang = _viewModel.LanguageOptions.FirstOrDefault(l => l.CultureCode.Equals(Language, StringComparison.OrdinalIgnoreCase));
+            if (matchLang != null)
+            {
+                _viewModel.SelectedNarrationLanguage = matchLang;
+            }
+        }
+        
+        if (AutoPlay)
+        {
+            // Delay slightly to ensure UI and bindings are ready
+            await Task.Delay(500);
+            if (_viewModel.PlayAudioCommand.CanExecute(null))
+            {
+                _viewModel.PlayAudioCommand.Execute(null);
+            }
+        }
     }
 
     private async void OnOpenMapPageClicked(object sender, EventArgs e)
@@ -93,3 +130,4 @@ public partial class POIDetailPage : ContentPage
         await Shell.Current.GoToAsync($"//map?poiId={poi.Id}");
     }
 }
+
