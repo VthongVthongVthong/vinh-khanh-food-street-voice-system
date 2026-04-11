@@ -103,10 +103,18 @@ namespace VinhKhanhstreetfoods.Services
         {
             foreach (var l in allLocales)
             {
-                var key = l.Language.ToLowerInvariant();
-                if (!_localeCache.ContainsKey(key))
+                // Cache by multiple possible keys to increase match rate
+                var key = l.Language?.ToLowerInvariant() ?? "";
+                if (!string.IsNullOrEmpty(key) && !_localeCache.ContainsKey(key))
                 {
                     _localeCache[key] = l;
+                }
+
+                // Also try to cache by language-country combination (e.g., "en-us")
+                var combinedKey = $"{l.Language}-{l.Country}".ToLowerInvariant();
+                if (!string.IsNullOrEmpty(l.Country) && !_localeCache.ContainsKey(combinedKey))
+                {
+                    _localeCache[combinedKey] = l;
                 }
             }
         }
@@ -124,22 +132,76 @@ namespace VinhKhanhstreetfoods.Services
     if (_localeCache == null || _localeCache.Count == 0)
      return null;
 
-  var normalized = languageCode.ToLowerInvariant();
-     var langPrefix = normalized.Split('-')[0];
+    var normalized = languageCode.ToLowerInvariant(); // e.g., "en-us" or "ja-jp"
+    var langPrefix = normalized.Split('-')[0]; // e.g., "en" or "ja"
+    var cachedLocales = _localeCache.Values;
 
-// ? OPTIMIZATION: Use cached dictionary for O(1) lookup
-   if (_localeCache.TryGetValue(normalized, out var exactMatch))
-       {
-      return exactMatch;
+    // 1. Exact match by Id (Android/iOS often use full tags in Id)
+    var match = cachedLocales.FirstOrDefault(l => l.Id != null && l.Id.Equals(languageCode, StringComparison.OrdinalIgnoreCase));
+
+    // 2. Match by Language + Country precise combo
+    if (match == null && normalized.Contains('-'))
+    {
+        var parts = normalized.Split('-');
+        match = cachedLocales.FirstOrDefault(l => 
+            l.Language != null && l.Language.Equals(parts[0], StringComparison.OrdinalIgnoreCase) &&
+            l.Country != null && l.Country.Equals(parts[1], StringComparison.OrdinalIgnoreCase));
     }
 
-     // Match by language prefix (e.g., en)
-     var prefixMatch = _localeCache.Values.FirstOrDefault(l => l.Language.StartsWith(langPrefix, StringComparison.OrdinalIgnoreCase));
-if (prefixMatch is not null)
-   return prefixMatch;
+    // 3. Match by Language code prefix (2-letter)
+    if (match == null)
+    {
+        match = cachedLocales.FirstOrDefault(l => 
+            (l.Language != null && l.Language.StartsWith(langPrefix, StringComparison.OrdinalIgnoreCase)) ||
+            (l.Id != null && l.Id.StartsWith(langPrefix, StringComparison.OrdinalIgnoreCase)));
+    }
 
-        // Fallback: use first available locale
-return _localeCache.Values.FirstOrDefault();
+    // 4. Match by 3-letter ISO code (Android TTS engines often return 3-letter codes like 'eng', 'vie', 'jpn')
+    if (match == null)
+    {
+        string[] isoCodes = langPrefix switch
+        {
+            "en" => new[] { "eng" },
+            "vi" => new[] { "vie" },
+            "ja" => new[] { "jpn" },
+            "ko" => new[] { "kor" },
+            "zh" => new[] { "zho", "chi" }, // Chinese can use zho or chi
+            "fr" => new[] { "fra", "fre" }, // French can use fra or fre
+            "ru" => new[] { "rus" },
+            _ => new[] { langPrefix }
+        };
+
+        match = cachedLocales.FirstOrDefault(l => 
+            l.Language != null && isoCodes.Any(iso => l.Language.StartsWith(iso, StringComparison.OrdinalIgnoreCase)));
+    }
+
+    // 5. Broadest text search across all properties (Handles custom OEM TTS engines like Samsung/Xiaomi/Oppo)
+    if (match == null)
+    {
+        string[] searchTerms = langPrefix switch
+        {
+            "en" => new[] { "en", "eng", "english", "us", "uk" },
+            "vi" => new[] { "vi", "vie", "vietnamese", "vn" },
+            "ja" => new[] { "ja", "jpn", "japanese", "jp" },
+            "ko" => new[] { "ko", "kor", "korean", "kr" },
+            "zh" => new[] { "zh", "zho", "chi", "chinese", "cn", "tw" },
+            "fr" => new[] { "fr", "fra", "fre", "french" },
+            "ru" => new[] { "ru", "rus", "russian" },
+            _ => new[] { langPrefix }
+        };
+
+        match = cachedLocales.FirstOrDefault(l => 
+            searchTerms.Any(term => 
+                (l.Language != null && l.Language.Contains(term, StringComparison.OrdinalIgnoreCase)) ||
+                (l.Name != null && l.Name.Contains(term, StringComparison.OrdinalIgnoreCase)) ||
+                (l.Id != null && l.Id.Contains(term, StringComparison.OrdinalIgnoreCase))
+            ));
+    }
+
+    // Return the matched locale or fallback to the first available
+    var finalLocale = match ?? cachedLocales.FirstOrDefault();
+    Debug.WriteLine($"[TextToSpeechService] Final Locale Selected: Id={finalLocale?.Id}, Lang={finalLocale?.Language}, Name={finalLocale?.Name}");
+    return finalLocale;
      }
   catch (Exception ex)
    {
