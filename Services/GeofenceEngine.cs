@@ -176,6 +176,9 @@ _poiCooldowns[poi.Id] = DateTime.Now;
 
      // ? FIX: Call popup service with minimal delay
            await _hybridPopupService.HandleIncomingPOIAsync(poi, distance);
+           
+           // ? Add to audio queue to play TTS
+           _audioManager.AddToQueue(poi);
 
          // Fire-and-forget DB update
         _ = Task.Run(async () =>

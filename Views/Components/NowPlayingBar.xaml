@@ -25,12 +25,13 @@
             <TapGestureRecognizer Command="{Binding OpenDetailCommand}" />
         </Frame.GestureRecognizers>
 
-        <Grid ColumnDefinitions="Auto, *, Auto, Auto" ColumnSpacing="12" VerticalOptions="Center">
-            
-            <!-- Avatar -->
-            <Border Grid.Column="0" 
-                    WidthRequest="44" 
-                    HeightRequest="44" 
+        <Grid RowDefinitions="Auto, Auto">
+            <Grid Grid.Row="0" ColumnDefinitions="Auto, *, Auto, Auto" ColumnSpacing="12" VerticalOptions="Center">
+                
+                <!-- Avatar -->
+                <Border Grid.Column="0" 
+                        WidthRequest="44" 
+                        HeightRequest="44" 
                     StrokeThickness="0"
                     BackgroundColor="#374151"
                     VerticalOptions="Center">
@@ -81,6 +82,40 @@
                     VerticalOptions="Center"
                     HeightRequest="44"
                     WidthRequest="30" />
+            </Grid>
+
+            <!-- Playlist Expandable Area -->
+            <StackLayout Grid.Row="1" IsVisible="{Binding IsPlaylistVisible}" Margin="0,15,0,0">
+                <Label Text="Gần bạn" FontAttributes="Bold" TextColor="White" Margin="0,0,0,10"/>
+                <CollectionView ItemsSource="{Binding UpcomingAudios}" HeightRequest="200">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="0,5" ColumnDefinitions="Auto, *, Auto">
+                                <Grid.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type CollectionView}}, Path=BindingContext.PlayAudioCommand}" CommandParameter="{Binding .}"/>
+                                </Grid.GestureRecognizers>
+                                <Border Grid.Column="0" WidthRequest="36" HeightRequest="36" StrokeThickness="0" BackgroundColor="#374151">
+                                    <Border.StrokeShape>
+                                        <RoundRectangle CornerRadius="18" />
+                                    </Border.StrokeShape>
+                                    <Grid>
+                                        <Label Text="🎵" FontSize="16" HorizontalOptions="Center" VerticalOptions="Center" TextColor="#D1D5DB" />
+                                        <Image Source="{Binding AvatarImageUrl}" Aspect="AspectFill" />
+                                    </Grid>
+                                </Border>
+                                <StackLayout Grid.Column="1" VerticalOptions="Center" Margin="10,0,0,0">
+                                    <Label Text="{Binding Name}" FontSize="12" FontAttributes="Bold" TextColor="White" />
+                                    <Label Text="{Binding DistanceFromUser, StringFormat='{0:F0}m'}" FontSize="10" TextColor="#9CA3AF" />
+                                </StackLayout>
+                                <Label Grid.Column="2" Text="▶" FontSize="16" TextColor="#F97316" VerticalOptions="Center" />
+                            </Grid>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                    <CollectionView.EmptyView>
+                        <Label Text="Không có địa điểm nào gần bạn" TextColor="#9CA3AF" HorizontalOptions="Center" VerticalOptions="Center" Margin="0,20"/>
+                    </CollectionView.EmptyView>
+                </CollectionView>
+            </StackLayout>
         </Grid>
     </Frame>
 </ContentView>

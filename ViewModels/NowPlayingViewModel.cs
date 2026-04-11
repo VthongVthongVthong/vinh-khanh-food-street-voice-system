@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
@@ -11,6 +12,8 @@ public class NowPlayingViewModel : INotifyPropertyChanged
 {
     private readonly AudioManager _audioManager;
     private readonly SettingsService _settingsService;
+    private readonly IPOIRepository _poiRepository;
+    private readonly LocationService _locationService;
 
     private bool _isVisible;
     private string _poiName = string.Empty;
@@ -18,20 +21,34 @@ public class NowPlayingViewModel : INotifyPropertyChanged
     private string _languageText = string.Empty;
     private bool _isPlaying;
     private POI? _currentPoi;
+    private bool _isPlaylistVisible;
+    private ObservableCollection<POI> _upcomingAudios = new();
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    public NowPlayingViewModel(AudioManager audioManager, SettingsService settingsService)
+    public NowPlayingViewModel(AudioManager audioManager, SettingsService settingsService, IPOIRepository poiRepository, LocationService locationService)
     {
         _audioManager = audioManager;
         _settingsService = settingsService;
+        _poiRepository = poiRepository;
+        _locationService = locationService;
 
         TogglePlayCommand = new Command(OnTogglePlay);
-        OpenDetailCommand = new Command(OnOpenDetail);
+        OpenDetailCommand = new Command(OnTogglePlaylist);
         CloseCommand = new Command(OnClose);
+        PlayAudioCommand = new Command<POI>(OnPlayAudio);
 
         _audioManager.AudioStarted += OnAudioStarted;
         _audioManager.AudioCompleted += OnAudioCompleted;
+        _locationService.LocationUpdated += OnLocationUpdated;
+    }
+
+    private async void OnLocationUpdated(object? sender, Location location)
+    {
+        if (_isPlaylistVisible && _isVisible)
+        {
+            await LoadUpcomingAudiosAsync();
+        }
     }
 
     public bool IsVisible
@@ -71,9 +88,22 @@ public class NowPlayingViewModel : INotifyPropertyChanged
 
     public string PlayPauseIcon => IsPlaying ? "⏸" : "▶";
 
+    public bool IsPlaylistVisible
+    {
+        get => _isPlaylistVisible;
+        set { _isPlaylistVisible = value; OnPropertyChanged(); }
+    }
+
+    public ObservableCollection<POI> UpcomingAudios
+    {
+        get => _upcomingAudios;
+        set { _upcomingAudios = value; OnPropertyChanged(); }
+    }
+
     public ICommand TogglePlayCommand { get; }
     public ICommand OpenDetailCommand { get; }
     public ICommand CloseCommand { get; }
+    public ICommand PlayAudioCommand { get; }
 
     private void OnAudioStarted(object? sender, POI poi)
     {
@@ -97,6 +127,24 @@ public class NowPlayingViewModel : INotifyPropertyChanged
         MainThread.BeginInvokeOnMainThread(() =>
         {
             IsPlaying = false;
+            
+            // Auto-play the next item in the upcoming audios list like a playlist
+            if (UpcomingAudios != null && UpcomingAudios.Count > 0)
+            {
+                var nextPoi = UpcomingAudios.First();
+                UpcomingAudios.RemoveAt(0);
+
+                // Delay slightly before starting the next audio
+                Task.Delay(1000).ContinueWith(_ =>
+                {
+                    _audioManager.AddToQueue(nextPoi);
+                });
+            }
+            else
+            {
+                _currentPoi = null;
+                IsVisible = false;
+            }
         });
     }
 
@@ -114,18 +162,79 @@ public class NowPlayingViewModel : INotifyPropertyChanged
         }
     }
 
-    private async void OnOpenDetail()
+    private async void OnTogglePlaylist()
     {
-        if (_currentPoi != null)
+        IsPlaylistVisible = !IsPlaylistVisible;
+        
+        if (IsPlaylistVisible)
         {
-            await Shell.Current.GoToAsync($"detail?poiId={_currentPoi.Id}");
+            await LoadUpcomingAudiosAsync();
         }
+    }
+
+    private async Task LoadUpcomingAudiosAsync()
+    {
+        try
+        {
+            var location = await _locationService.GetCurrentLocation();
+            if (location == null) return;
+
+            var allPois = await _poiRepository.GetActivePOIsAsync();
+            if (allPois == null) return;
+
+            var nearbyPois = allPois.Select(poi => {
+                var distance = Location.CalculateDistance(location.Latitude, location.Longitude, poi.Latitude, poi.Longitude, DistanceUnits.Kilometers) * 1000;
+                poi.DistanceFromUser = distance;
+                return poi;
+            })
+            .Where(p => p.DistanceFromUser <= p.TriggerRadius * 2 || p.DistanceFromUser <= 100) 
+            .OrderBy(p => p.DistanceFromUser)
+            .ToList();
+
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                var existingItems = UpcomingAudios.Select(u => u.Id).ToList();
+                var newItems = nearbyPois.Where(p => _currentPoi == null || p.Id != _currentPoi.Id).ToList();
+
+                // Only update the visual list if it has completely changed to avoid flickering
+                if (!existingItems.SequenceEqual(newItems.Select(n => n.Id)))
+                {
+                    UpcomingAudios.Clear();
+                    foreach (var p in newItems)
+                    {
+                        UpcomingAudios.Add(p);
+                        
+                        // "để đưa vào hàng đợi âm thanh"
+                        // GeofenceEngine already triggers close ones, 
+                        // but if we want UpcomingAudios to truly act as a backup queue:
+                    }
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[NowPlayingViewModel] Playlist error: {ex.Message}");
+        }
+    }
+
+    private void OnPlayAudio(POI poi)
+    {
+        if (poi == null) return;
+
+        // Play the selected audio, clear previous queue
+        _audioManager.StopCurrent();
+        _audioManager.ClearQueue();
+        _audioManager.AddToQueue(poi);
+        
+        // Hide playlist
+        IsPlaylistVisible = false;
     }
 
     private void OnClose()
     {
         _audioManager.StopCurrent();
         IsVisible = false;
+        IsPlaylistVisible = false;
         _currentPoi = null;
     }
 

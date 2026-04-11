@@ -413,6 +413,20 @@ namespace VinhKhanhstreetfoods.ViewModels
             await _locationService.StartListening();
             IsLocationServiceRunning = true;
             StatusMessage = LocalizationService.GetString("Home_Status_LocationLoading") ?? "Tracking location...";
+
+            // Do an immediate check when starting to catch POIs if the device is already in a zone and static
+            try
+            {
+                var loc = await _locationService.GetCurrentLocation();
+                if (loc != null)
+                {
+                    MainThread.BeginInvokeOnMainThread(() => OnLocationUpdated(this, loc));
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[HomeViewModel] Initial location check failed: {ex.Message}");
+            }
         }
 
         private async Task StopLocationService()

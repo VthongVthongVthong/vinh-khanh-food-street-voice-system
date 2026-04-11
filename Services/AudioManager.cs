@@ -135,14 +135,9 @@ namespace VinhKhanhstreetfoods.Services
 
                 lock (_queueSync)
                 {
-                    // Latest-wins policy: keep queue responsive when user changes context quickly.
-                    _audioQueue.Clear();
                     _audioQueue.Enqueue(poi);
-                    Debug.WriteLine($"[AudioManager] Added to queue (latest-wins): {poi.Name} (queue size: {_audioQueue.Count})");
+                    Debug.WriteLine($"[AudioManager] Added to queue: {poi.Name} (queue size: {_audioQueue.Count})");
                 }
-
-                // If currently speaking old context, cancel immediately so new item starts ASAP.
-                StopCurrentPlayback();
 
                 EnsureWorkerStarted();
                 _queueSignal.Release();
@@ -150,6 +145,14 @@ namespace VinhKhanhstreetfoods.Services
             catch (Exception ex)
             {
                 Debug.WriteLine($"[AudioManager] Error in AddToQueue: {ex.Message}");
+            }
+        }
+        
+        public IEnumerable<POI> GetQueueItems()
+        {
+            lock (_queueSync)
+            {
+                return _audioQueue.ToList();
             }
         }
 
