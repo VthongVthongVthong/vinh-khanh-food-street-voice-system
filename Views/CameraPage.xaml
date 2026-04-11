@@ -3,6 +3,7 @@
            xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="VinhKhanhstreetfoods.Views.CameraPage"
         Title="Quét mã QR"
+        Shell.NavBarIsVisible="False"
     NavigationPage.HasNavigationBar="False"
           BackgroundColor="#000000">
 

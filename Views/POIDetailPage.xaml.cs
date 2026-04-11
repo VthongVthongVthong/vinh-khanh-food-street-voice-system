@@ -121,7 +121,7 @@ public partial class POIDetailPage : ContentPage
         }
     }
 
-    private async void OnOpenMapPageClicked(object sender, EventArgs e)
+    private async void OnOpenMapPageTapped(object sender, EventArgs e)
     {
         var poi = _viewModel.SelectedPOI;
         if (poi == null) return;

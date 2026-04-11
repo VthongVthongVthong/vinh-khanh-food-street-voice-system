@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using VinhKhanhstreetfoods.Models;
@@ -277,7 +277,7 @@ namespace VinhKhanhstreetfoods.ViewModels
         MainThread.BeginInvokeOnMainThread(() =>
      {
       NarrationPreviewText = string.IsNullOrWhiteSpace(text) ? (SelectedPOI.TtsScript ?? SelectedPOI.DescriptionText) : text;
-  StatusMessage = $"✅ Sẵn sàng phát ({normalized.ToUpper()})";
+  StatusMessage = $"Sẵn sàng phát... ({normalized.ToUpper()})";
         });
    }
     catch (Exception ex)
@@ -320,7 +320,7 @@ var normalized = NormalizeLang(language);
 
    // ✅ Can play - data is available (offline or cached)
       _audioManager.AddToQueue(SelectedPOI);
-         StatusMessage = "🔊 Đang phát âm thanh...";
+         StatusMessage = "Đang phát âm thanh...";
   }
         catch (Exception ex)
      {
@@ -435,7 +435,7 @@ var shell = Shell.Current;
             MainThread.BeginInvokeOnMainThread(() =>
        {
     IsPlaying = true;
-          StatusMessage = poi is null ? "🔊 Đang phát..." : $"🔊 Đang phát: {poi.Name}";
+          StatusMessage = poi is null ? "Đang phát..." : $"Đang phát: {poi.Name}";
         });
      }
 
@@ -444,7 +444,7 @@ var shell = Shell.Current;
        MainThread.BeginInvokeOnMainThread(() =>
     {
          IsPlaying = false;
-         StatusMessage = "✅ Hoàn tất";
+         StatusMessage = "Hoàn tất";
   });
         }
 

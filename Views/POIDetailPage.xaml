@@ -24,7 +24,7 @@
                 <Frame.GestureRecognizers>
                     <TapGestureRecognizer Command="{Binding GoBackCommand}" />
                 </Frame.GestureRecognizers>
-                <Label Text="🔙" FontSize="18" HorizontalOptions="Center" VerticalOptions="Center" />
+                <Image Source="back_svgrepo_com.png" WidthRequest="20" HeightRequest="20" HorizontalOptions="Center" VerticalOptions="Center" />
             </Frame>
             <Label Grid.Column="1" 
                    Text="Chi tiết nhà hàng" 
@@ -95,11 +95,15 @@
                    Padding="15"
                    HasShadow="True">
                 <StackLayout Spacing="10">
-                    <Label x:Name="DetailsSectionLabel"
-                           Text="ℹ️ Thông Tin Chi Tiết" 
-                           FontSize="16" 
-                           FontAttributes="Bold"
-                           TextColor="#283845"/>
+                    <StackLayout Orientation="Horizontal" Spacing="8">
+                        <Image Source="information_alt_svgrepo_com.png" WidthRequest="20" HeightRequest="20" VerticalOptions="Center"/>
+                        <Label x:Name="DetailsSectionLabel"
+                               Text="Thông Tin Chi Tiết" 
+                               FontSize="16" 
+                               FontAttributes="Bold"
+                               TextColor="#283845"
+                               VerticalOptions="Center"/>
+                    </StackLayout>
                     <StackLayout Padding="10" Spacing="8">
                         <Label Text="{Binding SelectedPOI.Latitude, StringFormat='Vĩ độ: {0:F5}'}"
                                FontSize="12"/>
@@ -118,11 +122,15 @@
                    Padding="15"
                    HasShadow="True">
                 <StackLayout Spacing="10">
-                    <Label x:Name="AudioSectionLabel"
-                           Text="🎙️ Âm Thanh Hướng Dẫn" 
-                           FontSize="16" 
-                           FontAttributes="Bold"
-                           TextColor="#283845"/>
+                    <StackLayout Orientation="Horizontal" Spacing="8">
+                        <Image Source="headphone_earphone_audio_svgrepo_com.png" WidthRequest="20" HeightRequest="20" VerticalOptions="Center"/>
+                        <Label x:Name="AudioSectionLabel"
+                               Text="Âm Thanh Hướng Dẫn" 
+                               FontSize="16" 
+                               FontAttributes="Bold"
+                               TextColor="#283845"
+                               VerticalOptions="Center"/>
+                    </StackLayout>
 
                     <Label x:Name="NarrationLanguageLabel"
                            Text="Ngôn ngữ thuyết minh"
@@ -158,35 +166,50 @@
 
             <!-- Action Buttons -->
             <StackLayout Spacing="10">
-                <Button x:Name="PlayAudioButton"
-                        Text="▶️ Phát Âm Thanh" 
-                        Command="{Binding PlayAudioCommand}"
-                        IsEnabled="{Binding IsPlaying, Converter={StaticResource InvertedBoolConverter}}"
+                <Border IsEnabled="{Binding IsPlaying, Converter={StaticResource InvertedBoolConverter}}"
                         BackgroundColor="#283845"
-                        TextColor="White"
-                        FontSize="14"
-                        FontAttributes="Bold"
-                        CornerRadius="10"
-                        Padding="15"/>
-                <Button x:Name="StopAudioButton"
-                        Text="⏹️ Dừng Âm Thanh" 
-                        Command="{Binding StopAudioCommand}"
-                        IsEnabled="{Binding IsPlaying}"
+                        StrokeThickness="0"
+                        Padding="15">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="10" />
+                    </Border.StrokeShape>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding PlayAudioCommand}" />
+                    </Border.GestureRecognizers>
+                    <HorizontalStackLayout HorizontalOptions="Center" Spacing="8">
+                        <Image Source="play_1003_svgrepo_com.png" WidthRequest="20" HeightRequest="20" VerticalOptions="Center"/>
+                        <Label x:Name="PlayAudioButton" Text=" Phát Âm Thanh" TextColor="White" FontSize="14" FontAttributes="Bold" VerticalOptions="Center"/>
+                    </HorizontalStackLayout>
+                </Border>
+                <Border IsEnabled="{Binding IsPlaying}"
                         BackgroundColor="#C9A36B"
-                        TextColor="Black"
-                        FontSize="14"
-                        FontAttributes="Bold"
-                        CornerRadius="10"
-                        Padding="15"/>
-                <Button x:Name="OpenMapButton"
-                        Text="📍 Mở Bản Đồ" 
-                        Clicked="OnOpenMapPageClicked"
-                        BackgroundColor="#666666"
-                        TextColor="White"
-                        FontSize="14"
-                        FontAttributes="Bold"
-                        CornerRadius="10"
-                        Padding="15"/>
+                        StrokeThickness="0"
+                        Padding="15">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="10" />
+                    </Border.StrokeShape>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding StopAudioCommand}" />
+                    </Border.GestureRecognizers>
+                    <HorizontalStackLayout HorizontalOptions="Center" Spacing="8">
+                        <Image Source="pause_1006_svgrepo_com.png" WidthRequest="20" HeightRequest="20" VerticalOptions="Center"/>
+                        <Label x:Name="StopAudioButton" Text=" Dừng Âm Thanh" TextColor="Black" FontSize="14" FontAttributes="Bold" VerticalOptions="Center"/>
+                    </HorizontalStackLayout>
+                </Border>
+                <Border BackgroundColor="#666666"
+                        StrokeThickness="0"
+                        Padding="15">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="10" />
+                    </Border.StrokeShape>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnOpenMapPageTapped" />
+                    </Border.GestureRecognizers>
+                    <HorizontalStackLayout HorizontalOptions="Center" Spacing="8">
+                        <Image Source="map_pin_alt_svgrepo_com.png" WidthRequest="20" HeightRequest="20" VerticalOptions="Center"/>
+                        <Label x:Name="OpenMapButton" Text=" Mở Bản Đồ" TextColor="White" FontSize="14" FontAttributes="Bold" VerticalOptions="Center"/>
+                    </HorizontalStackLayout>
+                </Border>
                 <Button x:Name="ShareButton"
                         Text="📤 Chia Sẻ" 
                         Command="{Binding ShareCommand}"

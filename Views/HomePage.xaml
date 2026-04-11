@@ -6,6 +6,7 @@
              xmlns:components="clr-namespace:VinhKhanhstreetfoods.Views.Components"
              x:Class="VinhKhanhstreetfoods.Views.HomePage"
              Title="Food Street"
+             Shell.NavBarIsVisible="False"
              BackgroundColor="#F8F8F8"
              Padding="0">
 
@@ -26,11 +27,10 @@
                 <Label x:Name="HeaderTitleLabel" FontSize="18" FontAttributes="Bold" TextColor="#1a1a1a" />
                 <Label x:Name="HeaderLocationLabel" FontSize="11" TextColor="#888" />
             </StackLayout>
-            <Label Grid.Column="1" Text="🔔" FontSize="24" VerticalOptions="Center" />
-            <Button Grid.Column="2" 
-                    Text="🔄" 
-                    FontSize="20" 
-                    Padding="0"
+            <Image Grid.Column="1" Source="bell_svgrepo_com.png" WidthRequest="24" HeightRequest="24" VerticalOptions="Center" />
+            <ImageButton Grid.Column="2" 
+                    Source="refresh_svgrepo_com.png" 
+                    Padding="10"
                     BackgroundColor="Transparent"
                     Command="{Binding RefreshDataCommand}" 
                     VerticalOptions="Center" 
@@ -49,8 +49,9 @@
                 <RoundRectangle CornerRadius="18" />
             </Border.StrokeShape>
             <Grid ColumnDefinitions="Auto,*,Auto" HeightRequest="48">
-                <Label Text="🔍"
-                       FontSize="18"
+                <Image Source="search_svgrepo_com.png"
+                       WidthRequest="18"
+                       HeightRequest="18"
                        VerticalOptions="Center"
                        Margin="14,0" />
                 <Entry Grid.Column="1"
@@ -62,15 +63,13 @@
                        ClearButtonVisibility="WhileEditing"
                        BackgroundColor="Transparent"
                        VerticalOptions="Center" />
-                <Button Grid.Column="2"
-                        Text="📱"
-                        FontSize="18"
+                <ImageButton Grid.Column="2"
+                        Source="qrcode_scan_svgrepo_com.png"
                         WidthRequest="48"
                         HeightRequest="48"
-                        BackgroundColor="#1976D2"
-                        TextColor="White"
+                        BackgroundColor="#F4A950"
                         CornerRadius="24"
-                        Padding="0"
+                        Padding="12"
                         Clicked="OnQrButtonClicked"
                         ToolTipProperties.Text="Scan QR code" />
             </Grid>
@@ -152,24 +151,36 @@
 
         <!-- Bottom Controls -->
             <StackLayout Grid.Row="3" Spacing="8" Padding="12" BackgroundColor="White">
-                <Button x:Name="StartLocationButton"
-                        Command="{Binding StartLocationServiceCommand}"
-                        IsVisible="{Binding IsLocationServiceRunning, Converter={StaticResource InvertedBoolConverter}}"
-                        BackgroundColor="#1976D2"
-                        TextColor="White"
-                        FontSize="13"
-                        FontAttributes="Bold"
-                        CornerRadius="8"
-                        Padding="12" />
-                <Button x:Name="StopLocationButton"
-                        Command="{Binding StopLocationServiceCommand}"
-                        IsVisible="{Binding IsLocationServiceRunning}"
+                <Border IsVisible="{Binding IsLocationServiceRunning, Converter={StaticResource InvertedBoolConverter}}"
+                        BackgroundColor="#F4A950"
+                        StrokeThickness="0"
+                        Padding="12">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="8" />
+                    </Border.StrokeShape>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding StartLocationServiceCommand}" />
+                    </Border.GestureRecognizers>
+                    <HorizontalStackLayout HorizontalOptions="Center" Spacing="8">
+                        <Image Source="play_1003_svgrepo_com.png" WidthRequest="20" HeightRequest="20" VerticalOptions="Center"/>
+                        <Label x:Name="StartLocationButton" TextColor="White" FontSize="13" FontAttributes="Bold" VerticalOptions="Center"/>
+                    </HorizontalStackLayout>
+                </Border>
+                <Border IsVisible="{Binding IsLocationServiceRunning}"
                         BackgroundColor="#FF8C00"
-                        TextColor="White"
-                        FontSize="13"
-                        FontAttributes="Bold"
-                        CornerRadius="8"
-                        Padding="12" />
+                        StrokeThickness="0"
+                        Padding="12">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="8" />
+                    </Border.StrokeShape>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding StopLocationServiceCommand}" />
+                    </Border.GestureRecognizers>
+                    <HorizontalStackLayout HorizontalOptions="Center" Spacing="8">
+                        <Image Source="pause_1006_svgrepo_com.png" WidthRequest="20" HeightRequest="20" VerticalOptions="Center"/>
+                        <Label x:Name="StopLocationButton" TextColor="White" FontSize="13" FontAttributes="Bold" VerticalOptions="Center"/>
+                    </HorizontalStackLayout>
+                </Border>
             </StackLayout>
         </Grid>
 

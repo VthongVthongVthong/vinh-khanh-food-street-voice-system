@@ -86,7 +86,7 @@ public class NowPlayingViewModel : INotifyPropertyChanged
         }
     }
 
-    public string PlayPauseIcon => IsPlaying ? "⏸" : "▶";
+    public string PlayPauseIcon => IsPlaying ? "pause_1006_svgrepo_com.png" : "play_1003_svgrepo_com.png";
 
     public bool IsPlaylistVisible
     {
