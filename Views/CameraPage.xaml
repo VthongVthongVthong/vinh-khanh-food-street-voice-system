@@ -47,20 +47,22 @@ HorizontalOptions="Start" VerticalOptions="End" />
         </Grid>
 
         <!-- Back Button (Floating) -->
-     <Button x:Name="BackButton"
-       Text="✕"
-      HorizontalOptions="Start"
-          VerticalOptions="Start"
-       Margin="12"
-     Padding="0"
-            WidthRequest="48"
-  HeightRequest="48"
-     CornerRadius="24"
-    BackgroundColor="#AA000000"
-       TextColor="White"
-   FontSize="20"
-        ZIndex="10"
- Clicked="OnBackClicked" />
+        <Border Margin="20"
+                HorizontalOptions="Start"
+                VerticalOptions="Start"
+                WidthRequest="48"
+                HeightRequest="48"
+                BackgroundColor="#40000000"
+                StrokeThickness="0"
+                ZIndex="10">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="24" />
+            </Border.StrokeShape>
+            <Border.GestureRecognizers>
+                <TapGestureRecognizer Tapped="OnBackClicked" />
+            </Border.GestureRecognizers>
+            <Image Source="back_svgrepo_com.png" WidthRequest="20" HeightRequest="20" HorizontalOptions="Center" VerticalOptions="Center" />
+        </Border>
     </Grid>
 
 </ContentPage>

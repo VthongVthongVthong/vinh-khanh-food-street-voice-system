@@ -24,7 +24,7 @@
             <!-- Header -->
             <Frame x:Name="HeaderFrame" BackgroundColor="White" CornerRadius="12" Padding="15" HasShadow="False">
                 <Grid ColumnDefinitions="Auto, *, Auto" VerticalOptions="Center">
-                    <Image Source="map_icon.png" WidthRequest="30" HeightRequest="30" VerticalOptions="Center" Grid.Column="0" Margin="0,0,10,0" />
+                    <Image Source="map_location_pin_svgrepo_com.png" WidthRequest="30" HeightRequest="30" VerticalOptions="Center" Grid.Column="0" Margin="0,0,10,0" />
 
                     <StackLayout Grid.Column="1" VerticalOptions="Center">
                         <Label x:Name="HeaderTitleLabel" FontSize="20" FontAttributes="Bold" TextColor="#1F2937" />
@@ -316,13 +316,13 @@
                                     </StackLayout>
 
                                     <Grid ColumnDefinitions="*, *" ColumnSpacing="10" Margin="0,5,0,0">
-                                        <Frame Grid.Column="0" BackgroundColor="#AF45DB" CornerRadius="20" Padding="0" HasShadow="False" HeightRequest="30">
+                                        <Frame Grid.Column="0" BackgroundColor="#F4A950" CornerRadius="20" Padding="0" HasShadow="False" HeightRequest="30">
                                             <Frame.GestureRecognizers>
                                                 <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:MapViewModel}}, Path=PlayAudioCommand}" CommandParameter="{Binding .}" />
                                             </Frame.GestureRecognizers>
                                             <StackLayout Orientation="Horizontal" HorizontalOptions="Center" VerticalOptions="Center" Spacing="4">
                                                 <Image Source="sound_volume_2_svgrepo_com.png" WidthRequest="12" HeightRequest="12" VerticalOptions="Center"/>
-                                                <Label Text="Nghe hướng dẫn" TextColor="White" FontSize="10" VerticalOptions="Center" FontAttributes="Bold" />
+                                                <Label Text="Nghe" TextColor="#FF272727" FontSize="10" VerticalOptions="Center" FontAttributes="Bold" />
                                             </StackLayout>
                                         </Frame>
                                         <Frame Grid.Column="1" BackgroundColor="Transparent" BorderColor="#D1D5DB" CornerRadius="20" Padding="0" HasShadow="False" HeightRequest="30">

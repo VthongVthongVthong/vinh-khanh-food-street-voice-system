@@ -121,13 +121,13 @@ private ObservableCollection<POI>? _currentPoiCollection;
     private void ApplyLocalizedText()
   {
         Title = _resourceManager.GetString("Map_Title");
-        HeaderTitleLabel.Text = $"?? {_resourceManager.GetString("Map_Title")}";
+        HeaderTitleLabel.Text = $"{_resourceManager.GetString("Map_Title")}";
 HeaderSubtitleLabel.Text = _resourceManager.GetString("Home_Featured_Desc");
 
     CurrentLocationTitleLabel.Text = _resourceManager.GetString("Map_CurrentLocation");
         CurrentLocationSubtitleLabel.Text = _resourceManager.GetString("Home_Location");
 
-      NearbyHeaderTitleLabel.Text = $"?? {_resourceManager.GetString("Map_Restaurants")}";
+      NearbyHeaderTitleLabel.Text = _resourceManager.GetString("Map_Restaurants");
         StatsHeaderLabel.Text = _resourceManager.GetString("Map_Restaurants");
         StatsExploredLabel.Text = _resourceManager.GetString("POI_ViewOnMap");
    StatsListenedLabel.Text = _resourceManager.GetString("Home_AudioBadge");

@@ -84,15 +84,12 @@ public partial class POIDetailPage : ContentPage
         BackBehavior.TextOverride = _resourceManager.GetString("Common_Back");
 
         ImagesSectionLabel.Text = _resourceManager.GetString("POI_Gallery");
-        DetailsSectionLabel.Text = _resourceManager.GetString("POI_Description");
+        
         AudioSectionLabel.Text = _resourceManager.GetString("Settings_Audio_Title");
 
         NarrationLanguageLabel.Text = _resourceManager.GetString("Settings_Language_Narration");
         NarrationLanguagePicker.Title = _resourceManager.GetString("Settings_Language_NarrationPickerTitle");
-
-        PlayAudioButton.Text = _resourceManager.GetString("Settings_Audio_AutoPlay");
-        StopAudioButton.Text = _resourceManager.GetString("Common_Close");
-        OpenMapButton.Text = _resourceManager.GetString("POI_ViewOnMap");
+        
         ShareButton.Text = _resourceManager.GetString("POI_Share");
     }
 
@@ -128,6 +125,22 @@ public partial class POIDetailPage : ContentPage
 
         // Switch to map tab and pass poiId; MapPage will focus it.
         await Shell.Current.GoToAsync($"//map?poiId={poi.Id}");
+    }
+
+    private void OnScrollLeftClicked(object sender, EventArgs e)
+    {
+        if (ImagesCarousel.Position > 0)
+        {
+            ImagesCarousel.Position -= 1;
+        }
+    }
+
+    private void OnScrollRightClicked(object sender, EventArgs e)
+    {
+        if (ImagesCarousel.ItemsSource is System.Collections.IList list && ImagesCarousel.Position < list.Count - 1)
+        {
+            ImagesCarousel.Position += 1;
+        }
     }
 }
 

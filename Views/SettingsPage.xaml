@@ -4,7 +4,7 @@
              xmlns:components="clr-namespace:VinhKhanhstreetfoods.Views.Components"
              x:Class="VinhKhanhstreetfoods.Views.SettingsPage"
              Shell.NavBarIsVisible="False"
-             BackgroundColor="#F5F5F5">
+             BackgroundColor="{StaticResource BgPage}">
 
     <Grid>
         <ScrollView Padding="20">
@@ -12,172 +12,147 @@
 
                 <!-- Header -->
                 <Label x:Name="HeaderLabel"
-                       FontSize="24"
-                       FontAttributes="Bold"
-                       TextColor="#283845"
+                       Style="{StaticResource PageTitle}"
                        HorizontalOptions="Center"/>
 
                 <!-- Language Section -->
-                <Frame BackgroundColor="White"
-                       BorderColor="#C9A36B"
-                       CornerRadius="15"
-                       Padding="15"
-                       HasShadow="True">
-                    <StackLayout Spacing="10">
+                <Border Style="{StaticResource MainCardStyle}" Padding="20">
+                    <StackLayout Spacing="15">
                         <Label x:Name="LanguageSectionLabel"
-                               FontSize="16"
-                               FontAttributes="Bold"
-                               TextColor="#283845"/>
+                               Style="{StaticResource CardTitle}"/>
 
                         <Label x:Name="UiLanguageLabel"
-                               FontSize="12"
-                               TextColor="#666666"/>
+                               Style="{StaticResource MutedText}"/>
 
-                        <Picker ItemsSource="{Binding LanguageOptions}"
-                                SelectedItem="{Binding SelectedAppLanguage}"
-                                ItemDisplayBinding="{Binding DisplayLabel}"
-                                TextColor="#283845"
-                                x:Name="UiLanguagePicker"/>
+                        <Border Style="{StaticResource MainCardStyle}" BackgroundColor="{StaticResource BgPage}" Padding="10,0">
+                            <Picker ItemsSource="{Binding LanguageOptions}"
+                                    SelectedItem="{Binding SelectedAppLanguage}"
+                                    ItemDisplayBinding="{Binding DisplayLabel}"
+                                    TextColor="{StaticResource TextDark}"
+                                    x:Name="UiLanguagePicker"/>
+                        </Border>
 
                         <Label x:Name="NarrationLanguageLabel"
-                               FontSize="12"
-                               TextColor="#666666"/>
+                               Style="{StaticResource MutedText}"/>
 
-                        <Picker ItemsSource="{Binding LanguageOptions}"
-                                SelectedItem="{Binding SelectedNarrationLanguage}"
-                                ItemDisplayBinding="{Binding DisplayLabel}"
-                                TextColor="#283845"
-                                x:Name="NarrationLanguagePicker"/>
+                        <Border Style="{StaticResource MainCardStyle}" BackgroundColor="{StaticResource BgPage}" Padding="10,0">
+                            <Picker ItemsSource="{Binding LanguageOptions}"
+                                    SelectedItem="{Binding SelectedNarrationLanguage}"
+                                    ItemDisplayBinding="{Binding DisplayLabel}"
+                                    TextColor="{StaticResource TextDark}"
+                                    x:Name="NarrationLanguagePicker"/>
+                        </Border>
 
                         <Label Text="{Binding SelectedNarrationLanguageInfo}"
-                               FontSize="11"
-                               TextColor="#666666"/>
+                               FontSize="12"
+                               TextColor="{StaticResource TextLight}"/>
 
                         <Button x:Name="DataFromDbButton"
                                 IsEnabled="False"
-                                BackgroundColor="#DDE7F0"
-                                TextColor="#283845"
-                                FontSize="13"
-                                CornerRadius="10"
-                                Padding="10"/>
+                                BackgroundColor="{StaticResource BgPage}"
+                                TextColor="{StaticResource TextMuted}"
+                                FontSize="14"
+                                CornerRadius="12"
+                                Padding="12"/>
 
-                        <StackLayout Spacing="5"
+                        <StackLayout Spacing="8"
                                      IsVisible="{Binding IsDownloadingLanguagePack}">
                             <Label x:Name="DownloadTitleLabel"
-                                   FontSize="12"
+                                   FontSize="13"
                                    FontAttributes="Bold"
-                                   TextColor="#283845"/>
+                                   TextColor="{StaticResource TextDark}"/>
 
                             <ProgressBar Progress="{Binding DownloadProgress}"
-                                         ProgressColor="#C9A36B"
-                                         BackgroundColor="#E8DCC8"
-                                         HeightRequest="8"/>
+                                         ProgressColor="{StaticResource BrandOrange}"
+                                         BackgroundColor="{StaticResource BgPage}"
+                                         HeightRequest="6"/>
 
                             <Label Text="{Binding DownloadDetails}"
-                                   FontSize="11"
-                                   TextColor="#666666"
+                                   FontSize="12"
+                                   TextColor="{StaticResource TextMuted}"
                                    HorizontalOptions="Center"/>
                         </StackLayout>
                     </StackLayout>
-                </Frame>
+                </Border>
 
                 <!-- Audio Settings -->
-                <Frame BackgroundColor="White"
-                       BorderColor="#C9A36B"
-                       CornerRadius="15"
-                       Padding="15"
-                       HasShadow="True">
-                    <StackLayout Spacing="15">
+                <Border Style="{StaticResource MainCardStyle}" Padding="20">
+                    <StackLayout Spacing="20">
                         <Label x:Name="AudioTitleLabel"
-                               FontSize="16"
-                               FontAttributes="Bold"
-                               TextColor="#283845"/>
+                               Style="{StaticResource CardTitle}"/>
 
                         <StackLayout Orientation="Horizontal" Spacing="10">
                             <Label x:Name="EnableAudioLabel"
+                                   TextColor="{StaticResource TextDark}"
                                    VerticalOptions="Center"
-                                   FontSize="14"/>
+                                   FontSize="15"/>
                             <Switch IsToggled="{Binding EnableAudio}"
+                                    OnColor="{StaticResource BrandOrange}"
                                     HorizontalOptions="EndAndExpand"/>
                         </StackLayout>
 
                         <StackLayout Orientation="Horizontal" Spacing="10">
                             <Label x:Name="AutoPlayLabel"
+                                   TextColor="{StaticResource TextDark}"
                                    VerticalOptions="Center"
-                                   FontSize="14"/>
+                                   FontSize="15"/>
                             <Switch IsToggled="{Binding EnableAutoNarration}"
+                                    OnColor="{StaticResource BrandOrange}"
                                     HorizontalOptions="EndAndExpand"/>
                         </StackLayout>
                     </StackLayout>
-                </Frame>
+                </Border>
 
                 <!-- Cooldown Settings -->
-                <Frame BackgroundColor="White"
-                       BorderColor="#C9A36B"
-                       CornerRadius="15"
-                       Padding="15"
-                       HasShadow="True">
+                <Border Style="{StaticResource MainCardStyle}" Padding="20">
                     <StackLayout Spacing="10">
                         <Label x:Name="CooldownTitleLabel"
-                               FontSize="16"
-                               FontAttributes="Bold"
-                               TextColor="#283845"/>
+                               Style="{StaticResource CardTitle}"/>
                         <Stepper Value="{Binding CooldownMinutes}"
                                  Minimum="1"
                                  Maximum="60"
                                  Increment="1"/>
                         <Label Text="{Binding CooldownMinutes, StringFormat='Current: {0} minutes'}"
-                               FontSize="12"
-                               TextColor="#666666"
+                               Style="{StaticResource MutedText}"
                                HorizontalOptions="Center"
                                x:Name="CooldownValueLabel"/>
                     </StackLayout>
-                </Frame>
+                </Border>
 
                 <!-- Trigger Radius Settings -->
-                <Frame BackgroundColor="White"
-                       BorderColor="#C9A36B"
-                       CornerRadius="15"
-                       Padding="15"
-                       HasShadow="True">
+                <Border Style="{StaticResource MainCardStyle}" Padding="20">
                     <StackLayout Spacing="10">
                         <Label x:Name="TriggerTitleLabel"
-                               FontSize="16"
-                               FontAttributes="Bold"
-                               TextColor="#283845"/>
+                               Style="{StaticResource CardTitle}"/>
                         <Stepper Value="{Binding TriggerRadiusMeters}"
                                  Minimum="10"
                                  Maximum="100"
                                  Increment="5"/>
                         <Label Text="{Binding TriggerRadiusMeters, StringFormat='Current: {0}m'}"
-                               FontSize="12"
-                               TextColor="#666666"
+                               Style="{StaticResource MutedText}"
                                HorizontalOptions="Center"
                                x:Name="TriggerValueLabel"/>
                     </StackLayout>
-                </Frame>
+                </Border>
 
                 <!-- Status -->
-                <Frame BackgroundColor="#283845"
-                       CornerRadius="10"
-                       Padding="10">
+                <Border Style="{StaticResource MainCardStyle}" Padding="15" BackgroundColor="{StaticResource TextDark}">
                     <Label Text="{Binding StatusMessage}"
                            TextColor="White"
-                           FontSize="12"
+                           FontSize="13"
                            HorizontalOptions="Center"
                            LineBreakMode="WordWrap"/>
-                </Frame>
+                </Border>
 
                 <!-- Action Buttons (Only Reset) -->
                 <StackLayout Spacing="10">
                     <Button x:Name="ResetButton"
                             Command="{Binding ResetSettingsCommand}"
-                            BackgroundColor="#C9A36B"
-                            TextColor="Black"
-                            FontSize="14"
+                            BackgroundColor="Transparent"
+                            TextColor="{StaticResource BrandOrangeDark}"
+                            FontSize="15"
                             FontAttributes="Bold"
-                            CornerRadius="10"
-                            Padding="15"/>
+                            HeightRequest="52"/>
                 </StackLayout>
             </StackLayout>
         </ScrollView>

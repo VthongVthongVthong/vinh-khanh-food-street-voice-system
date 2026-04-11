@@ -13,17 +13,16 @@
         </ResourceDictionary>
     </ContentView.Resources>
 
-    <Frame BackgroundColor="#1F2937"
-           CornerRadius="12"
+    <Border BackgroundColor="{StaticResource TextDark}"
            Padding="10,8"
            Margin="15,0,15,15"
-           HasShadow="True"
-           BorderColor="Transparent"
-           VerticalOptions="End">
+           Style="{StaticResource MainCardStyle}"
+           VerticalOptions="End"
+           Shadow="{StaticResource SoftShadow}">
         
-        <Frame.GestureRecognizers>
+        <Border.GestureRecognizers>
             <TapGestureRecognizer Command="{Binding OpenDetailCommand}" />
-        </Frame.GestureRecognizers>
+        </Border.GestureRecognizers>
 
         <Grid RowDefinitions="Auto, Auto">
             <Grid Grid.Row="0" ColumnDefinitions="Auto, *, Auto, Auto" ColumnSpacing="12" VerticalOptions="Center">
@@ -33,14 +32,15 @@
                         WidthRequest="44" 
                         HeightRequest="44" 
                     StrokeThickness="0"
-                    BackgroundColor="#374151"
-                    VerticalOptions="Center">
+                    BackgroundColor="{StaticResource BgPage}"
+                    VerticalOptions="Center"
+                    Style="{StaticResource ImageThumbnailStyle}">
                 <Border.StrokeShape>
                     <RoundRectangle CornerRadius="22" />
                 </Border.StrokeShape>
                 <Grid>
                     <!-- Fallback -->
-                    <Label Text="🎵" FontSize="20" HorizontalOptions="Center" VerticalOptions="Center" TextColor="#D1D5DB" />
+                    <Label Text="🎵" FontSize="20" HorizontalOptions="Center" VerticalOptions="Center" TextColor="{StaticResource TextLight}" />
                     <!-- Image -->
                     <Image Source="{Binding PoiAvatarUrl}" Aspect="AspectFill" 
                            IsVisible="{Binding PoiAvatarUrl, Converter={StaticResource InvertedBoolConverter}, ConverterParameter='StringNotEmpty'}" />
@@ -56,7 +56,7 @@
                        LineBreakMode="TailTruncation" />
                 <Label Text="{Binding LanguageText}" 
                        FontSize="10" 
-                       TextColor="#9CA3AF" />
+                       TextColor="{StaticResource TextLight}" />
             </StackLayout>
 
             <!-- Play/Pause Button -->
@@ -73,7 +73,7 @@
                     Text="✕"
                     Command="{Binding CloseCommand}"
                     BackgroundColor="Transparent"
-                    TextColor="#6B7280"
+                    TextColor="{StaticResource TextMuted}"
                     FontSize="20"
                     Padding="0"
                     VerticalOptions="Center"
@@ -91,28 +91,28 @@
                                 <Grid.GestureRecognizers>
                                     <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type CollectionView}}, Path=BindingContext.PlayAudioCommand}" CommandParameter="{Binding .}"/>
                                 </Grid.GestureRecognizers>
-                                <Border Grid.Column="0" WidthRequest="36" HeightRequest="36" StrokeThickness="0" BackgroundColor="#374151">
+                                <Border Grid.Column="0" WidthRequest="36" HeightRequest="36" StrokeThickness="0" BackgroundColor="{StaticResource BgPage}" Style="{StaticResource ImageThumbnailStyle}">
                                     <Border.StrokeShape>
                                         <RoundRectangle CornerRadius="18" />
                                     </Border.StrokeShape>
                                     <Grid>
-                                        <Label Text="🎵" FontSize="16" HorizontalOptions="Center" VerticalOptions="Center" TextColor="#D1D5DB" />
+                                        <Label Text="🎵" FontSize="16" HorizontalOptions="Center" VerticalOptions="Center" TextColor="{StaticResource TextLight}" />
                                         <Image Source="{Binding AvatarImageUrl}" Aspect="AspectFill" />
                                     </Grid>
                                 </Border>
                                 <StackLayout Grid.Column="1" VerticalOptions="Center" Margin="10,0,0,0">
                                     <Label Text="{Binding Name}" FontSize="12" FontAttributes="Bold" TextColor="White" />
-                                    <Label Text="{Binding DistanceFromUser, StringFormat='{0:F0}m'}" FontSize="10" TextColor="#9CA3AF" />
+                                    <Label Text="{Binding DistanceFromUser, StringFormat='{0:F0}m'}" FontSize="10" TextColor="{StaticResource TextLight}" />
                                 </StackLayout>
                                 <Image Grid.Column="2" Source="play_1003_svgrepo_com.png" WidthRequest="16" HeightRequest="16" VerticalOptions="Center" />
                             </Grid>
                         </DataTemplate>
                     </CollectionView.ItemTemplate>
                     <CollectionView.EmptyView>
-                        <Label Text="Không có địa điểm nào gần bạn" TextColor="#9CA3AF" HorizontalOptions="Center" VerticalOptions="Center" Margin="0,20"/>
+                        <Label Text="Không có địa điểm nào gần bạn" TextColor="{StaticResource TextLight}" HorizontalOptions="Center" VerticalOptions="Center" Margin="0,20"/>
                     </CollectionView.EmptyView>
                 </CollectionView>
             </StackLayout>
         </Grid>
-    </Frame>
+    </Border>
 </ContentView>

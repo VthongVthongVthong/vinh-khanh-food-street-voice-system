@@ -7,7 +7,7 @@
              x:Class="VinhKhanhstreetfoods.Views.HomePage"
              Title="Food Street"
              Shell.NavBarIsVisible="False"
-             BackgroundColor="#F8F8F8"
+             BackgroundColor="{StaticResource BgPage}"
              Padding="0">
 
     <ContentPage.Resources>
@@ -15,6 +15,7 @@
             <converters:POIDescriptionConverter x:Key="POIDescriptionConverter" />
             <converters:IsNullOrEmptyConverter x:Key="IsNullOrEmptyConverter" />
             <converters:StringNotNullOrEmptyConverter x:Key="StringNotNullOrEmptyConverter" />
+            <converters:InvertedBoolConverter x:Key="InvertedBoolConverter" />
         </ResourceDictionary>
     </ContentPage.Resources>
 
@@ -22,54 +23,52 @@
         <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="0">
 
             <!-- Header -->
-        <Grid BackgroundColor="White" Padding="12" ColumnSpacing="8" ColumnDefinitions="*,Auto,Auto">
-            <StackLayout Grid.Column="0" Spacing="2">
-                <Label x:Name="HeaderTitleLabel" FontSize="18" FontAttributes="Bold" TextColor="#1a1a1a" />
-                <Label x:Name="HeaderLocationLabel" FontSize="11" TextColor="#888" />
+        <Grid BackgroundColor="{StaticResource BgPage}" Padding="20,20,20,10" ColumnSpacing="12" ColumnDefinitions="*,Auto,Auto">
+            <StackLayout Grid.Column="0" Spacing="4" VerticalOptions="Center">
+                <Label x:Name="HeaderTitleLabel" Style="{StaticResource PageTitle}" TextColor="{StaticResource TextDark}" />
+                <Label x:Name="HeaderLocationLabel" FontSize="13" TextColor="{StaticResource TextMuted}" />
             </StackLayout>
-            <Image Grid.Column="1" Source="bell_svgrepo_com.png" WidthRequest="24" HeightRequest="24" VerticalOptions="Center" />
-            <ImageButton Grid.Column="2" 
-                    Source="refresh_svgrepo_com.png" 
-                    Padding="10"
-                    BackgroundColor="Transparent"
-                    Command="{Binding RefreshDataCommand}" 
-                    VerticalOptions="Center" 
-                    HeightRequest="40" 
-                    WidthRequest="40"
-                    ToolTipProperties.Text="Reload data from server" />
+            <Border Grid.Column="1" Style="{StaticResource ImageThumbnailStyle}" WidthRequest="44" HeightRequest="44" BackgroundColor="White" Shadow="{StaticResource SoftShadow}" VerticalOptions="Center">
+                <Image Source="bell_svgrepo_com.png" WidthRequest="20" HeightRequest="20" VerticalOptions="Center" HorizontalOptions="Center" />
+            </Border>
+            <Border Grid.Column="2" Style="{StaticResource ImageThumbnailStyle}" WidthRequest="44" HeightRequest="44" BackgroundColor="White" Shadow="{StaticResource SoftShadow}" VerticalOptions="Center">
+                <ImageButton Source="refresh_svgrepo_com.png" 
+                        Padding="12"
+                        BackgroundColor="Transparent"
+                        Command="{Binding RefreshDataCommand}" 
+                        VerticalOptions="Fill" 
+                        HorizontalOptions="Fill"
+                        ToolTipProperties.Text="Reload data from server" />
+            </Border>
         </Grid>
 
         <!-- Search + QR actions -->
         <Border Grid.Row="1"
-                Margin="12"
-                BackgroundColor="White"
-                StrokeThickness="0"
-                Padding="0">
-            <Border.StrokeShape>
-                <RoundRectangle CornerRadius="18" />
-            </Border.StrokeShape>
-            <Grid ColumnDefinitions="Auto,*,Auto" HeightRequest="48">
+                Margin="20,10,20,16"
+                Style="{StaticResource MainCardStyle}">
+            <Grid ColumnDefinitions="Auto,*,Auto" HeightRequest="56">
                 <Image Source="search_svgrepo_com.png"
-                       WidthRequest="18"
-                       HeightRequest="18"
+                       WidthRequest="20"
+                       HeightRequest="20"
                        VerticalOptions="Center"
-                       Margin="14,0" />
+                       Margin="16,0,8,0" />
                 <Entry Grid.Column="1"
                        x:Name="SearchEntry"
                        Text="{Binding SearchText}"
-                       FontSize="14"
-                       PlaceholderColor="#9E9E9E"
-                       TextColor="#1a1a1a"
+                       FontSize="15"
+                       PlaceholderColor="{StaticResource TextLight}"
+                       TextColor="{StaticResource TextDark}"
                        ClearButtonVisibility="WhileEditing"
                        BackgroundColor="Transparent"
                        VerticalOptions="Center" />
                 <ImageButton Grid.Column="2"
                         Source="qrcode_scan_svgrepo_com.png"
-                        WidthRequest="48"
-                        HeightRequest="48"
-                        BackgroundColor="#F4A950"
-                        CornerRadius="24"
-                        Padding="12"
+                        WidthRequest="40"
+                        HeightRequest="40"
+                        Margin="0,0,8,0"
+                        BackgroundColor="{StaticResource BrandOrange}"
+                        CornerRadius="20"
+                        Padding="10"
                         Clicked="OnQrButtonClicked"
                         ToolTipProperties.Text="Scan QR code" />
             </Grid>
@@ -78,62 +77,72 @@
         <!-- POI List -->
         <RefreshView Grid.Row="2"
                      IsRefreshing="{Binding IsRefreshing}"
-                     Command="{Binding RefreshAppCommand}"
-                     BackgroundColor="#F8F8F8">
+                     Command="{Binding RefreshAppCommand}">
             <CollectionView ItemsSource="{Binding NearbyPOIs}"
                             SelectionMode="Single"
                             SelectedItem="{Binding SelectedPOI, Mode=TwoWay}"
                             SelectionChangedCommand="{Binding OpenDetailCommand}"
-                            SelectionChangedCommandParameter="{Binding SelectedPOI}"
-                            BackgroundColor="#F8F8F8">
+                            SelectionChangedCommandParameter="{Binding SelectedPOI}">
                 <CollectionView.ItemsLayout>
-                    <LinearItemsLayout Orientation="Vertical" ItemSpacing="8" />
+                    <LinearItemsLayout Orientation="Vertical" ItemSpacing="16" />
                 </CollectionView.ItemsLayout>
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="local2:POI">
-                        <ContentView Padding="12,8" Margin="12,0" BackgroundColor="White">
-                            <Grid ColumnDefinitions="80,*" ColumnSpacing="12">
+                        <Border Style="{StaticResource MainCardStyle}" Margin="20,0,20,0" Padding="12">
+                            <Grid ColumnDefinitions="100,*" ColumnSpacing="16">
                                 <Border Grid.Column="0" 
-                                        WidthRequest="80"
-                                        HeightRequest="80"
-                                        BackgroundColor="White"
-                                        StrokeThickness="0"
-                                        Padding="0"
-                                             IsVisible="{Binding AvatarImageUrl, Converter={StaticResource StringNotNullOrEmptyConverter}}">
-                                    <Border.StrokeShape>
-                                        <RoundRectangle CornerRadius="4" />
-                                    </Border.StrokeShape>
-                                    <Image Source="{Binding AvatarImageUrl}" 
-                                           Aspect="AspectFill" />
+                                        Style="{StaticResource ImageThumbnailStyle}"
+                                        WidthRequest="100"
+                                        HeightRequest="100"
+                                        BackgroundColor="{StaticResource BgPage}"
+                                        IsVisible="{Binding AvatarImageUrl, Converter={StaticResource StringNotNullOrEmptyConverter}}">
+                                    <Image Source="{Binding AvatarImageUrl}" Aspect="AspectFill" />
                                 </Border>
                                 <BoxView Grid.Column="0" 
-                                         WidthRequest="80"
-                                         HeightRequest="80"
-                                         Color="#E8E8E8" 
-                                         CornerRadius="4"
-       IsVisible="{Binding AvatarImageUrl, Converter={StaticResource IsNullOrEmptyConverter}}" />
-                                <Grid Grid.Column="1" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="4">
-                                    <StackLayout Grid.Row="0" Orientation="Horizontal" Spacing="6">
-                                        <Label Text="●" FontSize="10" TextColor="#DA1C5C" />
-                                        <Label Text="Open" FontSize="9" TextColor="#DA1C5C" VerticalOptions="Center" />
-                                        <Label Text="●" FontSize="10" TextColor="#4CAF50" Margin="6,0,0,0" />
-                                        <Label Text="Available" FontSize="9" TextColor="#4CAF50" VerticalOptions="Center" />
+                                         WidthRequest="100"
+                                         HeightRequest="100"
+                                         Color="{StaticResource BgPage}" 
+                                         CornerRadius="12"
+                                         IsVisible="{Binding AvatarImageUrl, Converter={StaticResource IsNullOrEmptyConverter}}" />
+                                
+                                <Grid Grid.Column="1" RowDefinitions="Auto,*,Auto" RowSpacing="6">
+                                    <StackLayout Grid.Row="0" Orientation="Horizontal" Spacing="4">
+                                        <Image Source="star_svgrepo_com.png" WidthRequest="12" HeightRequest="12" VerticalOptions="Center" />
+                                        <Label Text="" FontSize="11" FontAttributes="Bold" TextColor="{StaticResource TextDark}" VerticalOptions="Center" />
                                     </StackLayout>
-                                    <Label Grid.Row="1" Text="{Binding Name}" FontSize="13" FontAttributes="Bold" TextColor="#1a1a1a" LineBreakMode="TailTruncation" />
-                                    <Label Grid.Row="2" Text="{Binding Address}" FontSize="10" TextColor="#888" LineBreakMode="TailTruncation" />
-                                    <Label Grid.Row="3" Text="{Binding ., Converter={StaticResource POIDescriptionConverter}}" FontSize="9" TextColor="#666" LineBreakMode="WordWrap" MaxLines="2" />
+                                    
+                                    <StackLayout Grid.Row="1" Spacing="2" VerticalOptions="Center">
+                                        <Label Text="{Binding Name}" Style="{StaticResource CardTitle}" LineBreakMode="TailTruncation" />
+                                        <Label Text="{Binding Address}" Style="{StaticResource MutedText}" FontSize="12" LineBreakMode="TailTruncation" />
+                                        <Label Text="{Binding ., Converter={StaticResource POIDescriptionConverter}}" FontSize="11" TextColor="{StaticResource TextLight}" LineBreakMode="TailTruncation" MaxLines="1" />
+                                    </StackLayout>
+                                    
+                                    <StackLayout Grid.Row="2" Orientation="Horizontal" HorizontalOptions="End">
+                                        <Border Style="{StaticResource PrimaryButtonStyle}" WidthRequest="28" HeightRequest="28">
+                                            <Border.StrokeShape>
+                                                <RoundRectangle CornerRadius="14" />
+                                            </Border.StrokeShape>
+                                            <Image Source="chevron_right_svgrepo_com.png" WidthRequest="14" HeightRequest="14" HorizontalOptions="Center" VerticalOptions="Center" />
+                                        </Border>
+                                    </StackLayout>
                                 </Grid>
                             </Grid>
-                        </ContentView>
+                        </Border>
                     </DataTemplate>
                 </CollectionView.ItemTemplate>
+                
+                <!-- Padding at bottom for floating list visually -->
+                <CollectionView.Footer>
+                    <ContentView HeightRequest="20" />
+                </CollectionView.Footer>
+                
                 <CollectionView.EmptyViewTemplate>
                     <DataTemplate>
                         <ContentView Padding="20" HorizontalOptions="Center" VerticalOptions="Center">
-                            <StackLayout Spacing="10">
-                                <Label Text="😕" FontSize="24" HorizontalOptions="Center" />
-                                <Label Text="No data" FontSize="16" FontAttributes="Bold" TextColor="#888" HorizontalOptions="Center" />
-                                <Label Text="Pull down to refresh" FontSize="12" TextColor="#AAA" HorizontalOptions="Center" />
+                            <StackLayout Spacing="12">
+                                <Label Text="😕" FontSize="40" HorizontalOptions="Center" />
+                                <Label Text="No data" Style="{StaticResource CardTitle}" TextColor="{StaticResource TextMuted}" HorizontalOptions="Center" />
+                                <Label Text="Pull down to refresh" Style="{StaticResource MutedText}" HorizontalOptions="Center" />
                             </StackLayout>
                         </ContentView>
                     </DataTemplate>
@@ -144,47 +153,47 @@
         <ActivityIndicator Grid.Row="2"
                            IsRunning="{Binding IsLoading}"
                            IsVisible="{Binding IsLoading}"
-                           Color="#1976D2"
+                           Color="{StaticResource BrandOrange}"
                            Scale="1.2"
                            VerticalOptions="Center"
                            HorizontalOptions="Center" />
 
         <!-- Bottom Controls -->
-            <StackLayout Grid.Row="3" Spacing="8" Padding="12" BackgroundColor="White">
-                <Border IsVisible="{Binding IsLocationServiceRunning, Converter={StaticResource InvertedBoolConverter}}"
-                        BackgroundColor="#F4A950"
-                        StrokeThickness="0"
-                        Padding="12">
-                    <Border.StrokeShape>
-                        <RoundRectangle CornerRadius="8" />
-                    </Border.StrokeShape>
-                    <Border.GestureRecognizers>
-                        <TapGestureRecognizer Command="{Binding StartLocationServiceCommand}" />
-                    </Border.GestureRecognizers>
-                    <HorizontalStackLayout HorizontalOptions="Center" Spacing="8">
-                        <Image Source="play_1003_svgrepo_com.png" WidthRequest="20" HeightRequest="20" VerticalOptions="Center"/>
-                        <Label x:Name="StartLocationButton" TextColor="White" FontSize="13" FontAttributes="Bold" VerticalOptions="Center"/>
-                    </HorizontalStackLayout>
-                </Border>
-                <Border IsVisible="{Binding IsLocationServiceRunning}"
-                        BackgroundColor="#FF8C00"
-                        StrokeThickness="0"
-                        Padding="12">
-                    <Border.StrokeShape>
-                        <RoundRectangle CornerRadius="8" />
-                    </Border.StrokeShape>
-                    <Border.GestureRecognizers>
-                        <TapGestureRecognizer Command="{Binding StopLocationServiceCommand}" />
-                    </Border.GestureRecognizers>
-                    <HorizontalStackLayout HorizontalOptions="Center" Spacing="8">
-                        <Image Source="pause_1006_svgrepo_com.png" WidthRequest="20" HeightRequest="20" VerticalOptions="Center"/>
-                        <Label x:Name="StopLocationButton" TextColor="White" FontSize="13" FontAttributes="Bold" VerticalOptions="Center"/>
-                    </HorizontalStackLayout>
-                </Border>
-            </StackLayout>
+        <ContentView Grid.Row="3" Padding="20,12,20,24" BackgroundColor="{StaticResource BgPage}">
+    <Grid ColumnDefinitions="*,*" ColumnSpacing="16">
+        <Border Grid.Column="0" 
+                Grid.ColumnSpan="2"
+                IsVisible="{Binding IsLocationServiceRunning, Converter={StaticResource InvertedBoolConverter}}"
+                Style="{StaticResource PrimaryButtonStyle}"
+                HeightRequest="50">
+            <Border.GestureRecognizers>
+                <TapGestureRecognizer Command="{Binding StartLocationServiceCommand}" />
+            </Border.GestureRecognizers>
+            <HorizontalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="10">
+                <Image Source="play_1003_svgrepo_com.png" WidthRequest="20" HeightRequest="20" />
+                <Label x:Name="StartLocationButton" Text="Start Location" TextColor="White" FontSize="15" FontAttributes="Bold" />
+            </HorizontalStackLayout>
+        </Border>
+        
+        <Border Grid.Column="0" 
+                Grid.ColumnSpan="2"
+                IsVisible="{Binding IsLocationServiceRunning}"
+                Style="{StaticResource PrimaryButtonStyle}"
+                BackgroundColor="{StaticResource BrandOrangeDark}"
+                HeightRequest="50">
+            <Border.GestureRecognizers>
+                <TapGestureRecognizer Command="{Binding StopLocationServiceCommand}" />
+            </Border.GestureRecognizers>
+            <HorizontalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="10">
+                <Image Source="pause_1006_svgrepo_com.png" WidthRequest="20" HeightRequest="20" />
+                <Label x:Name="StopLocationButton" Text="Stop Location" TextColor="White" FontSize="15" FontAttributes="Bold" />
+            </HorizontalStackLayout>
+        </Border>
+    </Grid>
+</ContentView>
         </Grid>
 
         <!-- Global Now Playing Bar overlay -->
-        <components:NowPlayingBar VerticalOptions="End" Margin="0,0,0,80" />
+        <components:NowPlayingBar VerticalOptions="End" Margin="0,0,0,90" />
     </Grid>
 </ContentPage>

@@ -24,6 +24,74 @@
             <converters:BoolToOpacityConverter
                 x:Key="BoolToOpacityConverter" />
 
+            <!-- Colors -->
+            <Color x:Key="BrandOrange">#FF8C66</Color>
+            <Color x:Key="BrandOrangeDark">#E57A5A</Color>
+            <Color x:Key="BgPage">#F7F8FA</Color>
+            <Color x:Key="CardBg">#FFFFFF</Color>
+            <Color x:Key="TextDark">#2D3748</Color>
+            <Color x:Key="TextMuted">#718096</Color>
+            <Color x:Key="TextLight">#A0AEC0</Color>
+            <Color x:Key="TagRed">#FC8181</Color>
+            <Color x:Key="TagGreen">#68D391</Color>
+
+            <!-- Shadows -->
+            <Shadow x:Key="SoftShadow" Brush="#10000000" Offset="0,4" Radius="12" Opacity="1" />
+            <Shadow x:Key="ButtonShadow" Brush="#30FF8C66" Offset="0,4" Radius="12" Opacity="1" />
+
+            <!-- Styles -->
+            <Style TargetType="Label" x:Key="TitleBase">
+                <Setter Property="TextColor" Value="{StaticResource TextDark}" />
+                <Setter Property="FontFamily" Value="OpenSansSemibold" />
+            </Style>
+
+            <Style TargetType="Label" x:Key="PageTitle" BasedOn="{StaticResource TitleBase}">
+                <Setter Property="FontSize" Value="24" />
+                <Setter Property="FontAttributes" Value="Bold" />
+            </Style>
+
+            <Style TargetType="Label" x:Key="CardTitle" BasedOn="{StaticResource TitleBase}">
+                <Setter Property="FontSize" Value="16" />
+                <Setter Property="FontAttributes" Value="Bold" />
+            </Style>
+
+            <Style TargetType="Label" x:Key="MutedText">
+                <Setter Property="TextColor" Value="{StaticResource TextMuted}" />
+                <Setter Property="FontSize" Value="13" />
+            </Style>
+
+            <Style TargetType="Border" x:Key="MainCardStyle">
+                <Setter Property="BackgroundColor" Value="{StaticResource CardBg}" />
+                <Setter Property="StrokeThickness" Value="0" />
+                <Setter Property="Shadow" Value="{StaticResource SoftShadow}" />
+                <Setter Property="StrokeShape">
+                    <Setter.Value>
+                        <RoundRectangle CornerRadius="16" />
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style TargetType="Border" x:Key="ImageThumbnailStyle">
+                <Setter Property="StrokeThickness" Value="0" />
+                <Setter Property="StrokeShape">
+                    <Setter.Value>
+                        <RoundRectangle CornerRadius="12" />
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style TargetType="Border" x:Key="PrimaryButtonStyle">
+                <Setter Property="BackgroundColor" Value="{StaticResource BrandOrange}" />
+                <Setter Property="StrokeThickness" Value="0" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="Shadow" Value="{StaticResource ButtonShadow}" />
+                <Setter Property="StrokeShape">
+                    <Setter.Value>
+                        <RoundRectangle CornerRadius="12" />
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
             <Style TargetType="Shell">
                 <Setter Property="Shell.NavBarHasShadow" Value="True"/>
             </Style>

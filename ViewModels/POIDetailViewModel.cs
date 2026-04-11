@@ -65,8 +65,11 @@ namespace VinhKhanhstreetfoods.ViewModels
 
                 PlayAudioCommand = new Command(() => PlayAudio());
                 StopAudioCommand = new Command(StopAudio);
-                OpenMapCommand = new Command(async () => await OpenMap());
-                ShareCommand = new Command(async () => await SharePOI());
+            ToggleAudioCommand = new Command(() => 
+            {
+                if (IsPlaying) StopAudio();
+                else PlayAudio();
+            });
                 GoBackCommand = new Command(async () => await GoBack());
 
      System.Diagnostics.Debug.WriteLine("[POIDetailViewModel] Initialized successfully");
@@ -201,8 +204,7 @@ namespace VinhKhanhstreetfoods.ViewModels
         }
 
         public ICommand PlayAudioCommand { get; }
-      public ICommand StopAudioCommand { get; }
-        public ICommand OpenMapCommand { get; }
+      public ICommand StopAudioCommand { get; }        public ICommand ToggleAudioCommand { get; }        public ICommand OpenMapCommand { get; }
         public ICommand ShareCommand { get; }
         public ICommand GoBackCommand { get; }
 

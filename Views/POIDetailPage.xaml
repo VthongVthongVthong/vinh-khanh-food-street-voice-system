@@ -5,7 +5,7 @@
              xmlns:components="clr-namespace:VinhKhanhstreetfoods.Views.Components"
              x:Class="VinhKhanhstreetfoods.Views.POIDetailPage"
              Title="POI"
-             BackgroundColor="#F5F5F5"
+             BackgroundColor="{StaticResource BgPage}"
              Shell.TabBarIsVisible="False"
              Shell.TitleColor="#1a1a1a"
              Shell.ForegroundColor="#1a1a1a">
@@ -19,142 +19,137 @@
 
     <Grid RowDefinitions="Auto, *">
         <!-- Header với nút Back -->
-        <Grid Grid.Row="0" Padding="15,10,15,10" ColumnDefinitions="Auto, *" BackgroundColor="White" Margin="0,0,0,5">
-            <Frame BackgroundColor="#F0F0F0" CornerRadius="20" Padding="0" HasShadow="False" WidthRequest="40" HeightRequest="40" VerticalOptions="Center">
-                <Frame.GestureRecognizers>
+        <Grid Grid.Row="0" Padding="20,10,20,10" ColumnDefinitions="Auto, *" BackgroundColor="{StaticResource BgPage}" Margin="0,0,0,5">
+            <Border Style="{StaticResource ImageThumbnailStyle}" WidthRequest="44" HeightRequest="44" BackgroundColor="White" Shadow="{StaticResource SoftShadow}" VerticalOptions="Center">
+                <Border.GestureRecognizers>
                     <TapGestureRecognizer Command="{Binding GoBackCommand}" />
-                </Frame.GestureRecognizers>
+                </Border.GestureRecognizers>
                 <Image Source="back_svgrepo_com.png" WidthRequest="20" HeightRequest="20" HorizontalOptions="Center" VerticalOptions="Center" />
-            </Frame>
+            </Border>
             <Label Grid.Column="1" 
                    Text="Chi tiết nhà hàng" 
-                   FontSize="18" 
-                   FontAttributes="Bold" 
-                   TextColor="#1a1a1a" 
+                   Style="{StaticResource CardTitle}"
                    VerticalOptions="Center" 
                    Margin="15,0,0,0"/>
         </Grid>
 
-        <ScrollView Grid.Row="1" Padding="20">
+        <ScrollView Grid.Row="1" Padding="20,10,20,20">
             <StackLayout Spacing="20">
 
                 <!-- POI Header -->
-            <Frame BackgroundColor="#283845"
-                   CornerRadius="15"
-                   Padding="20"
-                   HasShadow="True">
-                <StackLayout Spacing="10">
+            <Border Style="{StaticResource MainCardStyle}" Padding="20" BackgroundColor="{StaticResource BrandOrange}">
+                <StackLayout Spacing="5">
                     <Label Text="{Binding SelectedPOI.Name}"
-                           FontSize="28"
+                           FontSize="24"
                            FontAttributes="Bold"
                            TextColor="White"/>
-                    <Label Text="{Binding CurrentDescriptionText}"
-                           FontSize="14"
-                           TextColor="#E8E8E8"
-                           LineBreakMode="WordWrap"/>
                 </StackLayout>
-            </Frame>
+            </Border>
 
             <!-- Images Section -->
-            <Frame BackgroundColor="White"
-                   BorderColor="#C9A36B"
-                   CornerRadius="15"
-                   Padding="15"
-                   HasShadow="True">
-                <StackLayout Spacing="10">
+            <Border Style="{StaticResource MainCardStyle}" Padding="20">
+                <StackLayout Spacing="15">
                     <Label x:Name="ImagesSectionLabel"
                            Text="📷 Hình Ảnh" 
-                           FontSize="16" 
-                           FontAttributes="Bold"
-                           TextColor="#283845"/>
-                    <CollectionView ItemsSource="{Binding SelectedPOI.ImageUrlList}">
-                        <CollectionView.ItemTemplate>
-                            <DataTemplate>
-                                <StackLayout Padding="5" Spacing="5">
-                                    <Border StrokeShape="RoundRectangle 10"
-                                            HeightRequest="200"
-                                            Padding="0">
-                                        <Image Source="{Binding .}"
-                                               Aspect="AspectFill"/>
+                           Style="{StaticResource CardTitle}"/>
+                    <Grid>
+                        <CarouselView x:Name="ImagesCarousel"
+                                      ItemsSource="{Binding SelectedPOI.ImageUrlList}"
+                                      HeightRequest="250"
+                                      HorizontalScrollBarVisibility="Never"
+                                      IsSwipeEnabled="True"
+                                      IndicatorView="ImagesIndicator">
+                            <CarouselView.ItemTemplate>
+                                <DataTemplate>
+                                    <Border StrokeShape="RoundRectangle 10" Padding="0" Margin="0,0,0,10">
+                                        <Image Source="{Binding .}" Aspect="AspectFill"/>
                                     </Border>
-                                    <Label Text="{Binding .}"
-                                           FontSize="11"
-                                           TextColor="#999999"
-                                           LineBreakMode="TailTruncation"/>
-                                </StackLayout>
-                            </DataTemplate>
-                        </CollectionView.ItemTemplate>
-                    </CollectionView>
-                </StackLayout>
-            </Frame>
+                                </DataTemplate>
+                            </CarouselView.ItemTemplate>
+                        </CarouselView>
 
-            <!-- Details Section -->
-            <Frame BackgroundColor="White"
-                   BorderColor="#C9A36B"
-                   CornerRadius="15"
-                   Padding="15"
-                   HasShadow="True">
+                        <!-- Left Button -->
+                        <ImageButton Source="chevron_left_svgrepo_com.png"
+                                     HorizontalOptions="Start"
+                                     VerticalOptions="Center"
+                                     WidthRequest="40"
+                                     HeightRequest="40"
+                                     BackgroundColor="#80FFFFFF"
+                                     CornerRadius="20"
+                                     Margin="10,0,0,0"
+                                     Clicked="OnScrollLeftClicked"/>
+                                     
+                        <!-- Right Button -->
+                        <ImageButton Source="chevron_right_svgrepo_com.png"
+                                     HorizontalOptions="End"
+                                     VerticalOptions="Center"
+                                     WidthRequest="40"
+                                     HeightRequest="40"
+                                     BackgroundColor="#80FFFFFF"
+                                     CornerRadius="20"
+                                     Margin="0,0,10,0"
+                                     Clicked="OnScrollRightClicked"/>
+                    </Grid>
+                    
+                    <IndicatorView x:Name="ImagesIndicator"
+                                   HorizontalOptions="Center"
+                                   IndicatorColor="#E0E0E0"
+                                   SelectedIndicatorColor="{StaticResource BrandOrange}"
+                                   IndicatorSize="8" />
+                </StackLayout>
+            </Border>
+
+            <!-- Description Section -->
+            <Border Style="{StaticResource MainCardStyle}" Padding="20">
                 <StackLayout Spacing="10">
                     <StackLayout Orientation="Horizontal" Spacing="8">
                         <Image Source="information_alt_svgrepo_com.png" WidthRequest="20" HeightRequest="20" VerticalOptions="Center"/>
-                        <Label x:Name="DetailsSectionLabel"
-                               Text="Thông Tin Chi Tiết" 
-                               FontSize="16" 
-                               FontAttributes="Bold"
-                               TextColor="#283845"
+                        <Label Text="Mô tả" 
+                               Style="{StaticResource CardTitle}"
                                VerticalOptions="Center"/>
                     </StackLayout>
-                    <StackLayout Padding="10" Spacing="8">
-                        <Label Text="{Binding SelectedPOI.Latitude, StringFormat='Vĩ độ: {0:F5}'}"
-                               FontSize="12"/>
-                        <Label Text="{Binding SelectedPOI.Longitude, StringFormat='Kinh độ: {0:F5}'}"
-                               FontSize="12"/>
-                        <Label Text="{Binding SelectedPOI.TriggerRadius, StringFormat='Bán kính kích hoạt: {0}m'}"
-                               FontSize="12"/>
-                    </StackLayout>
+                    <Label Text="{Binding CurrentDescriptionText}"
+                           FontSize="14"
+                           TextColor="{StaticResource TextDark}"
+                           LineBreakMode="WordWrap"/>
                 </StackLayout>
-            </Frame>
+            </Border>
 
             <!-- Audio Section -->
-            <Frame BackgroundColor="White"
-                   BorderColor="#C9A36B"
-                   CornerRadius="15"
-                   Padding="15"
-                   HasShadow="True">
+            <Border Style="{StaticResource MainCardStyle}" Padding="20">
                 <StackLayout Spacing="10">
                     <StackLayout Orientation="Horizontal" Spacing="8">
                         <Image Source="headphone_earphone_audio_svgrepo_com.png" WidthRequest="20" HeightRequest="20" VerticalOptions="Center"/>
                         <Label x:Name="AudioSectionLabel"
                                Text="Âm Thanh Hướng Dẫn" 
-                               FontSize="16" 
-                               FontAttributes="Bold"
-                               TextColor="#283845"
+                               Style="{StaticResource CardTitle}"
                                VerticalOptions="Center"/>
                     </StackLayout>
 
                     <Label x:Name="NarrationLanguageLabel"
                            Text="Ngôn ngữ thuyết minh"
-                           FontSize="12"
-                           TextColor="#666666"/>
-                    <Picker ItemsSource="{Binding LanguageOptions}"
-                            SelectedItem="{Binding SelectedNarrationLanguage}"
-                            ItemDisplayBinding="{Binding DisplayLabel}"
-                            TextColor="#283845"
-                            x:Name="NarrationLanguagePicker"/>
+                           Style="{StaticResource MutedText}"/>
+                    <Border Style="{StaticResource MainCardStyle}" BackgroundColor="{StaticResource BgPage}" Padding="10,0">
+                        <Picker ItemsSource="{Binding LanguageOptions}"
+                                SelectedItem="{Binding SelectedNarrationLanguage}"
+                                ItemDisplayBinding="{Binding DisplayLabel}"
+                                TextColor="{StaticResource TextDark}"
+                                Title="Chọn ngôn ngữ"
+                                x:Name="NarrationLanguagePicker"/>
+                    </Border>
 
                     <Label Text="{Binding CurrentTtsScriptText}"
-                           FontSize="13"
-                           TextColor="#374151"
-                           LineBreakMode="WordWrap"/>
+                           FontSize="14"
+                           TextColor="{StaticResource TextDark}"
+                           LineBreakMode="WordWrap"
+                           Margin="0,10"/>
                     <Label Text="{Binding StatusMessage}"
                            FontSize="12"
-                           TextColor="#666666"/>
+                           TextColor="{StaticResource BrandOrange}"/>
                     
                     <Label Text="Mã QR Thuyết Minh" 
-                           FontSize="14" 
-                           FontAttributes="Bold"
-                           TextColor="#283845" 
-                           Margin="0,10,0,0" />
+                           Style="{StaticResource CardTitle}"
+                           Margin="0,15,0,0" />
                     <zxing:BarcodeGeneratorView
                            Format="QrCode"
                            Value="{Binding QRCodeContent}"
@@ -162,63 +157,61 @@
                            WidthRequest="200"
                            HorizontalOptions="Center" />
                 </StackLayout>
-            </Frame>
+            </Border>
 
             <!-- Action Buttons -->
-            <StackLayout Spacing="10">
-                <Border IsEnabled="{Binding IsPlaying, Converter={StaticResource InvertedBoolConverter}}"
-                        BackgroundColor="#283845"
-                        StrokeThickness="0"
-                        Padding="15">
-                    <Border.StrokeShape>
-                        <RoundRectangle CornerRadius="10" />
-                    </Border.StrokeShape>
+            <StackLayout Spacing="12">
+                <!-- Single Play/Pause Toggle Button -->
+                <Border HeightRequest="52">
+                    <Border.Style>
+                        <Style TargetType="Border" BasedOn="{StaticResource PrimaryButtonStyle}">
+                            <Setter Property="BackgroundColor" Value="{StaticResource BrandOrange}"/>
+                            <Style.Triggers>
+                                <DataTrigger TargetType="Border" Binding="{Binding IsPlaying}" Value="True">
+                                    <Setter Property="BackgroundColor" Value="{StaticResource BrandOrangeDark}"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
                     <Border.GestureRecognizers>
-                        <TapGestureRecognizer Command="{Binding PlayAudioCommand}" />
+                        <TapGestureRecognizer Command="{Binding ToggleAudioCommand}" />
                     </Border.GestureRecognizers>
-                    <HorizontalStackLayout HorizontalOptions="Center" Spacing="8">
-                        <Image Source="play_1003_svgrepo_com.png" WidthRequest="20" HeightRequest="20" VerticalOptions="Center"/>
-                        <Label x:Name="PlayAudioButton" Text=" Phát Âm Thanh" TextColor="White" FontSize="14" FontAttributes="Bold" VerticalOptions="Center"/>
+                    <HorizontalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="8">
+                        <Image WidthRequest="20" HeightRequest="20">
+                            <Image.Style>
+                                <Style TargetType="Image">
+                                    <Setter Property="Source" Value="play_1003_svgrepo_com.png"/>
+                                    <Style.Triggers>
+                                        <DataTrigger TargetType="Image" Binding="{Binding IsPlaying}" Value="True">
+                                            <Setter Property="Source" Value="pause_1006_svgrepo_com.png"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Image.Style>
+                        </Image>
+                        <Label TextColor="White" FontSize="15" FontAttributes="Bold">
+                            <Label.Style>
+                                <Style TargetType="Label">
+                                    <Setter Property="Text" Value="Phát Âm Thanh"/>
+                                    <Style.Triggers>
+                                        <DataTrigger TargetType="Label" Binding="{Binding IsPlaying}" Value="True">
+                                            <Setter Property="Text" Value="Dừng Âm Thanh"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Label.Style>
+                        </Label>
                     </HorizontalStackLayout>
                 </Border>
-                <Border IsEnabled="{Binding IsPlaying}"
-                        BackgroundColor="#C9A36B"
-                        StrokeThickness="0"
-                        Padding="15">
-                    <Border.StrokeShape>
-                        <RoundRectangle CornerRadius="10" />
-                    </Border.StrokeShape>
-                    <Border.GestureRecognizers>
-                        <TapGestureRecognizer Command="{Binding StopAudioCommand}" />
-                    </Border.GestureRecognizers>
-                    <HorizontalStackLayout HorizontalOptions="Center" Spacing="8">
-                        <Image Source="pause_1006_svgrepo_com.png" WidthRequest="20" HeightRequest="20" VerticalOptions="Center"/>
-                        <Label x:Name="StopAudioButton" Text=" Dừng Âm Thanh" TextColor="Black" FontSize="14" FontAttributes="Bold" VerticalOptions="Center"/>
-                    </HorizontalStackLayout>
-                </Border>
-                <Border BackgroundColor="#666666"
-                        StrokeThickness="0"
-                        Padding="15">
-                    <Border.StrokeShape>
-                        <RoundRectangle CornerRadius="10" />
-                    </Border.StrokeShape>
-                    <Border.GestureRecognizers>
-                        <TapGestureRecognizer Tapped="OnOpenMapPageTapped" />
-                    </Border.GestureRecognizers>
-                    <HorizontalStackLayout HorizontalOptions="Center" Spacing="8">
-                        <Image Source="map_pin_alt_svgrepo_com.png" WidthRequest="20" HeightRequest="20" VerticalOptions="Center"/>
-                        <Label x:Name="OpenMapButton" Text=" Mở Bản Đồ" TextColor="White" FontSize="14" FontAttributes="Bold" VerticalOptions="Center"/>
-                    </HorizontalStackLayout>
-                </Border>
+                
                 <Button x:Name="ShareButton"
                         Text="📤 Chia Sẻ" 
                         Command="{Binding ShareCommand}"
-                        BackgroundColor="#999999"
-                        TextColor="White"
-                        FontSize="14"
+                        BackgroundColor="Transparent"
+                        TextColor="{StaticResource TextMuted}"
+                        FontSize="15"
                         FontAttributes="Bold"
-                        CornerRadius="10"
-                        Padding="15"/>
+                        HeightRequest="52"/>
             </StackLayout>
         </StackLayout>
         </ScrollView>
