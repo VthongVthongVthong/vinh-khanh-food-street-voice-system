@@ -197,26 +197,54 @@ public partial class CameraPage : ContentPage
                     VinhKhanhstreetfoods.Services.LocalizationService.Instance.CurrentLanguage = targetLanguage;
                 }
 
-                if (result.AutoPlay)
+                var audioManager = MauiProgram.ServiceProvider?.GetService<VinhKhanhstreetfoods.Services.AudioManager>();
+                
+                if (audioManager != null && (audioManager.IsPlaying || audioManager.GetQueueItems().Any()))
                 {
-                    System.Diagnostics.Debug.WriteLine("[CameraPage] AutoPlay is true. Adding to audio queue.");
-                    var audioManager = MauiProgram.ServiceProvider?.GetService<VinhKhanhstreetfoods.Services.AudioManager>();
-                    if (audioManager != null)
+                    bool playNow = await DisplayAlert("Phát âm thanh", $"Bạn có muốn ưu tiên phát âm thanh của '{result.POI.Name}' ngay không? Hàng đợi đang phát sẽ được chuyển xuống sau.", "Có", "Không");
+                    if (playNow)
                     {
-                        audioManager.AddToQueue(result.POI);
+                        audioManager.PlayNowAndPauseCurrent(result.POI);
                     }
                     else
                     {
-                        System.Diagnostics.Debug.WriteLine("[CameraPage] AudioManager not found in DI container.");
+                        // Giữ nguyên luồng xử lý bình thường nếu không chọn ưu tiên
+                        if (result.AutoPlay)
+                        {
+                            audioManager.AddToQueue(result.POI);
+                        }
+                        else
+                        {
+                            var popupService = MauiProgram.ServiceProvider?.GetService<VinhKhanhstreetfoods.Services.HybridPopupService>();
+                            if (popupService != null)
+                            {
+                                await popupService.HandleIncomingPOIAsync(result.POI, 0);
+                            }
+                        }
                     }
                 }
                 else
                 {
-                    System.Diagnostics.Debug.WriteLine("[CameraPage] Displaying POI Popup.");
-                    var popupService = MauiProgram.ServiceProvider?.GetService<VinhKhanhstreetfoods.Services.HybridPopupService>();
-                    if (popupService != null)
+                    if (result.AutoPlay)
                     {
-                        await popupService.HandleIncomingPOIAsync(result.POI, 0);
+                        System.Diagnostics.Debug.WriteLine("[CameraPage] AutoPlay is true. Adding to audio queue.");
+                        if (audioManager != null)
+                        {
+                            audioManager.AddToQueue(result.POI);
+                        }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine("[CameraPage] AudioManager not found in DI container.");
+                        }
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine("[CameraPage] Displaying POI Popup.");
+                        var popupService = MauiProgram.ServiceProvider?.GetService<VinhKhanhstreetfoods.Services.HybridPopupService>();
+                        if (popupService != null)
+                        {
+                            await popupService.HandleIncomingPOIAsync(result.POI, 0);
+                        }
                     }
                 }
             }

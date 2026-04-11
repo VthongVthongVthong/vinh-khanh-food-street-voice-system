@@ -129,7 +129,8 @@ public class NowPlayingViewModel : INotifyPropertyChanged
             IsPlaying = false;
             
             // Auto-play the next item in the upcoming audios list like a playlist
-            if (UpcomingAudios != null && UpcomingAudios.Count > 0)
+            // Only automatically add to queue if location tracking is currently active
+            if (_locationService.IsTracking && UpcomingAudios != null && UpcomingAudios.Count > 0)
             {
                 var nextPoi = UpcomingAudios.First();
                 UpcomingAudios.RemoveAt(0);
@@ -140,7 +141,7 @@ public class NowPlayingViewModel : INotifyPropertyChanged
                     _audioManager.AddToQueue(nextPoi);
                 });
             }
-            else
+            else if (!_locationService.IsTracking || UpcomingAudios == null || UpcomingAudios.Count == 0)
             {
                 _currentPoi = null;
                 IsVisible = false;

@@ -105,6 +105,61 @@ namespace VinhKhanhstreetfoods.Services
             }
         }
 
+        public void PlayNowAndPauseCurrent(POI newPoi)
+        {
+            if (newPoi == null)
+            {
+                Debug.WriteLine("[AudioManager] Warning: Attempted to add null POI to PlayNow");
+                return;
+            }
+
+            string currentLang;
+            lock (_languageLock)
+            {
+                currentLang = _currentLanguage;
+            }
+
+            var now = DateTime.UtcNow;
+            var enqueueKey = $"{newPoi.Id}_{currentLang}";
+
+            // We skip debounce for explicit PlayNow actions as user expects immediate feedback
+            _lastEnqueueByPoiLanguage[enqueueKey] = now;
+
+            lock (_queueSync)
+            {
+                var existingItems = _audioQueue.ToList();
+                _audioQueue.Clear();
+                
+                // Add the new POI to the top
+                _audioQueue.Enqueue(newPoi);
+
+                // Push currently playing to the second position if exists
+                if (_isPlaying && _currentPOI != null)
+                {
+                    _audioQueue.Enqueue(_currentPOI);
+                }
+
+                // Add remaining queue items
+                foreach (var item in existingItems)
+                {
+                    _audioQueue.Enqueue(item);
+                }
+                
+                Debug.WriteLine($"[AudioManager] Added to front: {newPoi.Name} (queue size: {_audioQueue.Count})");
+            }
+
+            if (_isPlaying)
+            {
+                // This stops current playback and lets the worker thread dequeue the next immediately (which is newPoi)
+                StopCurrentPlayback();
+            }
+            else
+            {
+                EnsureWorkerStarted();
+                _queueSignal.Release();
+            }
+        }
+
         public void AddToQueue(POI poi)
         {
             try

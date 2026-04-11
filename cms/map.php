@@ -176,7 +176,7 @@ try {
                         </div>
 
                         <!-- Basic Information -->
-                        <div class="pt-8 md:pt-10 grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="pt-8 md:pt-10 grid grid-cols-1 md:grid-cols-4 gap-6">
                             <div class="md:col-span-2 space-y-4">
                                 <div>
                                     <h2 id="modalName" class="text-2xl md:text-3xl font-extrabold text-gray-900 leading-tight">Name</h2>
@@ -213,6 +213,13 @@ try {
                                     <span class="text-gray-600">Nghe trung bình:</span>
                                     <span class="font-bold text-gray-900 bg-white px-2 py-0.5 rounded shadow-sm"><span id="modalAvgDuration">0</span>s</span>
                                 </div>
+                            </div>
+
+                            <!-- QR Code -->
+                            <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center justify-center space-y-2">
+                                <h4 class="font-bold text-gray-800 text-sm mb-2 text-center text-brand-600"><i class="fas fa-qrcode mr-1"></i>Mã QR</h4>
+                                <img id="modalQrCode" src="" alt="QR Code" class="w-32 h-32 object-contain shadow-sm border border-gray-200 rounded-lg p-2 bg-white">
+                                <p class="text-[11px] text-gray-500 text-center font-medium">Quét để <br>nghe thuyết minh</p>
                             </div>
                         </div>
 
@@ -539,6 +546,11 @@ try {
             document.getElementById('modalAudioPlays').textContent = poi.audioPlayCount || poi.audioplaycount || 0;
             const avgDuration = parseFloat(poi.avgAudioDuration || poi.avgaudioduration || 0);
             document.getElementById('modalAvgDuration').textContent = isNaN(avgDuration) ? "0.0" : avgDuration.toFixed(1);
+
+            // Mã QR
+            const poiId = poi.Id || poi.id;
+            const qrData = encodeURIComponent(`vinhkhanh://poi?id=${poiId}&action=play`);
+            document.getElementById('modalQrCode').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${qrData}`;
 
             // Đường dẫn map
             const mapLinkEl = document.getElementById('modalMapLink');

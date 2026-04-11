@@ -460,7 +460,7 @@ try {
         $whereSql = " WHERE " . implode(' AND ', $whereClauses);
     }
 
-    $countStmt = $pdo->prepare("SELECT COUNT(*) FROM POI" . $whereSql);
+    $countStmt = $pdo->prepare("SELECT COUNT(*) FROM POI p" . $whereSql);
     $countStmt->execute($params);
 
     if ($countStmt) {
@@ -469,7 +469,14 @@ try {
         if ($totalPages == 0) $totalPages = 1;
     }
 
-    $stmt = $pdo->prepare("SELECT * FROM POI" . $whereSql . " ORDER BY CASE IsActive WHEN -1 THEN 1 WHEN 1 THEN 2 WHEN 0 THEN 3 ELSE 4 END ASC, Id DESC LIMIT :limit OFFSET :offset");
+    $selectColumns = "p.*, 
+            (SELECT imageUrl FROM POIImage WHERE poiId = p.Id AND imageType = 'avatar' LIMIT 1) as avatarUrl,
+            (SELECT imageUrl FROM POIImage WHERE poiId = p.Id AND imageType = 'banner' LIMIT 1) as bannerUrl,
+            (SELECT COUNT(id) FROM VisitLog WHERE poiId = p.Id) as visitCount,
+            (SELECT COUNT(id) FROM AudioPlayLog WHERE poiId = p.Id) as audioPlayCount,
+            (SELECT AVG(durationListened) FROM AudioPlayLog WHERE poiId = p.Id) as avgAudioDuration";
+
+    $stmt = $pdo->prepare("SELECT $selectColumns FROM POI p" . $whereSql . " ORDER BY CASE p.IsActive WHEN -1 THEN 1 WHEN 1 THEN 2 WHEN 0 THEN 3 ELSE 4 END ASC, p.Id DESC LIMIT :limit OFFSET :offset");
     foreach ($params as $key => $value) {
         // Param is integer if it is status or ownerId, string if search
         $type = ($key === ':status' || $key === ':ownerId') ? PDO::PARAM_INT : PDO::PARAM_STR;
@@ -746,16 +753,16 @@ try {
                             <tr class="hover:bg-gray-50/50 transition-colors group">
                                 <td class="p-4 pl-6">
                                     <div class="flex items-center gap-3">
-                                        <div class="w-10 h-10 rounded-lg bg-gray-200 overflow-hidden flex-shrink-0">
+                                        <div class="w-10 h-10 rounded-lg bg-gray-200 overflow-hidden flex-shrink-0 cursor-pointer" onclick='javascript:openPoiModal(<?php echo htmlspecialchars(json_encode($rawPoi, JSON_UNESCAPED_UNICODE), ENT_QUOTES, "UTF-8"); ?>)'>
                                             <!-- Hiển thị ảnh POI hoặc placeholder -->
                                             <?php if (!empty($firstImage)): ?>
-                                                <img src="<?php echo htmlspecialchars(trim($firstImage)); ?>" class="w-full h-full object-cover">
+                                                <img src="<?php echo htmlspecialchars(trim($firstImage)); ?>" class="w-full h-full object-cover cursor-pointer" onclick='javascript:openPoiModal(<?php echo htmlspecialchars(json_encode($rawPoi, JSON_UNESCAPED_UNICODE), ENT_QUOTES, "UTF-8"); ?>)'>
                                             <?php else: ?>
-                                                <img src="https://ui-avatars.com/api/?name=<?php echo urlencode($safeName); ?>&background=E5E7EB&color=9CA3AF" class="w-full h-full object-cover">
+                                                <img src="https://ui-avatars.com/api/?name=<?php echo urlencode($safeName); ?>&background=E5E7EB&color=9CA3AF" class="w-full h-full object-cover cursor-pointer" onclick='javascript:openPoiModal(<?php echo htmlspecialchars(json_encode($rawPoi, JSON_UNESCAPED_UNICODE), ENT_QUOTES, "UTF-8"); ?>)'>
                                             <?php endif; ?>
                                         </div>
                                         <div>
-                                            <div class="font-medium text-gray-800"><?php echo $safeName; ?></div>
+                                            <div class="font-medium text-gray-800 cursor-pointer hover:text-brand-600 transition-colors" onclick='javascript:openPoiModal(<?php echo htmlspecialchars(json_encode($rawPoi, JSON_UNESCAPED_UNICODE), ENT_QUOTES, "UTF-8"); ?>)'><?php echo $safeName; ?></div>
                                             <div class="text-xs text-gray-500 mt-0.5"><?php echo (strlen($desc) > 30) ? substr($desc,0,30).'...' : $desc; ?></div>
                                         </div>
                                     </div>
@@ -1124,6 +1131,90 @@ try {
         </div>
     </div>
 
+    <!-- Modal Detail POI -->
+﻿                <div id="poiDetailModal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 transition-all duration-300 opacity-0 translate-y-4">
+                    <div class="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col relative overflow-y-auto"><div class="sticky top-0 w-full flex justify-between items-center px-6 py-4 bg-white/90 backdrop-blur z-30 border-b border-gray-100 shadow-sm">
+                        <h3 class="text-lg font-bold text-gray-800" id="modalTitle">Chi tiết quán ăn</h3>
+                        <button onclick="closePoiModal()" class="w-8 h-8 rounded-full bg-gray-100 hover:bg-red-100 hover:text-red-500 flex items-center justify-center transition-colors">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+
+                    <div class="p-6 w-full max-w-4xl mx-auto space-y-6">
+                        <!-- Header Images -->
+                        <div class="relative w-full h-48 md:h-64 rounded-2xl overflow-hidden bg-gray-200 border border-gray-100 shadow-inner">
+                            <img id="modalBanner" src="" class="w-full h-full object-cover object-center" alt="Banner" onerror="this.src='https://via.placeholder.com/1200x400?text=No+Banner'">
+                            
+                            <div class="absolute -bottom-6 left-6 w-24 h-24 md:w-32 md:h-32 rounded-xl border-4 border-white bg-white shadow-lg overflow-hidden z-10">
+                                <img id="modalAvatar" src="" class="w-full h-full object-cover" alt="Avatar" onerror="this.src='https://via.placeholder.com/300x300?text=No+Avatar'">
+                            </div>
+
+                            <div class="absolute top-4 right-4" id="modalStatusBadge">
+                                <!-- Status goes here -->
+                            </div>
+                        </div>
+
+                        <!-- Basic Information -->
+                        <div class="pt-8 md:pt-10 grid grid-cols-1 md:grid-cols-4 gap-6">
+                            <div class="md:col-span-2 space-y-4">
+                                <div>
+                                    <h2 id="modalName" class="text-2xl md:text-3xl font-extrabold text-gray-900 leading-tight">Name</h2>
+                                    <p id="modalAddress" class="text-gray-500 mt-2 flex items-start gap-2">
+                                        <i class="fas fa-map-marker-alt text-brand-500 mt-1"></i> <span>Address</span>
+                                    </p>
+                                </div>
+                                
+                                <div class="flex flex-wrap gap-4 text-sm">
+                                    <div class="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-lg border border-gray-100 shadow-sm">
+                                        <i class="fas fa-phone-alt text-blue-500"></i> <span id="modalPhone" class="font-medium text-gray-700">Phone</span>
+                                    </div>
+                                    <div class="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-lg border border-gray-100 shadow-sm">
+                                        <i class="fas fa-bullseye text-primary"></i> <span class="font-medium text-gray-700">Bán kính: <span id="modalRadius">0</span>m</span>
+                                    </div>
+                                    <a id="modalMapLink" href="#" target="_blank" class="flex items-center gap-2 bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-2 rounded-lg border border-blue-200 shadow-sm transition-colors">
+                                        <i class="fas fa-directions"></i> <span class="font-medium">Mở Google Maps</span>
+                                    </a>
+                                </div>
+                            </div>
+
+                            <!-- Statistics -->
+                            <div class="bg-gradient-to-br from-brand-50 to-orange-50 p-5 rounded-2xl border border-brand-100 shadow-sm flex flex-col justify-center space-y-3">
+                                <h4 class="font-bold text-brand-800 text-sm border-b border-brand-200/50 pb-2 mb-1"><i class="fas fa-chart-bar mr-2"></i>Thống kê tương tác</h4>
+                                <div class="flex justify-between items-center text-sm">
+                                    <span class="text-gray-600">Lượt vào vùng (Visit):</span>
+                                    <span id="modalVisits" class="font-bold text-gray-900 bg-white px-2 py-0.5 rounded shadow-sm">0</span>
+                                </div>
+                                <div class="flex justify-between items-center text-sm">
+                                    <span class="text-gray-600">Lượt nghe Audio:</span>
+                                    <span id="modalAudioPlays" class="font-bold text-gray-900 bg-white px-2 py-0.5 rounded shadow-sm">0</span>
+                                </div>
+                                <div class="flex justify-between items-center text-sm">
+                                    <span class="text-gray-600">Nghe trung bình:</span>
+                                    <span class="font-bold text-gray-900 bg-white px-2 py-0.5 rounded shadow-sm"><span id="modalAvgDuration">0</span>s</span>
+                                </div>
+                            </div>
+
+                            <!-- QR Code -->
+                            <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center justify-center space-y-2">
+                                <h4 class="font-bold text-gray-800 text-sm mb-2 text-center text-brand-600"><i class="fas fa-qrcode mr-1"></i>Mã QR</h4>
+                                <img id="modalQrCode" src="" alt="QR Code" class="w-32 h-32 object-contain shadow-sm border border-gray-200 rounded-lg p-2 bg-white">
+                                <p class="text-[11px] text-gray-500 text-center font-medium">Quét để <br>nghe thuyết minh</p>
+                            </div>
+                        </div>
+
+                        <!-- Content sections for languages -->
+                        <div class="mt-8 border border-gray-200 rounded-2xl bg-white shadow-sm overflow-hidden">
+                            <div class="flex border-b border-gray-200 overflow-x-auto no-scrollbar bg-gray-50" id="langTabs">
+                                <!-- Tabs generated via JS -->
+                            </div>
+                            <div class="p-5" id="langContent">
+                                <!-- Content generated via JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
     <!-- Modal Edit POI -->
     <div id="editModal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col relative overflow-hidden">
@@ -1378,6 +1469,204 @@ try {
 
     <!-- Hàm xử lý Modal, Translate, Delete  -->
     <script>
+        ﻿        const poiDetailModal = document.getElementById('poiDetailModal');
+        let currentPoiData = null;
+
+        function openPoiModal(poi) {
+            currentPoiData = poi;
+            
+            // Lấy thông tin cơ bản
+            document.getElementById('modalName').textContent = poi.Name || poi.name || "Không tên";
+            document.getElementById('modalAddress').innerHTML = `<i class="fas fa-map-marker-alt text-brand-500 mt-1"></i> <span>${poi.Address || poi.address || 'Đang cập nhật'}</span>`;
+            document.getElementById('modalPhone').textContent = poi.Phone || poi.phone || "Không có SĐT";
+            document.getElementById('modalRadius').textContent = parseInt(poi.triggerRadiusMeters || poi.triggerradiusmeters || poi.triggerRadiusmeters || 0);
+            
+            const isActive = parseInt(poi.IsActive ?? poi.isactive ?? poi.isActive ?? 0) === 1;
+            document.getElementById('modalStatusBadge').innerHTML = isActive 
+                ? `<span class="bg-green-500 text-white text-xs font-bold px-3 py-1.5 rounded-full uppercase tracking-wider shadow-sm flex items-center gap-1.5"><span class="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span> Hoạt động</span>`
+                : `<span class="bg-gray-500 text-white text-xs font-bold px-3 py-1.5 rounded-full uppercase tracking-wider shadow-sm">Tạm ngưng</span>`;
+
+            // Thống kê
+            document.getElementById('modalVisits').textContent = poi.visitCount || poi.visitcount || 0;
+            document.getElementById('modalAudioPlays').textContent = poi.audioPlayCount || poi.audioplaycount || 0;
+            const avgDuration = parseFloat(poi.avgAudioDuration || poi.avgaudioduration || 0);
+            document.getElementById('modalAvgDuration').textContent = isNaN(avgDuration) ? "0.0" : avgDuration.toFixed(1);
+
+            // Mã QR
+            const poiId = poi.Id || poi.id;
+            const qrData = encodeURIComponent(`vinhkhanh://poi?id=${poiId}&action=play`);
+            document.getElementById('modalQrCode').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${qrData}`;
+
+            // Đường dẫn map
+            const mapLinkEl = document.getElementById('modalMapLink');
+            const link = poi.MapLink || poi.maplink || poi.mapLink || '';
+            if (link) {
+                mapLinkEl.href = link;
+                mapLinkEl.style.display = 'flex';
+            } else {
+                mapLinkEl.style.display = 'none';
+            }
+
+            // Xử lý hình ảnh
+            let avatarUrl = poi.avatarUrl || poi.avatarurl || '';
+            let bannerUrl = poi.bannerUrl || poi.bannerurl || '';
+
+            // Nếu không có banner/avatar từ POIImage, fallback về ImageUrls
+            if (!avatarUrl || !bannerUrl) {
+                const rawImageUrls = poi.ImageUrls || poi.imageurls || '[]';
+                try {
+                    const parsed = JSON.parse(rawImageUrls);
+                    if (Array.isArray(parsed)) {
+                        if (!avatarUrl && parsed.length > 0) avatarUrl = parsed[0];
+                        if (!bannerUrl && parsed.length > 1) bannerUrl = parsed[1];
+                    }
+                } catch (e) {
+                    if (typeof rawImageUrls === 'string' && rawImageUrls.length > 5 && !avatarUrl) avatarUrl = rawImageUrls;
+                }
+            }
+
+            if (avatarUrl) document.getElementById('modalAvatar').src = avatarUrl;
+            if (bannerUrl) document.getElementById('modalBanner').src = bannerUrl;
+
+            // Render ngôn ngữ
+            renderLanguageTabs(poi);
+
+            // Hiển thị modal
+            poiDetailModal.classList.remove('hidden');
+            poiDetailModal.classList.add('flex');
+            
+            // Animation
+            requestAnimationFrame(() => {
+                poiDetailModal.classList.remove('opacity-0', 'translate-y-4');
+                poiDetailModal.classList.add('opacity-100', 'translate-y-0');
+            });
+        }
+
+        function closePoiModal() {
+            poiDetailModal.classList.remove('opacity-100', 'translate-y-0');
+            poiDetailModal.classList.add('opacity-0', 'translate-y-4');
+            setTimeout(() => {
+                poiDetailModal.classList.remove('flex');
+                poiDetailModal.classList.add('hidden');
+                
+                // Clear state
+                activePopup = null;
+                currentPoiData = null;
+                document.getElementById('modalBanner').src = "";
+                document.getElementById('modalAvatar').src = "";
+            }, 300); // 300ms is the transition duration
+        }
+
+        // Đóng modal khi click ra ngoài vùng xám
+        poiDetailModal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closePoiModal();
+            }
+        });
+
+        // Hàm render Tab và Content ngôn ngữ
+        function renderLanguageTabs(poi) {
+            const tabsEl = document.getElementById('langTabs');
+            const contEl = document.getElementById('langContent');
+            tabsEl.innerHTML = '';
+            contEl.innerHTML = '';
+
+            const languages = [
+                { id: 'en', label: 'Anh', keyDesc: 'En', keyTts: 'En', flag: '🇬🇧' },
+                { id: 'zh', label: 'Trung', keyDesc: 'Zh', keyTts: 'Zh', flag: '🇨🇳' },
+                { id: 'ja', label: 'Nhật', keyDesc: 'Ja', keyTts: 'Ja', flag: '🇯🇵' },
+                { id: 'ko', label: 'Hàn', keyDesc: 'Ko', keyTts: 'Ko', flag: '🇰🇷' },
+                { id: 'fr', label: 'Pháp', keyDesc: 'Fr', keyTts: 'Fr', flag: '🇫🇷' },
+                { id: 'ru', label: 'Nga', keyDesc: 'Ru', keyTts: 'Ru', flag: '🇷🇺' }
+            ];
+
+            // Tab Tiếng Việt (Luôn có)
+            let hasAtLeastOneExtra = false;
+            
+            let tabsHtml = `<button onclick="switchTab('vi')" id="tab_vi" class="px-5 py-3.5 text-sm font-medium whitespace-nowrap border-b-2 bg-white border-brand-500 text-brand-600 focus:outline-none transition-colors w-1/3 md:w-auto text-center shrink-0">
+                               🇻🇳 Tiếng Việt
+                            </button>`;
+                            
+            const descVi = poi.DescriptionText || poi.descriptionText || poi.descriptiontext || '';
+            const ttsVi = poi.TtsScript || poi.ttsScript || poi.ttsscript || '';
+            
+            let contentHtml = `<div id="content_vi" class="lang-content-panel block space-y-4">
+                <div>
+                    <h5 class="text-sm font-bold text-gray-700 mb-2 uppercase tracking-tight opacity-80"><i class="fas fa-align-left text-brand-400 mr-2"></i>Mô tả tóm tắt</h5>
+                    <div class="bg-gray-50/50 p-4 rounded-xl text-gray-700 border border-gray-100 text-[15px] leading-relaxed">${descVi.replace(/\\n/g, '<br>') || '<i class="text-gray-400">Chưa cập nhật</i>'}</div>
+                </div>
+                <div>
+                    <h5 class="text-sm font-bold text-gray-700 mb-2 uppercase tracking-tight opacity-80"><i class="fas fa-headphones text-purple-400 mr-2"></i>Kịch bản TTS</h5>
+                    <div class="bg-purple-50/30 p-4 rounded-xl text-gray-700 border border-purple-100 text-[15px] leading-relaxed">${ttsVi.replace(/\\n/g, '<br>') || '<i class="text-gray-400">Chưa cập nhật</i>'}</div>
+                </div>
+            </div>`;
+
+            // Kiểm tra các ngôn ngữ khác
+            languages.forEach(lang => {
+                const descMapCased = 'description' + lang.keyDesc;
+                const descPascal = 'Description' + lang.keyDesc;
+                const descLower = descMapCased.toLowerCase();
+                const descRaw = poi[descMapCased] || poi[descPascal] || poi[descLower] || '';
+                
+                const ttsMapCased = 'ttsScript' + lang.keyTts;
+                const ttsPascal = 'TtsScript' + lang.keyTts;
+                const ttsLower = ttsMapCased.toLowerCase();
+                const ttsRaw = poi[ttsMapCased] || poi[ttsPascal] || poi[ttsLower] || '';
+
+                if (descRaw.trim() !== '' || ttsRaw.trim() !== '') {
+                    hasAtLeastOneExtra = true;
+                    tabsHtml += `<button onclick="switchTab('${lang.id}')" id="tab_${lang.id}" class="px-5 py-3.5 text-sm font-medium whitespace-nowrap border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 focus:outline-none transition-colors w-1/3 md:w-auto text-center shrink-0">
+                                   ${lang.flag} Tiếng ${lang.label}
+                                </button>`;
+                    
+                    contentHtml += `<div id="content_${lang.id}" class="lang-content-panel hidden space-y-4">
+                        <div>
+                            <h5 class="text-sm font-bold text-gray-700 mb-2 uppercase tracking-tight opacity-80"><i class="fas fa-align-left text-brand-400 mr-2"></i>Mô tả tóm tắt</h5>
+                            <div class="bg-gray-50/50 p-4 rounded-xl text-gray-700 border border-gray-100 text-[15px] leading-relaxed">${descRaw.replace(/\\n/g, '<br>') || '<i class="text-gray-400">Chưa cập nhật</i>'}</div>
+                        </div>
+                        <div>
+                            <h5 class="text-sm font-bold text-gray-700 mb-2 uppercase tracking-tight opacity-80"><i class="fas fa-headphones text-purple-400 mr-2"></i>Kịch bản TTS</h5>
+                            <div class="bg-purple-50/30 p-4 rounded-xl text-gray-700 border border-purple-100 text-[15px] leading-relaxed">${ttsRaw.replace(/\\n/g, '<br>') || '<i class="text-gray-400">Chưa cập nhật</i>'}</div>
+                        </div>
+                    </div>`;
+                }
+            });
+
+            tabsEl.innerHTML = tabsHtml;
+            contEl.innerHTML = contentHtml;
+        }
+
+        // Đổi tab ngôn ngữ
+        window.switchTab = function(tabId) {
+            // Reset all tabs
+            document.querySelectorAll('#langTabs button').forEach(btn => {
+                btn.classList.remove('bg-white', 'border-brand-500', 'text-brand-600');
+                btn.classList.add('border-transparent', 'text-gray-500');
+            });
+            
+            // Hide all content
+            document.querySelectorAll('.lang-content-panel').forEach(panel => {
+                panel.classList.add('hidden');
+                panel.classList.remove('block');
+            });
+
+            // Active current tab
+            const activeTab = document.getElementById('tab_' + tabId);
+            if(activeTab) {
+                activeTab.classList.remove('border-transparent', 'text-gray-500');
+                activeTab.classList.add('bg-white', 'border-brand-500', 'text-brand-600');
+            }
+
+            // Show current content
+            const activeContent = document.getElementById('content_' + tabId);
+            if(activeContent) {
+                activeContent.classList.remove('hidden');
+                activeContent.classList.add('block');
+            }
+        };
+
+
+
         let addMap, editMap;
         let addMarker, editMarker;
 
