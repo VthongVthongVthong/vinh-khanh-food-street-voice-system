@@ -22,6 +22,7 @@ namespace VinhKhanhstreetfoods.ViewModels
         private double _userLatitude;
         private double _userLongitude;
         private POI? _selectedPOI;
+        private bool _isNavigating;
         private bool _isLoading;
         private string _searchText = string.Empty;
         private int _isSyncingFromAdmin;
@@ -383,12 +384,13 @@ namespace VinhKhanhstreetfoods.ViewModels
 
         private async Task OpenDetailAsync(POI? poi)
         {
-            if (poi is null)
+            if (poi is null || _isNavigating)
                 return;
 
             try
             {
-                await Shell.Current.GoToAsync($"//home/detail?poiId={poi.Id}", true);
+                _isNavigating = true;
+                await Shell.Current.GoToAsync($"detail?poiId={poi.Id}", true);
             }
             catch (Exception ex)
             {
@@ -398,6 +400,7 @@ namespace VinhKhanhstreetfoods.ViewModels
             finally
             {
                 SelectedPOI = null;
+                _isNavigating = false;
             }
         }
 

@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
@@ -19,6 +19,7 @@ namespace VinhKhanhstreetfoods.ViewModels
         private double _userLatitude;
         private double _userLongitude;
         private bool _isTracking;
+        private bool _isNavigating;
         private string _statusMessage;
         private int _isSyncingFromAdmin;
 
@@ -32,7 +33,7 @@ namespace VinhKhanhstreetfoods.ViewModels
             _audioManager = audioManager ?? throw new ArgumentNullException(nameof(audioManager));
 
             AllPOIs = new ObservableCollection<POI>();
-            StatusMessage = "Tải bản đồ...";
+            StatusMessage = "T?i b?n d?...";
             IsTracking = _locationService.IsTracking;
 
             OpenMapCommand = new Command(async () => await OpenMap());
@@ -77,7 +78,7 @@ namespace VinhKhanhstreetfoods.ViewModels
 
                 UserLatitude = location.Latitude;
                 UserLongitude = location.Longitude;
-                StatusMessage = $"Vị trí: {location.Latitude:F4}, {location.Longitude:F4}";
+                StatusMessage = $"V? tr�: {location.Latitude:F4}, {location.Longitude:F4}";
             }
             catch (Exception ex)
             {
@@ -172,7 +173,7 @@ namespace VinhKhanhstreetfoods.ViewModels
                 MainThread.BeginInvokeOnMainThread(() =>
                 {
                     AllPOIs = new ObservableCollection<POI>(pois);
-                    StatusMessage = $"Đã tải {pois.Count} địa điểm";
+                    StatusMessage = $"�� t?i {pois.Count} d?a di?m";
                     System.Diagnostics.Debug.WriteLine($"[MapViewModel] Loaded {pois.Count} POIs successfully");
                 });
 
@@ -183,7 +184,7 @@ namespace VinhKhanhstreetfoods.ViewModels
                 System.Diagnostics.Debug.WriteLine($"[MapViewModel] Error loading POIs: {ex.Message}\n{ex.StackTrace}");
                 MainThread.BeginInvokeOnMainThread(() =>
                 {
-                    StatusMessage = $"Lỗi tải dữ liệu: {ex.Message}";
+                    StatusMessage = $"L?i t?i d? li?u: {ex.Message}";
                 });
             }
         }
@@ -218,7 +219,7 @@ namespace VinhKhanhstreetfoods.ViewModels
                 MainThread.BeginInvokeOnMainThread(() =>
                 {
                     AllPOIs = new ObservableCollection<POI>(refreshed);
-                    StatusMessage = $"Đã đồng bộ {updatedCount} địa điểm từ máy chủ";
+                    StatusMessage = $"�� d?ng b? {updatedCount} d?a di?m t? m�y ch?";
                 });
             }
             catch (Exception ex)
@@ -235,15 +236,15 @@ namespace VinhKhanhstreetfoods.ViewModels
         {
             try
             {
-                StatusMessage = "Đang làm mới...";
+                StatusMessage = "�ang l�m m?i...";
                 await _poiRepository.SyncPOIsFromAdminAsync();
                 await LoadPOIs();
-                StatusMessage = "Làm mới hoàn tất";
+                StatusMessage = "L�m m?i ho�n t?t";
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[MapViewModel] Error refreshing POIs: {ex.Message}");
-                StatusMessage = $"Lỗi: {ex.Message}";
+                StatusMessage = $"L?i: {ex.Message}";
             }
         }
 
@@ -253,14 +254,14 @@ namespace VinhKhanhstreetfoods.ViewModels
             {
                 if (SelectedPOI == null)
                 {
-                    StatusMessage = "Chọn một địa điểm trước";
+                    StatusMessage = "Ch?n m?t d?a di?m tru?c";
                     return;
                 }
 
                 var mapUrl = _mapService.GetMapUrl(SelectedPOI.Latitude, SelectedPOI.Longitude);
                 if (string.IsNullOrWhiteSpace(mapUrl))
                 {
-                    StatusMessage = "Không thể tạo link bản đồ";
+                    StatusMessage = "Kh�ng th? t?o link b?n d?";
                     return;
                 }
 
@@ -270,7 +271,7 @@ namespace VinhKhanhstreetfoods.ViewModels
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[MapViewModel] Error opening map: {ex.Message}");
-                StatusMessage = $"Lỗi: {ex.Message}";
+                StatusMessage = $"L?i: {ex.Message}";
             }
         }
 
@@ -288,15 +289,20 @@ namespace VinhKhanhstreetfoods.ViewModels
 
         private async Task OpenDetailAsync(POI poi)
         {
-            if (poi == null) return;
+            if (poi == null || _isNavigating) return;
             
             try
             {
-                await Shell.Current.GoToAsync($"//home/detail?poiId={poi.Id}", true);
+                _isNavigating = true;
+                await Shell.Current.GoToAsync($"detail?poiId={poi.Id}", true);
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[MapViewModel] Navigation error: {ex.Message}");
+            }
+            finally
+            {
+                _isNavigating = false;
             }
         }
 
@@ -307,12 +313,12 @@ namespace VinhKhanhstreetfoods.ViewModels
             try
             {
                 _audioManager.AddToQueue(poi);
-                StatusMessage = "Đang phát âm thanh...";
+                StatusMessage = "�ang ph�t �m thanh...";
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[MapViewModel] Play audio error: {ex.Message}");
-                StatusMessage = $"❌ Lỗi: {ex.Message}";
+                StatusMessage = $"? L?i: {ex.Message}";
             }
         }
     }

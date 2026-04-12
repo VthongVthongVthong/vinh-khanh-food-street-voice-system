@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using VinhKhanhstreetfoods.Models;
@@ -44,20 +44,20 @@ namespace VinhKhanhstreetfoods.ViewModels
                 _translationService = translationService ?? throw new ArgumentNullException(nameof(translationService));
        _poiRepository = poiRepository;
 
-       // ✅ Safe event subscription
+       // ? Safe event subscription
     _audioManager.AudioStarted += OnAudioStarted;
            _audioManager.AudioCompleted += OnAudioCompleted;
            _settingsService.PreferredLanguageChanged += OnPreferredLanguageChanged;
 
                 LanguageOptions = new List<LanguageOption>
          {
-           new("vi", "Tiếng Việt", false),
+           new("vi", "Ti?ng Vi?t", false),
            new("en", "English", false),
-         new("zh", "中文", false),
-         new("ja", "日本語", false),
-            new("ko", "한국어", false),
-            new("fr", "Français", false),
-         new("ru", "Русский", false)
+         new("zh", "??", false),
+         new("ja", "???", false),
+            new("ko", "???", false),
+            new("fr", "Fran�ais", false),
+         new("ru", "???????", false)
 };
 
   SelectedNarrationLanguage = LanguageOptions.FirstOrDefault(x => x.CultureCode == _settingsService.PreferredLanguage)
@@ -239,7 +239,7 @@ namespace VinhKhanhstreetfoods.ViewModels
 
         /// <summary>
         /// Refresh narration preview - check if language data is available
-        /// ✅ Now checks both offline AND downloaded packs
+        /// ? Now checks both offline AND downloaded packs
         /// </summary>
  private async Task RefreshNarrationPreviewAsync()
         {
@@ -254,32 +254,32 @@ namespace VinhKhanhstreetfoods.ViewModels
      var language = SelectedNarrationLanguage?.CultureCode ?? _settingsService.PreferredLanguage;
   var normalized = NormalizeLang(language);
 
-       // ✅ Check if this is an online language that requires downloading
+       // ? Check if this is an online language that requires downloading
        var isOnlineLanguage = IsOnlineLanguage(normalized);
   
-      // ✅ Check BOTH offline AND cached data
+      // ? Check BOTH offline AND cached data
                 var hasOfflineData = HasOfflineDataForLanguage(SelectedPOI, normalized);
      var hasCachedData = await HasDataForLanguageAsync(SelectedPOI, normalized);
  var hasData = hasOfflineData || hasCachedData;
 
-          // If online language but no data at all → show warning
+          // If online language but no data at all ? show warning
        if (isOnlineLanguage && !hasData)
                 {
           MainThread.BeginInvokeOnMainThread(() =>
       {
-         NarrationPreviewText = $"[⬇️ Cần tải gói '{GetLanguageName(normalized)}' trong Settings trước khi sử dụng]";
-     StatusMessage = $"⚠️ Vui lòng tải gói '{GetLanguageName(normalized)}' trong Settings để dùng";
+         NarrationPreviewText = $"[?? C?n t?i g�i '{GetLanguageName(normalized)}' trong Settings tru?c khi s? d?ng]";
+     StatusMessage = $"?? Vui l�ng t?i g�i '{GetLanguageName(normalized)}' trong Settings d? d�ng";
       });
            return;
                 }
 
-             // ✅ For offline/cached languages: resolve text (will use HybridTranslationService priority system)
+             // ? For offline/cached languages: resolve text (will use HybridTranslationService priority system)
        var text = await _translationService.ResolveNarrationTextAsync(SelectedPOI, language, preferTtsScript: true);
 
         MainThread.BeginInvokeOnMainThread(() =>
      {
       NarrationPreviewText = string.IsNullOrWhiteSpace(text) ? (SelectedPOI.TtsScript ?? SelectedPOI.DescriptionText) : text;
-  StatusMessage = $"Sẵn sàng phát... ({normalized.ToUpper()})";
+  StatusMessage = $"S?n s�ng ph�t... ({normalized.ToUpper()})";
         });
    }
     catch (Exception ex)
@@ -288,7 +288,7 @@ namespace VinhKhanhstreetfoods.ViewModels
         MainThread.BeginInvokeOnMainThread(() =>
 {
            NarrationPreviewText = SelectedPOI?.TtsScript ?? SelectedPOI?.DescriptionText ?? string.Empty;
-            StatusMessage = "❌ Lỗi khi tải dữ liệu";
+            StatusMessage = "? L?i khi t?i d? li?u";
       });
         }
       }
@@ -306,27 +306,27 @@ namespace VinhKhanhstreetfoods.ViewModels
     var language = SelectedNarrationLanguage?.CultureCode ?? _settingsService.PreferredLanguage;
 var normalized = NormalizeLang(language);
 
-    // ✅ Check if this is an online language
+    // ? Check if this is an online language
                 var isOnlineLanguage = IsOnlineLanguage(normalized);
   
-      // ✅ Check BOTH offline AND cached data
+      // ? Check BOTH offline AND cached data
              var hasOfflineData = HasOfflineDataForLanguage(SelectedPOI, normalized);
      var hasCachedData = await HasDataForLanguageAsync(SelectedPOI, normalized);
-                var hasData = hasOfflineData || hasCachedData;  // ✅ Check both!
+                var hasData = hasOfflineData || hasCachedData;  // ? Check both!
 
  if (isOnlineLanguage && !hasData)
            {
-           StatusMessage = $"❌ Vui lòng tải gói '{GetLanguageName(normalized)}' trong Settings trước";
+           StatusMessage = $"? Vui l�ng t?i g�i '{GetLanguageName(normalized)}' trong Settings tru?c";
            return;
           }
 
-   // ✅ Can play - data is available (offline or cached)
+   // ? Can play - data is available (offline or cached)
       _audioManager.AddToQueue(SelectedPOI);
-         StatusMessage = "Đang phát âm thanh...";
+         StatusMessage = "�ang ph�t �m thanh...";
   }
         catch (Exception ex)
      {
-  StatusMessage = $"❌ Lỗi: {ex.Message}";
+  StatusMessage = $"? L?i: {ex.Message}";
    }
         }
 
@@ -334,7 +334,7 @@ var normalized = NormalizeLang(language);
         {
   _audioManager.StopCurrent();
     IsPlaying = false;
-    StatusMessage = "⏹️ Đã dừng";
+    StatusMessage = "?? �� d?ng";
   }
 
      private async Task OpenMap()
@@ -348,13 +348,13 @@ var normalized = NormalizeLang(language);
 
   if (string.IsNullOrWhiteSpace(url))
               {
-    StatusMessage = "❌ Không tạo được link bản đồ";
+    StatusMessage = "? Kh�ng t?o du?c link b?n d?";
     return;
  }
 
 if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
      {
-            StatusMessage = "❌ Link bản đồ không hợp lệ";
+            StatusMessage = "? Link b?n d? kh�ng h?p l?";
       return;
         }
 
@@ -362,7 +362,7 @@ if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
     }
     catch (Exception ex)
             {
-                StatusMessage = $"❌ Lỗi: {ex.Message}";
+                StatusMessage = $"? L?i: {ex.Message}";
    }
       }
 
@@ -382,7 +382,7 @@ if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
         }
         catch (Exception ex)
             {
-       StatusMessage = $"❌ Lỗi chia sẻ: {ex.Message}";
+       StatusMessage = $"? L?i chia s?: {ex.Message}";
    }
         }
 
@@ -404,7 +404,7 @@ var shell = Shell.Current;
 
  if (navigation.NavigationStack.Count > 1)
       {
-       await navigation.PopAsync();
+       await shell.GoToAsync("..");
                     return;
                 }
 
@@ -412,7 +412,7 @@ var shell = Shell.Current;
     }
           catch (Exception ex)
        {
-      StatusMessage = $"❌ Lỗi: {ex.Message}";
+      StatusMessage = $"? L?i: {ex.Message}";
             }
         }
 
@@ -425,7 +425,7 @@ var shell = Shell.Current;
        OnPropertyChanged(nameof(SelectedNarrationLanguage));
   }
 
-         // ✅ Force refresh data (not just update picker) and description
+         // ? Force refresh data (not just update picker) and description
   OnPropertyChanged(nameof(CurrentDescriptionText));
   OnPropertyChanged(nameof(CurrentTtsScriptText));
                 OnPropertyChanged(nameof(QRCodeContent));
@@ -437,7 +437,7 @@ var shell = Shell.Current;
             MainThread.BeginInvokeOnMainThread(() =>
        {
     IsPlaying = true;
-          StatusMessage = poi is null ? "Đang phát..." : $"Đang phát: {poi.Name}";
+          StatusMessage = poi is null ? "�ang ph�t..." : $"�ang ph�t: {poi.Name}";
         });
      }
 
@@ -446,7 +446,7 @@ var shell = Shell.Current;
        MainThread.BeginInvokeOnMainThread(() =>
     {
          IsPlaying = false;
-         StatusMessage = "Hoàn tất";
+         StatusMessage = "Ho�n t?t";
   });
         }
 
@@ -486,18 +486,18 @@ var shell = Shell.Current;
             return languageCode switch
             {
       "en" => "English",
-  "zh" => "中文",
-    "ja" => "日本語",
-                "ko" => "한국어",
-                "fr" => "Français",
-        "ru" => "Русский",
-   "vi" => "Tiếng Việt",
+  "zh" => "??",
+    "ja" => "???",
+                "ko" => "???",
+                "fr" => "Fran�ais",
+        "ru" => "???????",
+   "vi" => "Ti?ng Vi?t",
     _ => languageCode
      };
         }
 
         /// <summary>
-  /// Normalize language code: "en-US" → "en", "vi-VN" → "vi"
+  /// Normalize language code: "en-US" ? "en", "vi-VN" ? "vi"
         /// </summary>
      private static string NormalizeLang(string? code)
         {

@@ -363,10 +363,18 @@ try {
                 // Tạo HTML cho popup
                 const imgHtml = imageUrl ? `<img src="${imageUrl}" alt="${name}" class="w-full h-32 object-cover rounded-lg mb-2 shadow-sm">` : '';
 
+                const qrDataHover = encodeURIComponent(`vinhkhanh://poi?id=${poiId}&action=play`);
+                const qrUrlHover = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${qrDataHover}`;
+
                 const popupContent = `
                     <div class="px-1 py-1 w-56">
                         ${imgHtml}
-                        <h3 class="font-bold text-gray-800 text-[15px] mb-2 leading-tight">${name}</h3>
+                        <div class="flex gap-2 items-start mb-2">
+                            <div class="flex-1">
+                                <h3 class="font-bold text-gray-800 text-[15px] leading-tight">${name}</h3>
+                            </div>
+                            <img src="${qrUrlHover}" alt="QR Code" class="w-10 h-10 object-contain shadow-sm border border-gray-200 rounded p-0.5 bg-white">
+                        </div>
                         <div class="text-[12px] text-gray-600 space-y-1.5 mb-2 bg-gray-50 p-2 rounded-lg border border-gray-100">
                             <p class="flex items-center gap-2"><i class="fas fa-map-marker text-red-500 w-3 text-center"></i> Vĩ độ: <b>${lat.toFixed(5)}</b></p>
                             <p class="flex items-center gap-2"><i class="fas fa-map-marker text-blue-500 w-3 text-center"></i> Kinh độ: <b>${lng.toFixed(5)}</b></p>

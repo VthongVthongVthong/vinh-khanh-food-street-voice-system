@@ -58,11 +58,15 @@
                                       HeightRequest="250"
                                       HorizontalScrollBarVisibility="Never"
                                       IsSwipeEnabled="True"
-                                      IndicatorView="ImagesIndicator">
+                                      Loop="False">
                             <CarouselView.ItemTemplate>
                                 <DataTemplate>
                                     <Border StrokeShape="RoundRectangle 10" Padding="0" Margin="0,0,0,10">
-                                        <Image Source="{Binding .}" Aspect="AspectFill"/>
+                                        <Image Aspect="AspectFill">
+                                            <Image.Source>
+                                                <UriImageSource Uri="{Binding .}" CacheValidity="14" CachingEnabled="True" />
+                                            </Image.Source>
+                                        </Image>
                                     </Border>
                                 </DataTemplate>
                             </CarouselView.ItemTemplate>
@@ -91,11 +95,13 @@
                                      Clicked="OnScrollRightClicked"/>
                     </Grid>
                     
+                    <!-- MAUI IndicatorView in combination with CarouselView often crashes on teardown with IndexOutOfRange -> removed temporarily
                     <IndicatorView x:Name="ImagesIndicator"
                                    HorizontalOptions="Center"
                                    IndicatorColor="#E0E0E0"
                                    SelectedIndicatorColor="{StaticResource BrandOrange}"
                                    IndicatorSize="8" />
+                    -->
                 </StackLayout>
             </Border>
 

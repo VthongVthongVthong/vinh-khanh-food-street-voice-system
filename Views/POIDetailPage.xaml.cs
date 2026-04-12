@@ -8,8 +8,6 @@ namespace VinhKhanhstreetfoods.Views;
 [QueryProperty(nameof(PoiId), "poiId")]
 [QueryProperty(nameof(AutoPlay), "autoplay")]
 [QueryProperty(nameof(Language), "lang")]
-[QueryProperty(nameof(AutoPlay), "autoplay")]
-[QueryProperty(nameof(Language), "lang")]
 public partial class POIDetailPage : ContentPage
 {
     private readonly POIDetailViewModel _viewModel;
@@ -54,6 +52,26 @@ public partial class POIDetailPage : ContentPage
     {
         get => _language;
         set => _language = value;
+    }
+
+    protected override void OnNavigatingFrom(NavigatingFromEventArgs args)
+    {
+        base.OnNavigatingFrom(args);
+        // WORKAROUND FOR MAUI CAROUSELVIEW BUG:
+        // Clear ItemsSource and Position before the page is popped to prevent IndexOutOfRangeException
+        ImagesCarousel.Position = 0;
+        ImagesCarousel.ItemsSource = null;
+        
+        // Also clear the selected POI to strictly avoid caching the previous state explicitly
+        _viewModel.SelectedPOI = null;
+    }
+
+    protected override void OnNavigatedTo(NavigatedToEventArgs args)
+    {
+        base.OnNavigatedTo(args);
+        // Restore ItemsSource binding whenever navigating to this page
+        ImagesCarousel.SetBinding(ItemsView.ItemsSourceProperty, "SelectedPOI.ImageUrlList");
+        ImagesCarousel.Position = 0;
     }
 
     protected override void OnAppearing()
