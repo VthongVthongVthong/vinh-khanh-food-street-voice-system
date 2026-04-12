@@ -1024,7 +1024,7 @@ try {
                         </div>
                     </div>
                 </div>
-
+            </div>
 
     <!-- Modal Edit POI -->
     <div id="editModal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
