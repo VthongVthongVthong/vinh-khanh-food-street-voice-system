@@ -45,16 +45,17 @@ namespace VinhKhanhstreetfoods.Services
         private readonly TimeSpan _translationThrottle = TimeSpan.FromSeconds(2); // Min 2 sec between requests
 
         // ElevenLabs API
-        private const string ELEVEN_LABS_API_KEY = "sk_8db9fdb8efa165866e85ccc071c5ef803364bbd93324fe05";
+        private readonly string ELEVEN_LABS_API_KEY;
         private const string ELEVEN_LABS_VOICE_ID = "EXAVITQu4vr4xnSDxMaL";
 
         public event EventHandler<POI>? AudioStarted;
         public event EventHandler<POI>? AudioCompleted;
 
-        public AudioManager(TextToSpeechService ttsService, ITranslationService translationService, SettingsService settingsService, Plugin.Maui.Audio.IAudioManager systemAudioManager)
+        public AudioManager(TextToSpeechService ttsService, ITranslationService translationService, SettingsService settingsService, Plugin.Maui.Audio.IAudioManager systemAudioManager, ConfigurationService configurationService)
         {
             try
             {
+                ELEVEN_LABS_API_KEY = configurationService.GetValue("ElevenLabsApiKey", "");
                 _ttsService = ttsService;
                 _translationService = translationService;
                 _settingsService = settingsService;
