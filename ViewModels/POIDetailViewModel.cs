@@ -74,6 +74,26 @@ namespace VinhKhanhstreetfoods.ViewModels
         else PlayAudio();
 });
      GoBackCommand = new Command(async () => await GoBack());
+            OpenMapCommand = new Command(async () =>
+            {
+                if (SelectedPOI != null)
+                {
+                    await Shell.Current.GoToAsync($"///map?poiId={SelectedPOI.Id}");
+                }
+            });
+
+            ShareCommand = new Command(async () =>
+            {
+                if (SelectedPOI != null)
+                {
+                    await Share.Default.RequestAsync(new ShareTextRequest
+                    {
+                        Title = SelectedPOI.Name,
+                        Text = $"Check out {SelectedPOI.Name}!\n{SelectedPOI.Address}",
+                        Uri = $"app://poi?id={SelectedPOI.Id}"
+                    });
+                }
+            });
 
          System.Diagnostics.Debug.WriteLine("[POIDetailViewModel] Initialized successfully");
             }
@@ -218,6 +238,7 @@ OnPropertyChanged();
         public string POI_Title => _localizationManager.GetString("POI_Title") ?? "Chi tiết nhà hàng";
   public string POI_Images => _localizationManager.GetString("POI_Images") ?? "📷 Hình Ảnh";
   public string POI_Description => _localizationManager.GetString("POI_Description") ?? "Mô tả";
+        public string POI_ViewOnMap => _localizationManager.GetString("POI_ViewOnMap") ?? "Xem trên bản đồ";
         public string POI_AudioSection => _localizationManager.GetString("POI_AudioSection") ?? "🎧 Âm Thanh Hướng Dẫn";
  public string POI_NarrationLanguage => _localizationManager.GetString("POI_NarrationLanguage") ?? "Ngôn ngữ thuyết minh";
         public string POI_SelectNarrationLanguage => _localizationManager.GetString("POI_SelectNarrationLanguage") ?? "Chọn ngôn ngữ";

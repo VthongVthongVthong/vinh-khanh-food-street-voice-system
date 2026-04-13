@@ -210,6 +210,18 @@
                     </HorizontalStackLayout>
                 </Border>
                 
+                <Button x:Name="ViewOnMapButton"
+                        Text="{Binding POI_ViewOnMap}" 
+                        Command="{Binding OpenMapCommand}"
+                        BackgroundColor="Transparent"
+                        TextColor="{StaticResource BrandOrange}"
+                        BorderColor="{StaticResource BrandOrange}"
+                        BorderWidth="1.5"
+                        CornerRadius="10"
+                        FontSize="15"
+                        FontAttributes="Bold"
+                        HeightRequest="52"/>
+                        
                 <Button x:Name="ShareButton"
                         Text="{Binding POI_ShareButton}" 
                         Command="{Binding ShareCommand}"

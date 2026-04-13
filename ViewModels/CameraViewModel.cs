@@ -80,7 +80,7 @@ namespace VinhKhanhstreetfoods.ViewModels
    try
       {
         IsProcessing = true;
-                StatusMessage = "?ang x? l�...";
+                StatusMessage = "Đang xử lý...";
 
            // Process on background thread
      var result = await Task.Run(async () =>
