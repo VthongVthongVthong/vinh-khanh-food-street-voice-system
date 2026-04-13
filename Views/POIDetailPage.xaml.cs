@@ -28,6 +28,8 @@ public partial class POIDetailPage : ContentPage
         _localizationService = LocalizationService.Instance;
         _resourceManager = LocalizationResourceManager.Instance;
         _localizationService.PropertyChanged += OnLanguageChanged;
+        // ? Subscribe to ResourceManager language changes
+        _resourceManager.LanguageChanged += OnResourceManagerLanguageChanged;
 
         ApplyLocalizedText();
     }
@@ -86,30 +88,46 @@ public partial class POIDetailPage : ContentPage
     {
         base.OnDisappearing();
         _localizationService.PropertyChanged -= OnLanguageChanged;
+        // ? Unsubscribe from ResourceManager
+        _resourceManager.LanguageChanged -= OnResourceManagerLanguageChanged;
     }
 
     private void OnLanguageChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(LocalizationService.CurrentLanguage))
         {
-            MainThread.BeginInvokeOnMainThread(ApplyLocalizedText);
+            MainThread.BeginInvokeOnMainThread(() => {
+                ApplyLocalizedText();
+                // Force refresh binding for localization properties
+                _viewModel?.RefreshLocalizationStrings();
+            });
         }
+    }
+
+    private void OnResourceManagerLanguageChanged(object? sender, EventArgs e)
+    {
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            // Refresh ALL localization strings when ResourceManager language changes
+            ApplyLocalizedText();
+            _viewModel?.RefreshLocalizationStrings();
+        });
     }
 
     private void ApplyLocalizedText()
     {
         Title = _resourceManager.GetString("POI_Title");
-        BackBehavior.TextOverride = _resourceManager.GetString("Common_Back");
+   BackBehavior.TextOverride = _resourceManager.GetString("Common_Back");
 
-        ImagesSectionLabel.Text = _resourceManager.GetString("POI_Gallery");
+        ImagesSectionLabel.Text = _resourceManager.GetString("POI_Images");
         
-        AudioSectionLabel.Text = _resourceManager.GetString("Settings_Audio_Title");
+        AudioSectionLabel.Text = _resourceManager.GetString("POI_AudioSection");
 
-        NarrationLanguageLabel.Text = _resourceManager.GetString("Settings_Language_Narration");
-        NarrationLanguagePicker.Title = _resourceManager.GetString("Settings_Language_NarrationPickerTitle");
+        NarrationLanguageLabel.Text = _resourceManager.GetString("POI_NarrationLanguage");
+        NarrationLanguagePicker.Title = _resourceManager.GetString("POI_SelectNarrationLanguage");
         
-        ShareButton.Text = _resourceManager.GetString("POI_Share");
-    }
+        ShareButton.Text = _resourceManager.GetString("POI_ShareButton");
+  }
 
     private async Task LoadPoiAsync(int id)
     {

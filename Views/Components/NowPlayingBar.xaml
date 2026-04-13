@@ -83,7 +83,7 @@
 
             <!-- Playlist Expandable Area -->
             <StackLayout Grid.Row="1" IsVisible="{Binding IsPlaylistVisible}" Margin="0,15,0,0">
-                <Label Text="Gần bạn" FontAttributes="Bold" TextColor="White" Margin="0,0,0,10"/>
+                <Label Text="{Binding NearYouText}" FontAttributes="Bold" TextColor="White" Margin="0,0,0,10"/>
                 <CollectionView ItemsSource="{Binding UpcomingAudios}" HeightRequest="200">
                     <CollectionView.ItemTemplate>
                         <DataTemplate>
@@ -109,7 +109,7 @@
                         </DataTemplate>
                     </CollectionView.ItemTemplate>
                     <CollectionView.EmptyView>
-                        <Label Text="Không có địa điểm nào gần bạn" TextColor="{StaticResource TextLight}" HorizontalOptions="Center" VerticalOptions="Center" Margin="0,20"/>
+                        <Label Text="{Binding NoLocationsText}" TextColor="{StaticResource TextLight}" HorizontalOptions="Center" VerticalOptions="Center" Margin="0,20"/>
                     </CollectionView.EmptyView>
                 </CollectionView>
             </StackLayout>

@@ -113,8 +113,11 @@ private ObservableCollection<POI>? _currentPoiCollection;
     MainThread.BeginInvokeOnMainThread(() =>
       {
            ApplyLocalizedText();
-          _ = ApplyMapLocalizedJsAsync();
-            });
+ _ = ApplyMapLocalizedJsAsync();
+     // Refresh localization properties in ViewModel
+    if (BindingContext is MapViewModel vm)
+        vm.RefreshLocalizationStrings();
+        });
         }
     }
 
@@ -125,13 +128,20 @@ private ObservableCollection<POI>? _currentPoiCollection;
 HeaderSubtitleLabel.Text = _resourceManager.GetString("Home_Featured_Desc");
 
     CurrentLocationTitleLabel.Text = _resourceManager.GetString("Map_CurrentLocation");
-        CurrentLocationSubtitleLabel.Text = _resourceManager.GetString("Home_Location");
+   CurrentLocationSubtitleLabel.Text = _resourceManager.GetString("Home_Location");
 
       NearbyHeaderTitleLabel.Text = _resourceManager.GetString("Map_Restaurants");
-        StatsHeaderLabel.Text = _resourceManager.GetString("Map_Restaurants");
-        StatsExploredLabel.Text = _resourceManager.GetString("POI_ViewOnMap");
+   StatsHeaderLabel.Text = _resourceManager.GetString("Map_Restaurants");
+   StatsExploredLabel.Text = _resourceManager.GetString("POI_ViewOnMap");
    StatsListenedLabel.Text = _resourceManager.GetString("Home_AudioBadge");
+
+        // Update locations count label
+        if (BindingContext is MapViewModel vm)
+        {
+  var locationText = _resourceManager.GetString("Map_Locations") ?? "??a ?i?m";
+  LocationsCountLabel.Text = $"{vm.AllPOIs.Count} {locationText}";
     }
+ }
 
     private async Task ApplyMapLocalizedJsAsync()
     {
@@ -153,13 +163,13 @@ HeaderSubtitleLabel.Text = _resourceManager.GetString("Home_Featured_Desc");
     private void ViewModel_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
       if (e.PropertyName == nameof(MapViewModel.UserLatitude) || e.PropertyName == nameof(MapViewModel.UserLongitude))
-        {
+   {
        if (BindingContext is MapViewModel vm)
      UpdateMapLocation(vm.UserLatitude, vm.UserLongitude);
         }
-        else if (e.PropertyName == nameof(MapViewModel.IsTracking))
-        {
-            if (BindingContext is MapViewModel vm)
+    else if (e.PropertyName == nameof(MapViewModel.IsTracking))
+ {
+if (BindingContext is MapViewModel vm)
     UpdateTrackingState(vm.IsTracking);
         }
         else if (e.PropertyName == nameof(MapViewModel.AllPOIs))
@@ -168,8 +178,11 @@ HeaderSubtitleLabel.Text = _resourceManager.GetString("Home_Featured_Desc");
          {
    SubscribeToPoiCollection(vm.AllPOIs);
      _ = RenderPOIsAsync(vm.AllPOIs);
-            }
-        }
+ // Update locations count
+    var locationText = _resourceManager.GetString("Map_Locations") ?? "??a ?i?m";
+      LocationsCountLabel.Text = $"{vm.AllPOIs.Count} {locationText}";
+          }
+}
     }
 
     private async void UpdateTrackingState(bool isTracking)
@@ -282,17 +295,17 @@ _currentPoiCollection.CollectionChanged += PoiCollectionChanged;
 
         if (e.Url.StartsWith("app://poi?", StringComparison.OrdinalIgnoreCase))
         {
- e.Cancel = true;
+    e.Cancel = true;
             var query = new Uri(e.Url).Query.TrimStart('?');
-            var idValue = query.Split('&', StringSplitOptions.RemoveEmptyEntries)
-.Select(p => p.Split('='))
-          .FirstOrDefault(p => p.Length == 2 && p[0] == "id")?[1];
+var idValue = query.Split('&', StringSplitOptions.RemoveEmptyEntries)
+           .Select(p => p.Split('='))
+    .FirstOrDefault(p => p.Length == 2 && p[0] == "id")?[1];
 
-    if (int.TryParse(idValue, out var poiId))
-     {
-       await Shell.Current.GoToAsync($"detail?poiId={poiId}");
-            }
-  }
+            if (int.TryParse(idValue, out var poiId))
+  {
+                await Shell.Current.GoToAsync($"detail?poiId={poiId}");
+        }
+   }
     }
 
     private bool _isFullScreen = false;

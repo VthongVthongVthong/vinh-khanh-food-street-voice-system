@@ -13,6 +13,7 @@ namespace VinhKhanhstreetfoods.ViewModels
         private readonly MapService _mapService;
         private readonly LocationService _locationService;
         private readonly AudioManager _audioManager;
+        private readonly SettingsService _settingsService;
 
         private ObservableCollection<POI> _allPOIs;
         private POI _selectedPOI;
@@ -25,12 +26,13 @@ namespace VinhKhanhstreetfoods.ViewModels
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
-        public MapViewModel(IPOIRepository poiRepository, MapService mapService, LocationService locationService, AudioManager audioManager)
+        public MapViewModel(IPOIRepository poiRepository, MapService mapService, LocationService locationService, AudioManager audioManager, SettingsService settingsService)
         {
             _poiRepository = poiRepository ?? throw new ArgumentNullException(nameof(poiRepository));
             _mapService = mapService ?? throw new ArgumentNullException(nameof(mapService));
             _locationService = locationService ?? throw new ArgumentNullException(nameof(locationService));
             _audioManager = audioManager ?? throw new ArgumentNullException(nameof(audioManager));
+            _settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
 
             AllPOIs = new ObservableCollection<POI>();
             StatusMessage = "T?i b?n d?...";
@@ -47,6 +49,18 @@ namespace VinhKhanhstreetfoods.ViewModels
                 _locationService.LocationUpdated += OnLocationUpdated;
                 _locationService.TrackingStateChanged += OnTrackingStateChanged;
             }
+
+            // Subscribe to narration language changes
+            if (_settingsService != null)
+            {
+                _settingsService.PreferredLanguageChanged += OnPreferredLanguageChanged;
+            }
+        }
+
+        private void OnPreferredLanguageChanged(object? sender, string language)
+        {
+            // Trigger refresh when narration language changes
+            OnPropertyChanged(nameof(Map_NarrationLanguage));
         }
 
         public async Task EnsurePOIsLoadedAsync()
@@ -126,6 +140,30 @@ namespace VinhKhanhstreetfoods.ViewModels
         public ICommand RefreshCommand { get; }
         public ICommand OpenDetailCommand { get; }
         public ICommand PlayAudioCommand { get; }
+
+        // Localization String Properties
+        public string Map_Listen => LocalizationResourceManager.Instance.GetString("Map_Listen") ?? "Nghe";
+        public string Map_ViewDetails => LocalizationResourceManager.Instance.GetString("Map_ViewDetails") ?? "Xem chi tiết";
+        public string Map_NarrationLanguage => GetNarrationLanguageName();
+        public string Map_Locations => LocalizationResourceManager.Instance.GetString("Map_Locations") ?? "địa điểm";
+        public string Map_Stats_Explored => LocalizationResourceManager.Instance.GetString("Map_Stats_Explored") ?? "Khám phá";
+        public string Map_Stats_Listened => LocalizationResourceManager.Instance.GetString("Map_Stats_Listened") ?? "Lắng nghe";
+
+        private string GetNarrationLanguageName()
+        {
+            var langCode = _settingsService.PreferredLanguage;
+            return langCode switch
+            {
+                "vi" => "Tiếng Việt",
+                "en" => "English",
+                "zh" => "中文",
+                "ja" => "日本語",
+                "ko" => "한국어",
+                "fr" => "Français",
+                "ru" => "Русский",
+                _ => "Tiếng Việt"
+            };
+        }
 
         private async Task LoadPOIs()
         {
@@ -313,7 +351,7 @@ namespace VinhKhanhstreetfoods.ViewModels
             try
             {
                 _audioManager.AddToQueue(poi);
-                StatusMessage = "�ang ph�t �m thanh...";
+                StatusMessage = "?ang ph?t ?m thanh...";
             }
             catch (Exception ex)
             {
@@ -321,5 +359,15 @@ namespace VinhKhanhstreetfoods.ViewModels
                 StatusMessage = $"? L?i: {ex.Message}";
             }
         }
+
+        public void RefreshLocalizationStrings()
+        {
+     OnPropertyChanged("Map_Listen");
+   OnPropertyChanged("Map_ViewDetails");
+    OnPropertyChanged("Map_NarrationLanguage");
+       OnPropertyChanged("Map_Locations");
+   OnPropertyChanged("Map_Stats_Explored");
+  OnPropertyChanged("Map_Stats_Listened");
+  }
     }
 }

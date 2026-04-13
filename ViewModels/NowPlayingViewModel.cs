@@ -14,6 +14,7 @@ public class NowPlayingViewModel : INotifyPropertyChanged
     private readonly SettingsService _settingsService;
     private readonly IPOIRepository _poiRepository;
     private readonly LocationService _locationService;
+    private readonly LocalizationResourceManager _localizationManager;
 
     private bool _isVisible;
     private string _poiName = string.Empty;
@@ -23,15 +24,18 @@ public class NowPlayingViewModel : INotifyPropertyChanged
     private POI? _currentPoi;
     private bool _isPlaylistVisible;
     private ObservableCollection<POI> _upcomingAudios = new();
+    private string _nearYouText = string.Empty;
+    private string _noLocationsText = string.Empty;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    public NowPlayingViewModel(AudioManager audioManager, SettingsService settingsService, IPOIRepository poiRepository, LocationService locationService)
+    public NowPlayingViewModel(AudioManager audioManager, SettingsService settingsService, IPOIRepository poiRepository, LocationService locationService, LocalizationResourceManager localizationManager)
     {
         _audioManager = audioManager;
         _settingsService = settingsService;
         _poiRepository = poiRepository;
         _locationService = locationService;
+        _localizationManager = localizationManager;
 
         TogglePlayCommand = new Command(OnTogglePlay);
         OpenDetailCommand = new Command(OnTogglePlaylist);
@@ -41,6 +45,15 @@ public class NowPlayingViewModel : INotifyPropertyChanged
         _audioManager.AudioStarted += OnAudioStarted;
         _audioManager.AudioCompleted += OnAudioCompleted;
         _locationService.LocationUpdated += OnLocationUpdated;
+        
+        // Initialize localization strings
+        UpdateLocalizationStrings();
+    }
+
+    private void UpdateLocalizationStrings()
+    {
+     NearYouText = _localizationManager.GetString("NowPlayingBar_NearYou") ?? "Gần bạn";
+   NoLocationsText = _localizationManager.GetString("NowPlayingBar_NoLocations") ?? "Không có địa điểm nào gần bạn";
     }
 
     private async void OnLocationUpdated(object? sender, Location location)
@@ -48,7 +61,7 @@ public class NowPlayingViewModel : INotifyPropertyChanged
         if (_isPlaylistVisible && _isVisible)
         {
             await LoadUpcomingAudiosAsync();
-        }
+   }
     }
 
     public bool IsVisible
@@ -76,28 +89,40 @@ public class NowPlayingViewModel : INotifyPropertyChanged
     }
 
     public bool IsPlaying
-    {
+ {
         get => _isPlaying;
         set
-        {
-            _isPlaying = value;
+      {
+       _isPlaying = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(PlayPauseIcon));
         }
     }
 
-    public string PlayPauseIcon => IsPlaying ? "pause_1006_svgrepo_com.png" : "play_1003_svgrepo_com.png";
+  public string PlayPauseIcon => IsPlaying ? "pause_1006_svgrepo_com.png" : "play_1003_svgrepo_com.png";
 
     public bool IsPlaylistVisible
     {
-        get => _isPlaylistVisible;
-        set { _isPlaylistVisible = value; OnPropertyChanged(); }
+ get => _isPlaylistVisible;
+     set { _isPlaylistVisible = value; OnPropertyChanged(); }
     }
 
     public ObservableCollection<POI> UpcomingAudios
     {
         get => _upcomingAudios;
         set { _upcomingAudios = value; OnPropertyChanged(); }
+    }
+
+    public string NearYouText
+{
+        get => _nearYouText;
+    set { _nearYouText = value; OnPropertyChanged(); }
+    }
+
+    public string NoLocationsText
+    {
+        get => _noLocationsText;
+        set { _noLocationsText = value; OnPropertyChanged(); }
     }
 
     public ICommand TogglePlayCommand { get; }
@@ -109,16 +134,16 @@ public class NowPlayingViewModel : INotifyPropertyChanged
     {
         MainThread.BeginInvokeOnMainThread(() =>
         {
-            _currentPoi = poi;
-            PoiName = poi.Name ?? "Tên quán";
+     _currentPoi = poi;
+PoiName = poi.Name ?? "Tên quán";
             PoiAvatarUrl = poi.AvatarImageUrl ?? "";
-            
-            var langCode = _settingsService.PreferredLanguage.ToUpper();
-            LanguageText = LocalizationResourceManager.Instance.GetString("Settings_Language_Narration") + $": {langCode}";
+          
+          var langCode = _settingsService.PreferredLanguage.ToUpper();
+        LanguageText = LocalizationResourceManager.Instance.GetString("Settings_Language_Narration") + $": {langCode}";
 
             IsPlaying = true;
-            IsVisible = true;
-        });
+     IsVisible = true;
+     });
     }
 
     private void OnAudioCompleted(object? sender, POI poi)
@@ -127,24 +152,24 @@ public class NowPlayingViewModel : INotifyPropertyChanged
         MainThread.BeginInvokeOnMainThread(() =>
         {
             IsPlaying = false;
-            
+        
             // Auto-play the next item in the upcoming audios list like a playlist
-            // Only automatically add to queue if location tracking is currently active
-            if (_locationService.IsTracking && UpcomingAudios != null && UpcomingAudios.Count > 0)
-            {
-                var nextPoi = UpcomingAudios.First();
-                UpcomingAudios.RemoveAt(0);
+   // Only automatically add to queue if location tracking is currently active
+ if (_locationService.IsTracking && UpcomingAudios != null && UpcomingAudios.Count > 0)
+        {
+   var nextPoi = UpcomingAudios.First();
+    UpcomingAudios.RemoveAt(0);
 
-                // Delay slightly before starting the next audio
-                Task.Delay(1000).ContinueWith(_ =>
+        // Delay slightly before starting the next audio
+    Task.Delay(1000).ContinueWith(_ =>
                 {
-                    _audioManager.AddToQueue(nextPoi);
-                });
-            }
-            else if (!_locationService.IsTracking || UpcomingAudios == null || UpcomingAudios.Count == 0)
-            {
-                _currentPoi = null;
-                IsVisible = false;
+          _audioManager.AddToQueue(nextPoi);
+    });
+        }
+  else if (!_locationService.IsTracking || UpcomingAudios == null || UpcomingAudios.Count == 0)
+ {
+      _currentPoi = null;
+IsVisible = false;
             }
         });
     }
@@ -153,23 +178,23 @@ public class NowPlayingViewModel : INotifyPropertyChanged
     {
         if (IsPlaying)
         {
-            _audioManager.StopCurrent();
-            IsPlaying = false;
+          _audioManager.StopCurrent();
+       IsPlaying = false;
         }
-        else if (_currentPoi != null)
+      else if (_currentPoi != null)
         {
-            IsPlaying = true;
-            _audioManager.AddToQueue(_currentPoi);
-        }
+          IsPlaying = true;
+          _audioManager.AddToQueue(_currentPoi);
+      }
     }
 
     private async void OnTogglePlaylist()
     {
-        IsPlaylistVisible = !IsPlaylistVisible;
+  IsPlaylistVisible = !IsPlaylistVisible;
         
         if (IsPlaylistVisible)
         {
-            await LoadUpcomingAudiosAsync();
+        await LoadUpcomingAudiosAsync();
         }
     }
 
@@ -178,39 +203,39 @@ public class NowPlayingViewModel : INotifyPropertyChanged
         try
         {
             var location = await _locationService.GetCurrentLocation();
-            if (location == null) return;
+      if (location == null) return;
 
-            var allPois = await _poiRepository.GetActivePOIsAsync();
-            if (allPois == null) return;
+     var allPois = await _poiRepository.GetActivePOIsAsync();
+          if (allPois == null) return;
 
             var nearbyPois = allPois.Select(poi => {
-                var distance = Location.CalculateDistance(location.Latitude, location.Longitude, poi.Latitude, poi.Longitude, DistanceUnits.Kilometers) * 1000;
-                poi.DistanceFromUser = distance;
+  var distance = Location.CalculateDistance(location.Latitude, location.Longitude, poi.Latitude, poi.Longitude, DistanceUnits.Kilometers) * 1000;
+     poi.DistanceFromUser = distance;
                 return poi;
-            })
+          })
             .Where(p => p.DistanceFromUser <= p.TriggerRadius * 2 || p.DistanceFromUser <= 100) 
-            .OrderBy(p => p.DistanceFromUser)
-            .ToList();
+         .OrderBy(p => p.DistanceFromUser)
+    .ToList();
 
             MainThread.BeginInvokeOnMainThread(() =>
-            {
-                var existingItems = UpcomingAudios.Select(u => u.Id).ToList();
+    {
+      var existingItems = UpcomingAudios.Select(u => u.Id).ToList();
                 var newItems = nearbyPois.Where(p => _currentPoi == null || p.Id != _currentPoi.Id).ToList();
 
-                // Only update the visual list if it has completely changed to avoid flickering
-                if (!existingItems.SequenceEqual(newItems.Select(n => n.Id)))
-                {
-                    UpcomingAudios.Clear();
-                    foreach (var p in newItems)
-                    {
-                        UpcomingAudios.Add(p);
-                        
-                        // "để đưa vào hàng đợi âm thanh"
-                        // GeofenceEngine already triggers close ones, 
-                        // but if we want UpcomingAudios to truly act as a backup queue:
-                    }
-                }
-            });
+    // Only update the visual list if it has completely changed to avoid flickering
+    if (!existingItems.SequenceEqual(newItems.Select(n => n.Id)))
+              {
+         UpcomingAudios.Clear();
+    foreach (var p in newItems)
+  {
+            UpcomingAudios.Add(p);
+        
+       // "để đưa vào hàng đợi âm thanh"
+   // GeofenceEngine already triggers close ones, 
+     // but if we want UpcomingAudios to truly act as a backup queue:
+    }
+         }
+        });
         }
         catch (Exception ex)
         {
@@ -223,22 +248,22 @@ public class NowPlayingViewModel : INotifyPropertyChanged
         if (poi == null) return;
 
         // Play the selected audio, clear previous queue
-        _audioManager.StopCurrent();
-        _audioManager.ClearQueue();
+   _audioManager.StopCurrent();
+    _audioManager.ClearQueue();
         _audioManager.AddToQueue(poi);
         
         // Hide playlist
-        IsPlaylistVisible = false;
+     IsPlaylistVisible = false;
     }
 
     private void OnClose()
     {
         _audioManager.StopCurrent();
-        IsVisible = false;
-        IsPlaylistVisible = false;
+      IsVisible = false;
+ IsPlaylistVisible = false;
         _currentPoi = null;
     }
 
     protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+   => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }

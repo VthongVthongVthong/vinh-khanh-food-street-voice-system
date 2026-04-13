@@ -19,6 +19,9 @@ namespace VinhKhanhstreetfoods.Services
         private int _isPrefetching;
         private int _isCachingAllLanguages;
 
+        // ? EVENT: Notify when language changes
+        public event EventHandler? LanguageChanged;
+
         private static readonly JsonSerializerOptions JsonOptions = new()
         {
             PropertyNameCaseInsensitive = true
@@ -135,8 +138,18 @@ namespace VinhKhanhstreetfoods.Services
             {
                 if (_resourceCache.TryGetValue(normalizedLanguage, out var cached))
                 {
+                    var oldLanguage = _currentLanguage;
                     _currentResources = cached;
                     _currentLanguage = normalizedLanguage;
+
+                    // ? Trigger LanguageChanged event if language actually changed
+                    if (oldLanguage != normalizedLanguage)
+                    {
+                        MainThread.BeginInvokeOnMainThread(() =>
+                        {
+                            LanguageChanged?.Invoke(this, EventArgs.Empty);
+                        });
+                    }
                 }
             }
         }
