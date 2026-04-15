@@ -274,15 +274,15 @@ namespace VinhKhanhstreetfoods.ViewModels
         {
             try
             {
-                StatusMessage = "�ang l�m m?i...";
-                await _poiRepository.SyncPOIsFromAdminAsync();
+                StatusMessage = "Đang làm mới...";
+                await _poiRepository.SyncPOIsFromAdminAsync(force: true);
                 await LoadPOIs();
-                StatusMessage = "L�m m?i ho�n t?t";
+                StatusMessage = "Làm mới hoàn tất.";
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[MapViewModel] Error refreshing POIs: {ex.Message}");
-                StatusMessage = $"L?i: {ex.Message}";
+                StatusMessage = $"Lỗi: {ex.Message}";
             }
         }
 

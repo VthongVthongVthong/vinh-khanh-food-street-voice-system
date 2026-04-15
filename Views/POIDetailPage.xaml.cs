@@ -159,8 +159,10 @@ public partial class POIDetailPage : ContentPage
         var poi = _viewModel.SelectedPOI;
         if (poi == null) return;
 
-        // Switch to map tab and pass poiId; MapPage will focus it.
-        await Shell.Current.GoToAsync($"//map?poiId={poi.Id}");
+        int poiId = poi.Id;
+        // Switch to home root, then map tab and pass poiId; MapPage will focus it.
+        await Shell.Current.Navigation.PopToRootAsync(false);
+        await Shell.Current.GoToAsync($"///map?poiId={poiId}");
     }
 
     private void OnScrollLeftClicked(object sender, EventArgs e)

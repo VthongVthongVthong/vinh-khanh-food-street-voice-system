@@ -78,7 +78,10 @@ namespace VinhKhanhstreetfoods.ViewModels
             {
                 if (SelectedPOI != null)
                 {
-                    await Shell.Current.GoToAsync($"///map?poiId={SelectedPOI.Id}");
+                    int poiId = SelectedPOI.Id;
+                    // Go back to the home page root so the tab doesn't stay on a blank detail page
+                    await Shell.Current.Navigation.PopToRootAsync(false);
+                    await Shell.Current.GoToAsync($"///map?poiId={poiId}");
                 }
             });
 

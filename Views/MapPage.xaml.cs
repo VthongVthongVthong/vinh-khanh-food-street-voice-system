@@ -92,7 +92,8 @@ private ObservableCollection<POI>? _currentPoiCollection;
     protected override void OnNavigatedFrom(NavigatedFromEventArgs args)
     {
         base.OnNavigatedFrom(args);
-   if (BindingContext is MapViewModel vm)
+        _pendingPoiId = null;
+        if (BindingContext is MapViewModel vm)
         {
    vm.PropertyChanged -= ViewModel_PropertyChanged;
         }
@@ -229,7 +230,8 @@ lng = p.Longitude,
         }) ?? Enumerable.Empty<object>();
 
     var json = JsonSerializer.Serialize(payload);
-   var js = $"renderPOIs({json});";
+    bool shouldFitBounds = _pendingPoiId == null;
+   var js = $"renderPOIs({json}, {shouldFitBounds.ToString().ToLower()});";
      await MainThread.InvokeOnMainThreadAsync(() => MapWebView.EvaluateJavaScriptAsync(js));
     await TryFocusPendingPoiAsync();
         }
@@ -280,7 +282,6 @@ _currentPoiCollection.CollectionChanged += PoiCollectionChanged;
         {
     string js = $"focusPOI({targetId});";
             await MainThread.InvokeOnMainThreadAsync(() => MapWebView.EvaluateJavaScriptAsync(js));
-          _pendingPoiId = null;
         }
         catch (Exception ex)
         {
