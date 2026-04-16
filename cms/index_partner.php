@@ -329,6 +329,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
         $mapLink = trim($_POST['mapLink'] ?? '');
         $triggerRadiusMeters = (int)($_POST['triggerRadiusMeters'] ?? 20);
+        $priority = 0; // Mặc định là 0 khi vendor tự thêm
         
         // POI do vendor tạo mặc định isActive = -1 (chờ duyệt)
         $isActive = -1;
@@ -340,8 +341,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $maxId = (int)$stmtMax->fetchColumn();
         $newId = $maxId + 1;
         
-        $sql = "INSERT INTO POI (Id, Name, Latitude, Longitude, Address, Phone, DescriptionText, DescriptionEn, DescriptionZh, DescriptionJa, DescriptionKo, DescriptionFr, DescriptionRu, TtsScript, TtsScriptEn, TtsScriptZh, TtsScriptJa, TtsScriptKo, TtsScriptFr, TtsScriptRu, ImageUrls, MapLink, triggerRadiusMeters, IsActive, CreatedAt, UpdatedAt, ownerId)
-                VALUES (:id, :name, :latitude, :longitude, :address, :phone, :descriptionText, :descriptionEn, :descriptionZh, :descriptionJa, :descriptionKo, :descriptionFr, :descriptionRu, :ttsScript, :ttsScriptEn, :ttsScriptZh, :ttsScriptJa, :ttsScriptKo, :ttsScriptFr, :ttsScriptRu, :imageUrls, :mapLink, :triggerRadiusMeters, :isActive, :createdAt, :updatedAt, :owner_id)";
+        $sql = "INSERT INTO POI (Id, Name, Latitude, Longitude, Address, Phone, DescriptionText, DescriptionEn, DescriptionZh, DescriptionJa, DescriptionKo, DescriptionFr, DescriptionRu, TtsScript, TtsScriptEn, TtsScriptZh, TtsScriptJa, TtsScriptKo, TtsScriptFr, TtsScriptRu, ImageUrls, MapLink, triggerRadiusMeters, IsActive, CreatedAt, UpdatedAt, ownerId, priority)
+                VALUES (:id, :name, :latitude, :longitude, :address, :phone, :descriptionText, :descriptionEn, :descriptionZh, :descriptionJa, :descriptionKo, :descriptionFr, :descriptionRu, :ttsScript, :ttsScriptEn, :ttsScriptZh, :ttsScriptJa, :ttsScriptKo, :ttsScriptFr, :ttsScriptRu, :imageUrls, :mapLink, :triggerRadiusMeters, :isActive, :createdAt, :updatedAt, :owner_id, :priority)";
 
         $stmtAdd = $pdo->prepare($sql);
         $stmtAdd->execute([
@@ -371,7 +372,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             ':isActive' => $isActive,
             ':createdAt' => $createdAt,
             ':updatedAt' => $updatedAt,
-            ':owner_id' => $user_id
+            ':owner_id' => $user_id,
+            ':priority' => $priority
         ]);
         
         if ($currentImages[0] !== "" || $currentImages[1] !== "") {
@@ -1527,7 +1529,7 @@ try {
         let currentAudioMap = null;
 
         // Cấu hình API Keys
-        const ELEVEN_LABS_API_KEY = "sk_8db9fdb8efa165866e85ccc071c5ef803364bbd93324fe05";
+        const ELEVEN_LABS_API_KEY = "";
         
         async function playTTS(lang, text) {
             if (!text) {

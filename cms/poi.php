@@ -197,6 +197,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $mapLink = trim($_POST['mapLink'] ?? '');
         $triggerRadiusMeters = (int)($_POST['triggerRadiusMeters'] ?? 20);
         $isActive = (int)($_POST['isActive'] ?? 1);
+        $priority = (int)($_POST['priority'] ?? 0);
 
         $sql = "UPDATE POI SET 
                     Name = :name,
@@ -221,7 +222,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     ImageUrls = :imageUrls,
                     MapLink = :mapLink,
                     triggerRadiusMeters = :triggerRadiusMeters,
-                    IsActive = :isActive
+                    IsActive = :isActive,
+                    priority = :priority
                 WHERE Id = :id";
 
         $stmtUpdate = $pdo->prepare($sql);
@@ -249,6 +251,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             ':mapLink' => $mapLink,
             ':triggerRadiusMeters' => $triggerRadiusMeters,
             ':isActive' => $isActive,
+            ':priority' => $priority,
             ':id' => $id
         ]);
         
@@ -318,6 +321,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $triggerRadiusMeters = (int)($_POST['triggerRadiusMeters'] ?? 20);
         $isActive = (int)($_POST['isActive'] ?? 1);
         $ownerId = !empty($_POST['ownerId']) ? (int)$_POST['ownerId'] : null;
+        $priority = (int)($_POST['priority'] ?? 0);
         $createdAt = date('Y-m-d H:i:s');
         $updatedAt = date('Y-m-d H:i:s');
 
@@ -326,8 +330,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $maxId = (int)$stmtMax->fetchColumn();
         $newId = $maxId + 1;
 
-        $sql = "INSERT INTO POI (Id, Name, Latitude, Longitude, Address, Phone, DescriptionText, DescriptionEn, DescriptionZh, DescriptionJa, DescriptionKo, DescriptionFr, DescriptionRu, TtsScript, TtsScriptEn, TtsScriptZh, TtsScriptJa, TtsScriptKo, TtsScriptFr, TtsScriptRu, ImageUrls, MapLink, triggerRadiusMeters, IsActive, ownerId, CreatedAt, UpdatedAt)
-                VALUES (:id, :name, :latitude, :longitude, :address, :phone, :descriptionText, :descriptionEn, :descriptionZh, :descriptionJa, :descriptionKo, :descriptionFr, :descriptionRu, :ttsScript, :ttsScriptEn, :ttsScriptZh, :ttsScriptJa, :ttsScriptKo, :ttsScriptFr, :ttsScriptRu, :imageUrls, :mapLink, :triggerRadiusMeters, :isActive, :ownerId, :createdAt, :updatedAt)";
+        $sql = "INSERT INTO POI (Id, Name, Latitude, Longitude, Address, Phone, DescriptionText, DescriptionEn, DescriptionZh, DescriptionJa, DescriptionKo, DescriptionFr, DescriptionRu, TtsScript, TtsScriptEn, TtsScriptZh, TtsScriptJa, TtsScriptKo, TtsScriptFr, TtsScriptRu, ImageUrls, MapLink, triggerRadiusMeters, IsActive, ownerId, priority, CreatedAt, UpdatedAt)
+                VALUES (:id, :name, :latitude, :longitude, :address, :phone, :descriptionText, :descriptionEn, :descriptionZh, :descriptionJa, :descriptionKo, :descriptionFr, :descriptionRu, :ttsScript, :ttsScriptEn, :ttsScriptZh, :ttsScriptJa, :ttsScriptKo, :ttsScriptFr, :ttsScriptRu, :imageUrls, :mapLink, :triggerRadiusMeters, :isActive, :ownerId, :priority, :createdAt, :updatedAt)";
 
         $stmtAdd = $pdo->prepare($sql);
         $stmtAdd->execute([
@@ -356,6 +360,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             ':triggerRadiusMeters' => $triggerRadiusMeters,
             ':isActive' => $isActive,
             ':ownerId' => $ownerId,
+            ':priority' => $priority,
             ':createdAt' => $createdAt,
             ':updatedAt' => $updatedAt
         ]);
@@ -1003,6 +1008,15 @@ try {
                                 <option value="-1">⚪ Chờ Duyệt</option>
                             </select>
                         </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Độ ưu tiên (Priority)</label>
+                            <select name="priority" class="w-full px-4 py-2.5 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm outline-none appearance-none cursor-pointer">
+                                <option value="0">Bình thường</option>
+                                <option value="1">Nổi bật</option>
+                                <option value="2">VIP / Ưu tiên cao nhất</option>
+                            </select>
+                        </div>
                         
                         <div class="grid grid-cols-2 gap-4">
                             <div>
@@ -1300,6 +1314,15 @@ try {
                                 <option value="1">🟢 Hoạt động</option>
                                 <option value="0">🔴 Tạm ngưng</option>
                                 <option value="-1">⚪ Chờ Duyệt</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Độ ưu tiên (Priority)</label>
+                            <select name="priority" id="edit_priority" class="w-full px-4 py-2.5 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm outline-none appearance-none cursor-pointer">
+                                <option value="0">Bình thường</option>
+                                <option value="1">Nổi bật</option>
+                                <option value="2">VIP / Ưu tiên cao nhất</option>
                             </select>
                         </div>
                         
@@ -1901,6 +1924,7 @@ try {
             document.getElementById('edit_triggerRadiusMeters').value = poi.triggerradiusmeters || poi.triggerradius || '20';
             document.getElementById('edit_mapLink').value = poi.maplink || '';
             document.getElementById('edit_isActive').value = poi.isactive !== undefined ? poi.isactive : '1';
+            document.getElementById('edit_priority').value = poi.priority !== undefined ? poi.priority : '0';
             
             // Xử lý json ảnh trả ra field (nếu cần thiết)
             let imgs = poi.imageurls || '';

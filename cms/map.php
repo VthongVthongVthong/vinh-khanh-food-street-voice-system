@@ -769,7 +769,7 @@ try {
             }
         };
 
-        const ELEVEN_LABS_API_KEY = "sk_8db9fdb8efa165866e85ccc071c5ef803364bbd93324fe05";
+        const ELEVEN_LABS_API_KEY = "";
         
         function base64ToArrayBuffer(base64) {
             const binaryString = atob(base64);
