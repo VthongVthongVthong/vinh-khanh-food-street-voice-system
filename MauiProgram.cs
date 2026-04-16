@@ -51,6 +51,7 @@ namespace VinhKhanhstreetfoods
             builder.Services.AddSingleton<VinhKhanhstreetfoods.Services.AudioManager>();
             builder.Services.AddSingleton<MapService>();
             builder.Services.AddSingleton<UserService>();
+            builder.Services.AddSingleton<PresenceTrackerService>();
 
             // HTTP client for API calls
             builder.Services.AddSingleton(new HttpClient());

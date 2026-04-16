@@ -9,6 +9,13 @@ namespace VinhKhanhstreetfoods.Services
         private Location _lastLocation;
         private DateTime _lastUpdateTime;
 
+        private readonly PresenceTrackerService _presenceTracker;
+
+        public LocationService(PresenceTrackerService presenceTracker)
+        {
+            _presenceTracker = presenceTracker;
+        }
+
         public bool IsTracking => _isCheckingLocation;
 
         public event EventHandler<Location> LocationUpdated;
@@ -95,6 +102,9 @@ namespace VinhKhanhstreetfoods.Services
             {
                 _lastInvokeTime = DateTime.Now;
                 LocationUpdated?.Invoke(this, e.Location);
+                
+                // Track user presence every 5-10 seconds
+                _ = _presenceTracker.SendPresenceAsync(e.Location.Latitude, e.Location.Longitude);
             }
         }
 
