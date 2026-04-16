@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="VinhKhanhstreetfoods.Views.LoginPage"
+             BackgroundColor="#80000000"
+             Title="Đăng Nhập">
+    
+    <Grid>
+        <Border BackgroundColor="White"
+                StrokeShape="RoundRectangle 20"
+                Padding="20"
+                Margin="30"
+                HorizontalOptions="Center"
+                VerticalOptions="Center"
+                WidthRequest="320">
+            <VerticalStackLayout Spacing="15">
+                <Label Text="Đăng Nhập" Style="{StaticResource PageTitle}" HorizontalOptions="Center" TextColor="Black"/>
+
+                <Entry x:Name="UsernameEntry" Placeholder="Username hoặc Email" TextColor="Black" BackgroundColor="#EEEEEE" />
+                <Entry x:Name="PasswordEntry" Placeholder="Mật khẩu" IsPassword="True" TextColor="Black" BackgroundColor="#EEEEEE" />
+
+                <ActivityIndicator x:Name="LoadingIndicator" IsRunning="False" IsVisible="False" Color="{StaticResource BrandOrange}" />
+
+                <Label x:Name="ErrorLabel" TextColor="Red" IsVisible="False" HorizontalOptions="Center" />
+
+                <Button Text="Đăng nhập" Clicked="OnLoginClicked" BackgroundColor="{StaticResource BrandOrange}" TextColor="White" />
+                <Button Text="Đóng" Clicked="OnCloseClicked" BackgroundColor="Transparent" TextColor="Gray" />
+            </VerticalStackLayout>
+        </Border>
+    </Grid>
+</ContentPage>

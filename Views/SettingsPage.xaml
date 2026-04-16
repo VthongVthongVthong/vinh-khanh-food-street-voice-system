@@ -15,6 +15,31 @@
                        Style="{StaticResource PageTitle}"
                        HorizontalOptions="Center"/>
 
+                <!-- Profile Section -->
+                <Border Style="{StaticResource MainCardStyle}" Padding="20">
+                    <StackLayout Spacing="15" Orientation="Horizontal">
+                        <StackLayout VerticalOptions="Center" HorizontalOptions="FillAndExpand">
+                            <Label Text="{Binding LoggedInUserName}" FontAttributes="Bold" FontSize="18" TextColor="{StaticResource TextDark}" />
+                            <Label Text="{Binding LoggedInUserName, StringFormat='Tài khoản: {0}'}" FontSize="12" TextColor="{StaticResource TextMuted}" />
+                        </StackLayout>
+                        
+                        <Button Text="Đăng nhập" 
+                                Command="{Binding LoginCommand}" 
+                                IsVisible="{Binding IsLoggedIn, Converter={StaticResource InvertedBoolConverter}}"
+                                BackgroundColor="{StaticResource BrandOrange}" 
+                                TextColor="White" 
+                                CornerRadius="8" 
+                                VerticalOptions="Center" />
+                                
+                        <Button Text="Đăng xuất" 
+                                Command="{Binding LogoutCommand}" 
+                                IsVisible="{Binding IsLoggedIn}"
+                                BackgroundColor="Transparent" 
+                                TextColor="{StaticResource BrandOrange}" 
+                                VerticalOptions="Center" />
+                    </StackLayout>
+                </Border>
+
                 <!-- Language Section -->
                 <Border Style="{StaticResource MainCardStyle}" Padding="20">
                     <StackLayout Spacing="15">

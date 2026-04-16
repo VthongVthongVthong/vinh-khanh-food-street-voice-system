@@ -50,6 +50,7 @@ namespace VinhKhanhstreetfoods
             builder.Services.AddSingleton(Plugin.Maui.Audio.AudioManager.Current);
             builder.Services.AddSingleton<VinhKhanhstreetfoods.Services.AudioManager>();
             builder.Services.AddSingleton<MapService>();
+            builder.Services.AddSingleton<UserService>();
 
             // HTTP client for API calls
             builder.Services.AddSingleton(new HttpClient());
@@ -103,6 +104,7 @@ namespace VinhKhanhstreetfoods
             builder.Services.AddSingleton<POIDetailPage>();
             builder.Services.AddSingleton<MapPage>();
             builder.Services.AddSingleton<SettingsPage>();
+            builder.Services.AddTransient<LoginPage>();
             builder.Services.AddSingleton<Views.POIPopup>();
             // ? REMOVED: Old POIPopupOverlay (used navigation stack)
             // builder.Services.AddSingleton<Pages.POIPopupOverlay>();

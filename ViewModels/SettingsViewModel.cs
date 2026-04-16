@@ -32,6 +32,37 @@ namespace VinhKhanhstreetfoods.ViewModels
         private string _downloadDetails = string.Empty;
         private bool _isApplyingLanguage;
 
+        private string _loggedInUserName = "Guest";
+        public string LoggedInUserName
+        {
+            get => _loggedInUserName;
+            set
+            {
+                if (_loggedInUserName != value)
+                {
+                    _loggedInUserName = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        private bool _isLoggedIn;
+        public bool IsLoggedIn
+        {
+            get => _isLoggedIn;
+            set
+            {
+                if (_isLoggedIn != value)
+                {
+                    _isLoggedIn = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public ICommand LoginCommand { get; }
+        public ICommand LogoutCommand { get; }
+
         public event PropertyChangedEventHandler? PropertyChanged;
 
         public SettingsViewModel(SettingsService settingsService, ITranslationService translationService, IPOIRepository? poiRepository = null)
@@ -44,6 +75,15 @@ namespace VinhKhanhstreetfoods.ViewModels
 
             ResetSettingsCommand = new Command(ResetSettings);
             DownloadLanguagePackCommand = new Command(async () => await DownloadLanguagePackAsync(), () => !IsDownloadingLanguagePack);
+
+            LoginCommand = new Command(ExecuteLogin);
+            LogoutCommand = new Command(ExecuteLogout);
+
+            CheckLoginState();
+
+            MessagingCenter.Subscribe<Views.LoginPage>(this, "LoginSuccess", (sender) => {
+                CheckLoginState();
+            });
 
             LanguageOptions = new List<LanguageOption>
         {
@@ -440,6 +480,26 @@ namespace VinhKhanhstreetfoods.ViewModels
 IsApplyingLanguage = false;
 }
         }
+        private void CheckLoginState()
+        {
+            IsLoggedIn = Preferences.Get("IsLoggedIn", false);
+            LoggedInUserName = IsLoggedIn ? Preferences.Get("LoggedInUserName", "User") : "Guest";
+        }
+
+        private async void ExecuteLogin()
+        {
+            var userService = Application.Current.MainPage.Handler.MauiContext.Services.GetService<UserService>();
+            var loginPage = new Views.LoginPage(userService);
+            await Application.Current.MainPage.Navigation.PushModalAsync(loginPage);
+        }
+
+        private void ExecuteLogout()
+        {
+            Preferences.Remove("IsLoggedIn");
+            Preferences.Remove("LoggedInUserName");
+            CheckLoginState();
+        }
+
         protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
