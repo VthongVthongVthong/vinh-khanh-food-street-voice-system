@@ -119,14 +119,162 @@ if (!isset($_SESSION['user_id']) || strtoupper($_SESSION['role']) !== 'ADMIN') {
             $db = new SQLiteDB();
             $pdo = $db->getPDO();
             
+            // Xử lý ngày tuần được chọn để lọc
+            $selectedDateStr = isset($_GET['date']) ? $_GET['date'] : date('Y-m-d');
+            $selectedTime = strtotime($selectedDateStr);
+            $dayOfWeek = date('N', $selectedTime); // 1 = Monday, 7 = Sunday
+            $mondayTime = strtotime('-' . ($dayOfWeek - 1) . ' days', $selectedTime);
+            $mondayDate = date('Y-m-d', $mondayTime);
+            $prevWeek = date('Y-m-d', strtotime('-7 days', $mondayTime));
+            $nextWeek = date('Y-m-d', strtotime('+7 days', $mondayTime));
+            
+            // Lấy danh sách các ngày trong tuần đang xét
+            $weekDays = [];
+            $interactionData = [0, 0, 0, 0, 0, 0, 0];
+            $chartLabels = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+            for ($i = 0; $i < 7; $i++) {
+                $currentDay = date('Y-m-d', strtotime("+$i days", $mondayTime));
+                $weekDays[] = $currentDay;
+                $chartLabels[$i] .= " (" . date('d/m', strtotime("+$i days", $mondayTime)) . ")";
+            }
+
+            // Đếm tổng user
+            $userCount = 0;
+            try {
+                $stmt = $pdo->query("SELECT COUNT(id) FROM User");
+                $userCount = $stmt->fetchColumn();
+            } catch (Exception $e) {}
+
+            // Đếm tổng guest từ Firebase
+            $guestCount = 0;
+            try {
+                $firebaseGuestUrl = "https://vinhkhanh-68a4b-default-rtdb.asia-southeast1.firebasedatabase.app/GuestSession.json?shallow=true";
+                $chg = curl_init();
+                curl_setopt($chg, CURLOPT_URL, $firebaseGuestUrl);
+                curl_setopt($chg, CURLOPT_RETURNTRANSFER, 1);
+                curl_setopt($chg, CURLOPT_SSL_VERIFYPEER, false);
+                $respGuest = curl_exec($chg);
+                curl_close($chg);
+                
+                if ($respGuest && $respGuest !== 'null') {
+                    $guessDataObj = json_decode($respGuest, true);
+                    if (is_array($guessDataObj)) {
+                        $guestCount = count($guessDataObj);
+                    }
+                }
+            } catch (Exception $e) {}
+            $totalUserCount = $userCount + $guestCount;
+
+            // Đếm tổng lượt nghe và Top POI từ Firebase
+            $audioPlayCount = 0;
+            $topPlacesLabels = [];
+            $topPlacesData = [];
+
+            try {
+                // Ta cần lấy toàn bộ dữ liệu để đếm tần suất POI và gom nhóm tuần
+                $firebaseUrl = "https://vinhkhanh-68a4b-default-rtdb.asia-southeast1.firebasedatabase.app/AudioPlayLog.json";
+                $ch = curl_init();
+                curl_setopt($ch, CURLOPT_URL, $firebaseUrl);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                $response = curl_exec($ch);
+                curl_close($ch);
+                
+                if ($response && $response !== 'null') {
+                    $data = json_decode($response, true);
+                    if (is_array($data)) {
+                        $audioPlayCount = count($data);
+                        
+                        // Xử lý đếm lượt phát POI tổng
+                        $poiPlayCounts = [];
+                        foreach ($data as $key => $log) {
+                            if (is_array($log) && !empty($log['poiId'])) {
+                                $poiId = (int)$log['poiId'];
+                                $poiPlayCounts[$poiId] = ($poiPlayCounts[$poiId] ?? 0) + 1;
+                            }
+                            
+                            // Phân loại data theo tuần
+                            $timeStr = isset($log['playtime']) ? $log['playtime'] : (isset($log['timestamp']) ? $log['timestamp'] : null);
+                            if ($timeStr) {
+                                // Xử lý timestamp millis hoặc chuẩn ngày tháng
+                                $time = is_numeric($timeStr) ? ($timeStr > 10000000000 ? $timeStr/1000 : $timeStr) : strtotime($timeStr);
+                                $logDate = date('Y-m-d', (int)$time);
+                                $index = array_search($logDate, $weekDays);
+                                if ($index !== false) {
+                                    $interactionData[$index]++;
+                                }
+                            }
+                        }
+                        
+                        // Sắp xếp giảm dần và lấy top 4
+                        arsort($poiPlayCounts);
+                        $topPoiIds = array_slice($poiPlayCounts, 0, 4, true);
+                        
+                        if (!empty($topPoiIds)) {
+                            // Lấy tên POI từ database MySQL
+                            $idList = implode(',', array_keys($topPoiIds));
+                            $stmt = $pdo->query("SELECT id, name FROM POI WHERE id IN ($idList)");
+                            $poiNames = [];
+                            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                                $poiNames[$row['id']] = $row['name'];
+                            }
+                            
+                            foreach ($topPoiIds as $pId => $count) {
+                                // Tách chuỗi tên dài thành mảng nhỏ để tooltip biểu đồ đẹp hơn nếu cần
+                                // Ở đây đơn giản lấy tên hoặc ID nếu không tìm thấy
+                                $name = isset($poiNames[$pId]) ? $poiNames[$pId] : "POI $pId";
+                                $topPlacesLabels[] = explode(" ", $name, 2); // Tách 2 dòng cho khớp style chart
+                                $topPlacesData[] = $count;
+                            }
+                        }
+                    }
+                }
+            } catch (Exception $e) {}
+
+            // Thêm cả lượt tương tác từ VisitLog
+            try {
+                $firebaseVisitUrl = "https://vinhkhanh-68a4b-default-rtdb.asia-southeast1.firebasedatabase.app/VisitLog.json";
+                $chv = curl_init();
+                curl_setopt($chv, CURLOPT_URL, $firebaseVisitUrl);
+                curl_setopt($chv, CURLOPT_RETURNTRANSFER, 1);
+                curl_setopt($chv, CURLOPT_SSL_VERIFYPEER, false);
+                $responseVisit = curl_exec($chv);
+                curl_close($chv);
+                
+                if ($responseVisit && $responseVisit !== 'null') {
+                    $visitData = json_decode($responseVisit, true);
+                    if (is_array($visitData)) {
+                        foreach ($visitData as $key => $log) {
+                            $timeStr = isset($log['playtime']) ? $log['playtime'] : (isset($log['timestamp']) ? $log['timestamp'] : null);
+                            // Dùng fall-back nếu trường tên là visitTime hoặc time
+                            if (!$timeStr) $timeStr = isset($log['visitTime']) ? $log['visitTime'] : (isset($log['time']) ? $log['time'] : null);
+                            
+                            if ($timeStr) {
+                                $time = is_numeric($timeStr) ? ($timeStr > 10000000000 ? $timeStr/1000 : $timeStr) : strtotime($timeStr);
+                                $logDate = date('Y-m-d', (int)$time);
+                                $index = array_search($logDate, $weekDays);
+                                if ($index !== false) {
+                                    $interactionData[$index]++; // Cộng dồn số lượt vào interaction
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (Exception $e) {}
+            
             // Query thử số lượng POI
             $poiCount = 0;
             try {
-                $stmt = $pdo->query("SELECT COUNT(*) FROM POIs WHERE IsActive = 1");
+                $stmt = $pdo->query("SELECT COUNT(id) FROM POI");
                 $poiCount = $stmt->fetchColumn();
-            } catch (Exception $e) {
-                // Ignore if table doesn't exist yet
-            }
+            } catch (Exception $e) {}
+
+            // Đếm tổng Tour
+            $tourCount = 0;
+            try {
+                $stmt = $pdo->query("SELECT COUNT(id) FROM Tour");
+                $tourCount = $stmt->fetchColumn();
+            } catch (Exception $e) {}
             ?>
 
             <!-- Stats Grid -->
@@ -136,17 +284,19 @@ if (!isset($_SESSION['user_id']) || strtoupper($_SESSION['role']) !== 'ADMIN') {
                     <div class="flex justify-between items-start">
                         <div>
                             <p class="text-sm font-medium text-gray-500 mb-1">Tổng lượt người dùng</p>
-                            <h3 class="text-2xl font-bold text-gray-800">45.231</h3>
+                            <h3 class="text-2xl font-bold text-gray-800"><?php echo number_format($totalUserCount, 0, ',', '.'); ?></h3>
                         </div>
                         <div class="w-10 h-10 rounded-lg bg-green-50 text-green-600 flex items-center justify-center">
                             <i class="fas fa-users"></i>
                         </div>
                     </div>
-                    <div class="mt-4 flex items-center text-sm">
-                        <span class="text-green-500 font-medium flex items-center gap-1">
-                            <i class="fas fa-arrow-trend-up"></i> +12.5%
+                    <div class="mt-4 flex items-center justify-between text-sm">
+                        <span class="text-gray-500 flex items-center gap-1" title="Khách vãng lai">
+                           <i class="far fa-user text-gray-400"></i> <?php echo number_format($guestCount, 0, ',', '.'); ?>
                         </span>
-                        <span class="text-gray-400 ml-2">so với tuần trước</span>
+                        <span class="text-brand-500 flex items-center gap-1" title="Thành viên">
+                           <i class="fas fa-user-check text-brand-400"></i> <?php echo number_format($userCount, 0, ',', '.'); ?>
+                        </span>
                     </div>
                 </div>
 
@@ -155,7 +305,7 @@ if (!isset($_SESSION['user_id']) || strtoupper($_SESSION['role']) !== 'ADMIN') {
                     <div class="flex justify-between items-start">
                         <div>
                             <p class="text-sm font-medium text-gray-500 mb-1">Tổng lượt phát Audio</p>
-                            <h3 class="text-2xl font-bold text-gray-800">89.450</h3>
+                            <h3 class="text-2xl font-bold text-gray-800"><?php echo number_format($audioPlayCount, 0, ',', '.'); ?></h3>
                         </div>
                         <div class="w-10 h-10 rounded-lg bg-green-50 text-green-600 flex items-center justify-center">
                             <i class="fas fa-headphones"></i>
@@ -163,7 +313,7 @@ if (!isset($_SESSION['user_id']) || strtoupper($_SESSION['role']) !== 'ADMIN') {
                     </div>
                     <div class="mt-4 flex items-center text-sm">
                         <span class="text-green-500 font-medium flex items-center gap-1">
-                            <i class="fas fa-arrow-trend-up"></i> +8.2%
+                            <i class="fas fa-arrow-trend-up"></i> +0%
                         </span>
                         <span class="text-gray-400 ml-2">so với tuần trước</span>
                     </div>
@@ -174,7 +324,7 @@ if (!isset($_SESSION['user_id']) || strtoupper($_SESSION['role']) !== 'ADMIN') {
                     <div class="flex justify-between items-start">
                         <div>
                             <p class="text-sm font-medium text-gray-500 mb-1">Điểm POI Active</p>
-                            <h3 class="text-2xl font-bold text-gray-800"><?php echo $poiCount > 0 ? $poiCount : '20'; ?></h3>
+                            <h3 class="text-2xl font-bold text-gray-800"><?php echo number_format($poiCount, 0, ',', '.'); ?></h3>
                         </div>
                         <div class="w-10 h-10 rounded-lg bg-green-50 text-green-600 flex items-center justify-center">
                             <i class="fas fa-map-marker-alt"></i>
@@ -193,7 +343,7 @@ if (!isset($_SESSION['user_id']) || strtoupper($_SESSION['role']) !== 'ADMIN') {
                     <div class="flex justify-between items-start">
                         <div>
                             <p class="text-sm font-medium text-gray-500 mb-1">Tour đang hoạt động</p>
-                            <h3 class="text-2xl font-bold text-gray-800">1.234</h3>
+                            <h3 class="text-2xl font-bold text-gray-800"><?php echo number_format($tourCount, 0, ',', '.'); ?></h3>
                         </div>
                         <div class="w-10 h-10 rounded-lg bg-red-50 text-red-500 flex items-center justify-center">
                             <i class="fas fa-route"></i>
@@ -201,7 +351,7 @@ if (!isset($_SESSION['user_id']) || strtoupper($_SESSION['role']) !== 'ADMIN') {
                     </div>
                     <div class="mt-4 flex items-center text-sm">
                         <span class="text-red-500 font-medium flex items-center gap-1">
-                            <i class="fas fa-arrow-trend-down"></i> -2.4%
+                            <i class="fas fa-arrow-trend-down"></i> -0%
                         </span>
                         <span class="text-gray-400 ml-2">so với tuần trước</span>
                     </div>
@@ -212,7 +362,20 @@ if (!isset($_SESSION['user_id']) || strtoupper($_SESSION['role']) !== 'ADMIN') {
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
                 <!-- Line Chart -->
                 <div class="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
-                    <h3 class="text-lg font-bold text-gray-800 mb-4">Lượt tương tác theo tuần</h3>
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
+                        <h3 class="text-lg font-bold text-gray-800">Lượt tương tác theo tuần</h3>
+                        <div class="flex items-center gap-2 border border-gray-200 rounded-lg p-1">
+                            <a href="?date=<?php echo $prevWeek; ?>" class="px-2 py-1 text-gray-400 hover:text-gray-700 hover:bg-gray-50 rounded transition-colors" title="Tuần trước">
+                                <i class="fas fa-chevron-left"></i>
+                            </a>
+                            <input type="date" class="text-sm px-2 py-1 text-gray-600 focus:outline-none bg-transparent cursor-pointer font-medium" 
+                                value="<?php echo $selectedDateStr; ?>" 
+                                onchange="window.location.href='?date='+this.value">
+                            <a href="?date=<?php echo $nextWeek; ?>" class="px-2 py-1 text-gray-400 hover:text-gray-700 hover:bg-gray-50 rounded transition-colors" title="Tuần sau">
+                                <i class="fas fa-chevron-right"></i>
+                            </a>
+                        </div>
+                    </div>
                     <div class="h-64 sm:h-80 w-full relative">
                         <canvas id="interactionChart"></canvas>
                     </div>
@@ -232,19 +395,26 @@ if (!isset($_SESSION['user_id']) || strtoupper($_SESSION['role']) !== 'ADMIN') {
 
     <!-- Chart Configuration -->
     <script>
+        // Lấy dữ liệu chart từ PHP
+        const chartLabelsDate = <?php echo json_encode($chartLabels); ?>;
+        const chartInteractionData = <?php echo json_encode($interactionData); ?>;
+
         // Cấu hình chung cho Chart.js
         Chart.defaults.font.family = "'Inter', 'Segoe UI', sans-serif";
         Chart.defaults.color = '#9CA3AF';
         
         // Line Chart: Lượt tương tác
         const ctxInteraction = document.getElementById('interactionChart').getContext('2d');
+        const maxInteractionValue = Math.max(...chartInteractionData) || 10;
+        const interactionStepSize = Math.ceil(maxInteractionValue / 5) || 2;
+        
         new Chart(ctxInteraction, {
             type: 'line',
             data: {
-                labels: ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'],
+                labels: chartLabelsDate,
                 datasets: [{
                     label: 'Lượt tương tác',
-                    data: [4000, 3000, 4500, 5200, 8900, 12200, 11000],
+                    data: chartInteractionData,
                     borderColor: '#FF4D15',
                     backgroundColor: 'rgba(255, 77, 21, 0.1)',
                     borderWidth: 2,
@@ -271,8 +441,8 @@ if (!isset($_SESSION['user_id']) || strtoupper($_SESSION['role']) !== 'ADMIN') {
                 scales: {
                     y: {
                         beginAtZero: true,
-                        max: 15000,
-                        ticks: { stepSize: 3000 },
+                        max: maxInteractionValue + interactionStepSize, // Tự động co giãn theo giá trị cao nhất
+                        ticks: { stepSize: interactionStepSize },
                         grid: { borderDash: [4, 4], color: '#F3F4F6', drawBorder: false }
                     },
                     x: {
@@ -283,18 +453,23 @@ if (!isset($_SESSION['user_id']) || strtoupper($_SESSION['role']) !== 'ADMIN') {
         });
 
         // Bar Chart: Top địa điểm (Ngang)
+        const topPlacesLabelsRaw = <?php echo json_encode($topPlacesLabels); ?>;
+        const topPlacesDataRaw = <?php echo json_encode($topPlacesData); ?>;
+        
+        let labelsToUse = topPlacesLabelsRaw.length > 0 ? topPlacesLabelsRaw : [['Chưa có', 'dữ liệu']];
+        let dataToUse = topPlacesDataRaw.length > 0 ? topPlacesDataRaw : [0];
+        
+        // Tính max động để set biểu đồ
+        const maxDataValue = Math.max(...dataToUse) || 10;
+        const stepSizeToUse = Math.ceil(maxDataValue / 4);
+
         const ctxTopPlaces = document.getElementById('topPlacesChart').getContext('2d');
         new Chart(ctxTopPlaces, {
             type: 'bar',
             data: {
-                labels: [
-                    ['Ốc', 'Oanh'], 
-                    ['Chè Mâm', 'Vĩnh Khánh'], 
-                    ['Phá Lấu', 'Bò Cô Thảo'], 
-                    ['Bạch Tuộc', 'Nướng Dì Hai']
-                ],
+                labels: labelsToUse,
                 datasets: [{
-                    data: [14200, 11800, 9200, 3500],
+                    data: dataToUse,
                     backgroundColor: '#FF4D15',
                     borderRadius: 20,
                     barThickness: 24,
@@ -317,8 +492,8 @@ if (!isset($_SESSION['user_id']) || strtoupper($_SESSION['role']) !== 'ADMIN') {
                 scales: {
                     x: {
                         beginAtZero: true,
-                        max: 16000,
-                        ticks: { stepSize: 4000 },
+                        max: maxDataValue + stepSizeToUse, // Tự động co giãn theo giá trị data cao nhất
+                        ticks: { stepSize: stepSizeToUse },
                         grid: { display: false, drawBorder: false }
                     },
                     y: {

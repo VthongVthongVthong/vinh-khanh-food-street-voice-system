@@ -22,6 +22,19 @@ module.exports = async (req, res) => {
 
     const db = admin.database();
     
+    // Helpper để tạo ID tăng dần (1, 2, 3...)
+    const getNextId = async (nodePath) => {
+      const snapshot = await db.ref(nodePath).orderByKey().limitToLast(1).once('value');
+      if (snapshot.exists()) {
+        const lastKey = Object.keys(snapshot.val())[0];
+        const nextId = parseInt(lastKey, 10);
+        if (!isNaN(nextId)) {
+          return nextId + 1;
+        }
+      }
+      return 1;
+    };
+
     // 1. Handle GuestSession if no userId
     let guestSessionId = null;
     if (!userId && deviceId) {
@@ -35,9 +48,9 @@ module.exports = async (req, res) => {
           lastSeenAt: new Date().toISOString()
         });
       } else {
-        const newGuestRef = guestRef.push();
-        guestSessionId = newGuestRef.key;
-        await newGuestRef.set({
+        guestSessionId = await getNextId('GuestSession');
+        await db.ref(`GuestSession/${guestSessionId}`).set({
+          id: guestSessionId,
           deviceId: deviceId,
           platform: platform || 'unknown',
           appVersion: appVersion || '1.0',
@@ -49,8 +62,9 @@ module.exports = async (req, res) => {
     }
 
     // 2. Log Visit
-    const visitRef = db.ref('VisitLog').push();
-    await visitRef.set({
+    const visitId = await getNextId('VisitLog');
+    await db.ref(`VisitLog/${visitId}`).set({
+      id: visitId,
       visitTime: visitTime,
       exitTime: exitTime,
       durationStayed: durationStayed,

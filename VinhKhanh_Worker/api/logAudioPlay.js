@@ -22,6 +22,19 @@ module.exports = async (req, res) => {
 
     const db = admin.database();
     
+    // Helpper Ä‘á»ƒ táº¡o ID tÄƒng dáº§n (1, 2, 3...)
+    const getNextId = async (nodePath) => {
+      const snapshot = await db.ref(nodePath).orderByKey().limitToLast(1).once('value');
+      if (snapshot.exists()) {
+        const lastKey = Object.keys(snapshot.val())[0];
+        const nextId = parseInt(lastKey, 10);
+        if (!isNaN(nextId)) {
+          return nextId + 1;
+        }
+      }
+      return 1;
+    };
+
     // 1. Handle GuestSession if no userId
     let guestSessionId = null;
     if (!userId && deviceId) {
@@ -38,8 +51,9 @@ module.exports = async (req, res) => {
         });
       } else {
         // Create new guest
-        const newGuestRef = guestRef.push();
-        await newGuestRef.set({
+        guestSessionId = await getNextId('GuestSession');
+        await db.ref(`GuestSession/${guestSessionId}`).set({
+          id: guestSessionId,
           deviceId: deviceId,
           platform: platform || 'unknown',
           appVersion: appVersion || '1.0',
@@ -47,13 +61,13 @@ module.exports = async (req, res) => {
           lastSeenAt: new Date().toISOString(),
           convertedToUserId: null
         });
-        guestSessionId = newGuestRef.key;
       }
     }
 
     // 2. Log Audio Play
-    const audioRef = db.ref('AudioPlayLog').push();
-    await audioRef.set({
+    const audioPlayId = await getNextId('AudioPlayLog');
+    await db.ref(`AudioPlayLog/${audioPlayId}`).set({
+      id: audioPlayId,
       playTime: playTime,
       durationListened: durationListened,
       completionRate: completionRate,
