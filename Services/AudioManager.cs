@@ -51,10 +51,13 @@ namespace VinhKhanhstreetfoods.Services
         public event EventHandler<POI>? AudioStarted;
         public event EventHandler<POI>? AudioCompleted;
 
-        public AudioManager(TextToSpeechService ttsService, ITranslationService translationService, SettingsService settingsService, Plugin.Maui.Audio.IAudioManager systemAudioManager, ConfigurationService configurationService)
+        private readonly PresenceTrackerService _presenceTrackerService;
+
+        public AudioManager(TextToSpeechService ttsService, ITranslationService translationService, SettingsService settingsService, Plugin.Maui.Audio.IAudioManager systemAudioManager, ConfigurationService configurationService, PresenceTrackerService presenceTrackerService)
         {
             try
             {
+                _presenceTrackerService = presenceTrackerService;
                 ELEVEN_LABS_API_KEY = configurationService.GetValue("ElevenLabsApiKey", "");
                 _ttsService = ttsService;
                 _translationService = translationService;
@@ -255,6 +258,10 @@ namespace VinhKhanhstreetfoods.Services
                 AudioStarted?.Invoke(this, poi);
                 _playbackCts = new CancellationTokenSource();
 
+                var stopwatch = Stopwatch.StartNew();
+                DateTime playTime = DateTime.Now;
+                bool isCancelled = false;
+
                 try
                 {
                     // CONCURRENT CTS: Link with queue worker cancellation
@@ -333,14 +340,30 @@ namespace VinhKhanhstreetfoods.Services
                 }
                 catch (OperationCanceledException)
                 {
+                    isCancelled = true;
                     Debug.WriteLine("[AudioManager] Playback canceled (language changed or stopped)");
                 }
                 catch (Exception ex)
                 {
+                    isCancelled = true;
                     Debug.WriteLine($"[AudioManager] Playback error: {ex.Message}");
                 }
                 finally
                 {
+                    stopwatch.Stop();
+                    var durationListened = stopwatch.Elapsed.TotalSeconds;
+                    
+                    // Simple completion heuristic: If it wasn't cancelled, user listened to 100%.
+                    // If cancelled, we don't know the exact original length, so we estimate proportion 
+                    // based on duration played vs an average (say, 30s max), capped at 90%
+                    double completionRate = isCancelled ? Math.Min(90.0, (durationListened / 30.0) * 100.0) : 100.0;
+
+                    // Log audio play via PresenceTrackerService
+                    string playedLang;
+                    lock (_languageLock) { playedLang = _currentLanguage; }
+                    
+                    _ = _presenceTrackerService.LogAudioPlayAsync(poi.Id, playedLang, playTime, durationListened, completionRate);
+
                     AudioCompleted?.Invoke(this, poi);
                     _playbackCts?.Dispose();
                     _playbackCts = null;

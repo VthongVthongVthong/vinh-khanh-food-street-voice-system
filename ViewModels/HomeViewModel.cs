@@ -436,6 +436,7 @@ namespace VinhKhanhstreetfoods.ViewModels
         {
             await _locationService.StopListening();
             IsLocationServiceRunning = false;
+            _geofenceEngine.StopAllVisits();
             StatusMessage = LocalizationService.GetString("Home_Status_LocationStopped") ?? "Location tracking stopped";
         }
 

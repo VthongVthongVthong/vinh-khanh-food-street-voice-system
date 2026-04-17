@@ -6,7 +6,7 @@ if (!admin.apps.length) {
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
     // Link Realtime Database của bạn
-    databaseURL: "https://vinhkhanh-91041-default-rtdb.asia-southeast1.firebasedatabase.app/" 
+    databaseURL: "https://vinhkhanh-68a4b-default-rtdb.asia-southeast1.firebasedatabase.app/" 
   });
 }
 

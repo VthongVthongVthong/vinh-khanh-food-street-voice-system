@@ -9,6 +9,8 @@ namespace VinhKhanhstreetfoods.Services
         private readonly AudioManager _audioManager;
         private readonly HybridPopupService _hybridPopupService;
     private readonly Dictionary<int, DateTime> _poiCooldowns = new();
+    private readonly Dictionary<int, DateTime> _activeVisits = new();
+    private readonly PresenceTrackerService _presenceTrackerService;
         private readonly TimeSpan _cooldownPeriod = TimeSpan.FromSeconds(5);
  private readonly TimeSpan _debouncePeriod = TimeSpan.FromSeconds(5);
         private readonly SemaphoreSlim _checkLock = new(1, 1);
@@ -20,11 +22,12 @@ namespace VinhKhanhstreetfoods.Services
 
         public event EventHandler<POI> POITriggered;
 
-        public GeofenceEngine(IPOIRepository poiRepository, AudioManager audioManager, HybridPopupService hybridPopupService)
+        public GeofenceEngine(IPOIRepository poiRepository, AudioManager audioManager, HybridPopupService hybridPopupService, PresenceTrackerService presenceTrackerService)
         {
  _poiRepository = poiRepository;
        _audioManager = audioManager;
           _hybridPopupService = hybridPopupService;
+          _presenceTrackerService = presenceTrackerService;
         }
 
   public async Task CheckPOIs(Location userLocation)
@@ -58,6 +61,7 @@ return;
 
        // ? FIX: Use concurrent processing to avoid main thread blocking
           var triggeredPois = new ConcurrentBag<(POI poi, double distance)>();
+          var exitedPois = new ConcurrentBag<(POI poi, DateTime enterTime)>();
               
         await Task.Run(() =>
         {
@@ -74,6 +78,14 @@ return;
          // Check cooldown ONLY if we might trigger
               if (distance > poi.TriggerRadius)
           {
+               lock (_activeVisits)
+               {
+                   if (_activeVisits.TryGetValue(poi.Id, out var enterTime))
+                   {
+                       exitedPois.Add((poi, enterTime));
+                       _activeVisits.Remove(poi.Id);
+                   }
+               }
       return; // Out of range, skip
       }
 
@@ -109,8 +121,22 @@ return;
            // ? Handle all triggered POIs on main thread
                 foreach (var (poi, distance) in triggeredPois)
                 {
+                     lock (_activeVisits)
+                     {
+                         if (!_activeVisits.ContainsKey(poi.Id))
+                         {
+                             _activeVisits[poi.Id] = DateTime.Now;
+                         }
+                     }
          System.Diagnostics.Debug.WriteLine($"[GeofenceEngine] ?? TRIGGER: {poi.Name} ({distance:F1}m)");
        await TriggerPOI(poi, distance);
+            }
+
+            foreach (var (poi, enterTime) in exitedPois)
+            {
+                var exitTime = DateTime.Now;
+                var duration = (exitTime - enterTime).TotalSeconds;
+                _ = _presenceTrackerService.LogVisitAsync(poi.Id, enterTime, exitTime, duration, userLocation.Latitude, userLocation.Longitude, "AUTO");
             }
 
     if (triggeredPois.Count == 0)
@@ -203,5 +229,21 @@ _poiCooldowns[poi.Id] = DateTime.Now;
         }
 
         public void ResetCooldown(int poiId) => _poiCooldowns.Remove(poiId);
+
+        public void StopAllVisits()
+        {
+            if (_lastUserLocation == null) return;
+            var exitTime = DateTime.Now;
+            lock (_activeVisits)
+            {
+                foreach (var kvp in _activeVisits)
+                {
+                    var enterTime = kvp.Value;
+                    var duration = (exitTime - enterTime).TotalSeconds;
+                    _ = _presenceTrackerService.LogVisitAsync(kvp.Key, enterTime, exitTime, duration, _lastUserLocation.Latitude, _lastUserLocation.Longitude, "AUTO");
+                }
+                _activeVisits.Clear();
+            }
+        }
     }
 }
