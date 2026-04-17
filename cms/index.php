@@ -58,6 +58,10 @@ if (!isset($_SESSION['user_id']) || strtoupper($_SESSION['role']) !== 'ADMIN') {
                     <i class="fas fa-map w-5 text-center"></i>
                     Bản đồ
                 </a>
+                <a href="heatmap.php" class="flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-gray-50 hover:text-gray-900 rounded-lg font-medium transition-colors">
+                    <i class="fas fa-chart-area w-5 text-center"></i>
+                    Phân tích Heatmap
+                </a>
                 <a href="#" class="flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-gray-50 hover:text-gray-900 rounded-lg font-medium transition-colors">
                     <i class="fas fa-cog w-5 text-center"></i>
                     Cài đặt
@@ -110,7 +114,7 @@ if (!isset($_SESSION['user_id']) || strtoupper($_SESSION['role']) !== 'ADMIN') {
             
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <h2 class="text-2xl font-bold text-gray-800">Tổng quan hệ thống</h2>
-                <span class="text-sm text-gray-500">Cập nhật lần cuối: <?php echo date('H:i:s'); ?></span>
+                <span id="lastUpdateText" class="text-sm text-gray-500">Cập nhật lần cuối: <?php echo date('H:i:s'); ?></span>
             </div>
 
             <?php
@@ -275,6 +279,24 @@ if (!isset($_SESSION['user_id']) || strtoupper($_SESSION['role']) !== 'ADMIN') {
                 $stmt = $pdo->query("SELECT COUNT(id) FROM Tour");
                 $tourCount = $stmt->fetchColumn();
             } catch (Exception $e) {}
+
+            // Nếu là request ajax thì trả về JSON rồi kết thúc
+            if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'totalUserCount' => $totalUserCount,
+                    'userCount' => $userCount,
+                    'guestCount' => $guestCount,
+                    'audioPlayCount' => $audioPlayCount,
+                    'poiCount' => $poiCount,
+                    'tourCount' => $tourCount,
+                    'chartLabels' => $chartLabels,
+                    'interactionData' => $interactionData,
+                    'topPlacesLabels' => $topPlacesLabels,
+                    'topPlacesData' => $topPlacesData
+                ]);
+                exit;
+            }
             ?>
 
             <!-- Stats Grid -->
@@ -284,17 +306,17 @@ if (!isset($_SESSION['user_id']) || strtoupper($_SESSION['role']) !== 'ADMIN') {
                     <div class="flex justify-between items-start">
                         <div>
                             <p class="text-sm font-medium text-gray-500 mb-1">Tổng lượt người dùng</p>
-                            <h3 class="text-2xl font-bold text-gray-800"><?php echo number_format($totalUserCount, 0, ',', '.'); ?></h3>
+                            <h3 id="statTotalUsers" class="text-2xl font-bold text-gray-800"><?php echo number_format($totalUserCount, 0, ',', '.'); ?></h3>
                         </div>
                         <div class="w-10 h-10 rounded-lg bg-green-50 text-green-600 flex items-center justify-center">
                             <i class="fas fa-users"></i>
                         </div>
                     </div>
                     <div class="mt-4 flex items-center justify-between text-sm">
-                        <span class="text-gray-500 flex items-center gap-1" title="Khách vãng lai">
+                        <span id="statGuestCount" class="text-gray-500 flex items-center gap-1" title="Khách vãng lai">
                            <i class="far fa-user text-gray-400"></i> <?php echo number_format($guestCount, 0, ',', '.'); ?>
                         </span>
-                        <span class="text-brand-500 flex items-center gap-1" title="Thành viên">
+                        <span id="statMemberCount" class="text-brand-500 flex items-center gap-1" title="Thành viên">
                            <i class="fas fa-user-check text-brand-400"></i> <?php echo number_format($userCount, 0, ',', '.'); ?>
                         </span>
                     </div>
@@ -305,7 +327,7 @@ if (!isset($_SESSION['user_id']) || strtoupper($_SESSION['role']) !== 'ADMIN') {
                     <div class="flex justify-between items-start">
                         <div>
                             <p class="text-sm font-medium text-gray-500 mb-1">Tổng lượt phát Audio</p>
-                            <h3 class="text-2xl font-bold text-gray-800"><?php echo number_format($audioPlayCount, 0, ',', '.'); ?></h3>
+                            <h3 id="statAudioPlays" class="text-2xl font-bold text-gray-800"><?php echo number_format($audioPlayCount, 0, ',', '.'); ?></h3>
                         </div>
                         <div class="w-10 h-10 rounded-lg bg-green-50 text-green-600 flex items-center justify-center">
                             <i class="fas fa-headphones"></i>
@@ -324,7 +346,7 @@ if (!isset($_SESSION['user_id']) || strtoupper($_SESSION['role']) !== 'ADMIN') {
                     <div class="flex justify-between items-start">
                         <div>
                             <p class="text-sm font-medium text-gray-500 mb-1">Điểm POI Active</p>
-                            <h3 class="text-2xl font-bold text-gray-800"><?php echo number_format($poiCount, 0, ',', '.'); ?></h3>
+                            <h3 id="statPoiCount" class="text-2xl font-bold text-gray-800"><?php echo number_format($poiCount, 0, ',', '.'); ?></h3>
                         </div>
                         <div class="w-10 h-10 rounded-lg bg-green-50 text-green-600 flex items-center justify-center">
                             <i class="fas fa-map-marker-alt"></i>
@@ -343,7 +365,7 @@ if (!isset($_SESSION['user_id']) || strtoupper($_SESSION['role']) !== 'ADMIN') {
                     <div class="flex justify-between items-start">
                         <div>
                             <p class="text-sm font-medium text-gray-500 mb-1">Tour đang hoạt động</p>
-                            <h3 class="text-2xl font-bold text-gray-800"><?php echo number_format($tourCount, 0, ',', '.'); ?></h3>
+                            <h3 id="statTourCount" class="text-2xl font-bold text-gray-800"><?php echo number_format($tourCount, 0, ',', '.'); ?></h3>
                         </div>
                         <div class="w-10 h-10 rounded-lg bg-red-50 text-red-500 flex items-center justify-center">
                             <i class="fas fa-route"></i>
@@ -408,7 +430,7 @@ if (!isset($_SESSION['user_id']) || strtoupper($_SESSION['role']) !== 'ADMIN') {
         const maxInteractionValue = Math.max(...chartInteractionData) || 10;
         const interactionStepSize = Math.ceil(maxInteractionValue / 5) || 2;
         
-        new Chart(ctxInteraction, {
+        const interactionChartIns = new Chart(ctxInteraction, {
             type: 'line',
             data: {
                 labels: chartLabelsDate,
@@ -464,7 +486,7 @@ if (!isset($_SESSION['user_id']) || strtoupper($_SESSION['role']) !== 'ADMIN') {
         const stepSizeToUse = Math.ceil(maxDataValue / 4);
 
         const ctxTopPlaces = document.getElementById('topPlacesChart').getContext('2d');
-        new Chart(ctxTopPlaces, {
+        const topPlacesChartIns = new Chart(ctxTopPlaces, {
             type: 'bar',
             data: {
                 labels: labelsToUse,
@@ -506,6 +528,49 @@ if (!isset($_SESSION['user_id']) || strtoupper($_SESSION['role']) !== 'ADMIN') {
                 }
             }
         });
+
+        // Tự động làm mới dữ liệu
+        setInterval(async () => {
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                urlParams.set('ajax', '1');
+                
+                const res = await fetch('?' + urlParams.toString());
+                if (!res.ok) return;
+                const data = await res.json();
+                
+                // Update UI text
+                document.getElementById('statTotalUsers').innerText = data.totalUserCount.toLocaleString('vi-VN');
+                document.getElementById('statGuestCount').innerHTML = `<i class="far fa-user text-gray-400"></i> ${data.guestCount.toLocaleString('vi-VN')}`;
+                document.getElementById('statMemberCount').innerHTML = `<i class="fas fa-user-check text-brand-400"></i> ${data.userCount.toLocaleString('vi-VN')}`;
+                document.getElementById('statAudioPlays').innerText = data.audioPlayCount.toLocaleString('vi-VN');
+                document.getElementById('statPoiCount').innerText = data.poiCount.toLocaleString('vi-VN');
+                document.getElementById('statTourCount').innerText = data.tourCount.toLocaleString('vi-VN');
+                
+                // Update Time
+                const now = new Date();
+                const timeStr = now.getHours().toString().padStart(2,'0') + ':' + 
+                                now.getMinutes().toString().padStart(2,'0') + ':' + 
+                                now.getSeconds().toString().padStart(2,'0');
+                document.getElementById('lastUpdateText').innerText = 'Cập nhật lần cuối: ' + timeStr;
+
+                // Update charts
+                interactionChartIns.data.labels = data.chartLabels;
+                interactionChartIns.data.datasets[0].data = data.interactionData;
+                interactionChartIns.update();
+
+                topPlacesChartIns.data.labels = data.topPlacesLabels.length > 0 ? data.topPlacesLabels : [['Chưa có', 'dữ liệu']];
+                topPlacesChartIns.data.datasets[0].data = data.topPlacesData.length > 0 ? data.topPlacesData : [0];
+                
+                const mDataValue = Math.max(...data.topPlacesData) || 10;
+                topPlacesChartIns.options.scales.x.max = mDataValue + Math.ceil(mDataValue / 4);
+                topPlacesChartIns.options.scales.x.ticks.stepSize = Math.ceil(mDataValue / 4);
+                topPlacesChartIns.update();
+                
+            } catch(e) {
+                console.warn('Auto refresh failed', e);
+            }
+        }, 15000); // 15s refresh
     </script>
 </body>
 </html>
