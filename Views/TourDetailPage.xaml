@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+  xmlns:converters="clr-namespace:VinhKhanhstreetfoods.Converters;assembly=VinhKhanhstreetfoods"
+     xmlns:local="clr-namespace:VinhKhanhstreetfoods.Models;assembly=VinhKhanhstreetfoods"
+xmlns:components="clr-namespace:VinhKhanhstreetfoods.Views.Components"
+  x:Class="VinhKhanhstreetfoods.Views.TourDetailPage"
+      Shell.NavBarIsVisible="False"
+     BackgroundColor="{StaticResource BgPage}"
+   Padding="0">
+
+    <ContentPage.Resources>
+  <ResourceDictionary>
+     <converters:InvertedBoolConverter x:Key="InvertedBoolConverter" />
+   <converters:StringNotNullOrEmptyConverter x:Key="StringNotNullOrEmptyConverter" />
+      <converters:IsNullOrEmptyConverter x:Key="IsNullOrEmptyConverter" />
+     <converters:IsNotNullOrEmptyConverter x:Key="IsNotNullOrEmptyConverter" />
+    </ResourceDictionary>
+  </ContentPage.Resources>
+
+    <Grid RowDefinitions="*" ColumnDefinitions="*">
+
+ <!-- Main Content -->
+      <Grid Grid.Row="0" Grid.Column="0" RowDefinitions="Auto,*,Auto" RowSpacing="0">
+  
+     <!-- Header -->
+    <Grid Grid.Row="0" BackgroundColor="{StaticResource BgPage}" Padding="20,20,20,10" ColumnDefinitions="Auto,*" ColumnSpacing="12">
+  <Border Style="{StaticResource ImageThumbnailStyle}" WidthRequest="44" HeightRequest="44" BackgroundColor="White" Shadow="{StaticResource SoftShadow}" VerticalOptions="Center">
+     <Border.GestureRecognizers>
+    <TapGestureRecognizer Command="{Binding GoBackCommand}" />
+    </Border.GestureRecognizers>
+      <Image Source="back_svgrepo_com.png" WidthRequest="20" HeightRequest="20" HorizontalOptions="Center" VerticalOptions="Center" />
+    </Border>
+      <StackLayout Grid.Column="1" Spacing="4" VerticalOptions="Center">
+     <Label Text="Chi Tiet Lo Trinh" Style="{StaticResource PageTitle}" TextColor="{StaticResource TextDark}" />
+    <Label Text="{Binding Tour.Description}" FontSize="13" TextColor="{StaticResource TextMuted}" LineBreakMode="TailTruncation" MaxLines="1" />
+ </StackLayout>
+        </Grid>
+
+     <!-- Loading Indicator -->
+   <ActivityIndicator Grid.Row="1"
+IsRunning="{Binding IsLoading}"
+    IsVisible="{Binding IsLoading}"
+  Color="{StaticResource BrandOrange}"
+   Scale="1.2"
+VerticalOptions="Center"
+      HorizontalOptions="Center" />
+
+   <!-- Status Message -->
+        <Label Grid.Row="1"
+Text="{Binding StatusMessage}"
+   IsVisible="{Binding IsLoading, Converter={StaticResource InvertedBoolConverter}}"
+  FontSize="14"
+        TextColor="{StaticResource TextMuted}"
+    HorizontalTextAlignment="Center"
+    VerticalOptions="Center"
+     Padding="20" />
+
+      <!-- POIs List -->
+   <CollectionView Grid.Row="1"
+      ItemsSource="{Binding TourPois}"
+       SelectionMode="Single"
+  SelectionChangedCommand="{Binding SelectPoiCommand}"
+    SelectionChangedCommandParameter="{Binding SelectedItem, Source={RelativeSource Self}}"
+       IsVisible="{Binding TourPois, Converter={StaticResource IsNotNullOrEmptyConverter}}">
+     <CollectionView.ItemsLayout>
+      <LinearItemsLayout Orientation="Vertical" ItemSpacing="16" />
+ </CollectionView.ItemsLayout>
+
+ <CollectionView.ItemTemplate>
+     <DataTemplate x:DataType="local:POI">
+  <Border Style="{StaticResource MainCardStyle}" Margin="20,0,20,0" Padding="12">
+      <Grid ColumnDefinitions="80,*,Auto" ColumnSpacing="12" RowDefinitions="Auto,Auto">
+   
+    <!-- POI Avatar Image -->
+      <Border Grid.Column="0" Grid.Row="0" Grid.RowSpan="2"
+   Style="{StaticResource ImageThumbnailStyle}"
+     WidthRequest="80" HeightRequest="80"
+   BackgroundColor="{StaticResource BgPage}"
+      IsVisible="{Binding AvatarImageUrl, Converter={StaticResource StringNotNullOrEmptyConverter}}">
+   <Image Source="{Binding AvatarImageUrl}" Aspect="AspectFill" />
+   </Border>
+      <BoxView Grid.Column="0" Grid.Row="0" Grid.RowSpan="2"
+  WidthRequest="80" HeightRequest="80"
+   Color="{StaticResource BgPage}"
+        CornerRadius="12"
+     IsVisible="{Binding AvatarImageUrl, Converter={StaticResource IsNullOrEmptyConverter}}" />
+
+   <!-- POI Name and Address -->
+ <StackLayout Grid.Column="1" Grid.Row="0" Spacing="4">
+    <Label Text="{Binding Name}" Style="{StaticResource CardTitle}" TextColor="{StaticResource TextDark}" />
+  </StackLayout>
+
+   <Label Grid.Column="1" Grid.Row="1" Text="{Binding Address}" Style="{StaticResource MutedText}" FontSize="12" LineBreakMode="TailTruncation" />
+ 
+  <!-- Chevron -->
+   <Label Grid.Column="2" Grid.Row="0" Grid.RowSpan="2" Text=">" FontSize="18" TextColor="{StaticResource BrandOrange}" 
+     VerticalOptions="Center" FontAttributes="Bold" />
+      </Grid>
+    </Border>
+   </DataTemplate>
+   </CollectionView.ItemTemplate>
+
+<!-- Empty State -->
+   <CollectionView.EmptyViewTemplate>
+   <DataTemplate>
+ <ContentView Padding="20" HorizontalOptions="Center" VerticalOptions="Center">
+<StackLayout Spacing="12">
+   <Label Text="No POIs" FontSize="40" HorizontalOptions="Center" FontAttributes="Bold"/>
+     <Label Text="Khong co diem dung" Style="{StaticResource CardTitle}" TextColor="{StaticResource TextMuted}" HorizontalOptions="Center" />
+  <Label Text="Lo trinh nay chua co dia diem" Style="{StaticResource MutedText}" HorizontalOptions="Center" />
+  </StackLayout>
+     </ContentView>
+   </DataTemplate>
+    </CollectionView.EmptyViewTemplate>
+
+   <!-- Footer spacing -->
+     <CollectionView.Footer>
+     <ContentView HeightRequest="20" />
+</CollectionView.Footer>
+  </CollectionView>
+
+      <!-- Start Tour Button -->
+        <Border Grid.Row="2" Margin="16,12,16,24" Padding="0"
+      Style="{StaticResource PrimaryButtonStyle}"
+HeightRequest="50">
+       <Border.GestureRecognizers>
+      <TapGestureRecognizer Command="{Binding StartTourCommand}" />
+    </Border.GestureRecognizers>
+ <HorizontalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="10">
+     <Image Source="play_1003_svgrepo_com.png" WidthRequest="20" HeightRequest="20" />
+   <Label Text="Bắt đầu hành trình" TextColor="White" FontSize="15" FontAttributes="Bold" />
+  </HorizontalStackLayout>
+ </Border>
+
+    </Grid>
+    
+    <!-- Now Playing Bar overlay -->
+    <components:NowPlayingBar Grid.Row="0" Grid.Column="0" VerticalOptions="End" Margin="0,0,0,90" />
+
+    </Grid>
+</ContentPage>

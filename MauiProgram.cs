@@ -41,6 +41,7 @@ namespace VinhKhanhstreetfoods
             builder.Services.AddSingleton<GeofenceEngine>();
             builder.Services.AddSingleton<Services.PopupService>(_ => Services.PopupService.Instance);
             builder.Services.AddSingleton<HybridPopupService>(_ => HybridPopupService.Instance);
+            builder.Services.AddSingleton<POICacheService>(_ => POICacheService.Instance);
             builder.Services.AddSingleton<POIRepository>();
             builder.Services.AddSingleton<IPOIRepository>(sp => sp.GetRequiredService<POIRepository>());
             builder.Services.AddSingleton<ITourRepository, TourRepository>();
@@ -52,6 +53,7 @@ namespace VinhKhanhstreetfoods
             builder.Services.AddSingleton<MapService>();
             builder.Services.AddSingleton<UserService>();
             builder.Services.AddSingleton<PresenceTrackerService>();
+            builder.Services.AddSingleton<POICacheService>();
 
             // HTTP client for API calls
             builder.Services.AddSingleton(new HttpClient());
@@ -99,6 +101,18 @@ namespace VinhKhanhstreetfoods
                 return new SettingsViewModel(settingsService, translationService, poiRepository);
             });
 
+            // Tour ViewModels
+            builder.Services.AddSingleton<TourListViewModel>();
+            builder.Services.AddSingleton<TourDetailViewModel>(sp =>
+            {
+                var tourRepository = sp.GetRequiredService<ITourRepository>();
+                var poiRepository = sp.GetRequiredService<IPOIRepository>();
+                var localizationManager = sp.GetRequiredService<LocalizationResourceManager>();
+                var settingsService = sp.GetRequiredService<SettingsService>();
+                var audioManager = sp.GetRequiredService<AudioManager>();
+                return new TourDetailViewModel(tourRepository, poiRepository, localizationManager, settingsService, audioManager);
+            });
+
             // Register Views
             builder.Services.AddSingleton<HomePage>();
             builder.Services.AddTransient<CameraPage>();
@@ -107,12 +121,13 @@ namespace VinhKhanhstreetfoods
             builder.Services.AddSingleton<SettingsPage>();
             builder.Services.AddTransient<LoginPage>();
             builder.Services.AddSingleton<Views.POIPopup>();
-            // ? REMOVED: Old POIPopupOverlay (used navigation stack)
-            // builder.Services.AddSingleton<Pages.POIPopupOverlay>();
-       
-       // ? ONLY: New HybridPOIPopupOverlay (lightweight overlay view)
-         builder.Services.AddSingleton<Views.HybridPOIPopup>();
-builder.Services.AddSingleton<Pages.HybridPOIPopupOverlay>();
+            // ? ONLY: New HybridPOIPopupOverlay (lightweight overlay view)
+            builder.Services.AddSingleton<Views.HybridPOIPopup>();
+            builder.Services.AddSingleton<Pages.HybridPOIPopupOverlay>();
+
+            // Tour Pages
+            builder.Services.AddSingleton<TourListPage>();
+            builder.Services.AddSingleton<TourDetailPage>();
 
             // Register Shell
             builder.Services.AddSingleton<AppShell>();

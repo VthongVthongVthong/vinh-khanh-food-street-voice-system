@@ -14,6 +14,7 @@ namespace VinhKhanhstreetfoods.ViewModels
         private readonly GeofenceEngine _geofenceEngine;
         private readonly IPOIRepository _poiRepository;
         private readonly AudioManager _audioManager;
+        private readonly POICacheService _poiCache;
 
         private readonly List<POI> _allPOIs = new();
         private ObservableCollection<POI> _nearbyPOIs;
@@ -40,6 +41,7 @@ namespace VinhKhanhstreetfoods.ViewModels
             _geofenceEngine = geofenceEngine ?? throw new ArgumentNullException(nameof(geofenceEngine));
             _poiRepository = poiRepository ?? throw new ArgumentNullException(nameof(poiRepository));
             _audioManager = audioManager ?? throw new ArgumentNullException(nameof(audioManager));
+            _poiCache = POICacheService.Instance;
 
             NearbyPOIs = new ObservableCollection<POI>();
             StatusMessage = LocalizationService.GetString("Home_Status_Ready") ?? "App ready. Press START to track location.";
@@ -186,6 +188,7 @@ namespace VinhKhanhstreetfoods.ViewModels
                 {
                     _allPOIs.Clear();
                     _allPOIs.AddRange(allPOIs);
+                    _poiCache.UpdateCache(allPOIs);
                     ApplyFilter();
                     StatusMessage = LocalizationService.GetString("Home_Status_Loaded")?.Replace("{0}", allPOIs.Count.ToString())
                         ?? $"Loaded {allPOIs.Count} restaurants. Press START to begin.";
@@ -251,7 +254,7 @@ namespace VinhKhanhstreetfoods.ViewModels
                 var updatedCount = await _poiRepository.SyncPOIsFromAdminAsync(force: true);
                 var refreshed = await _poiRepository.GetActivePOIsAsync();
 
-                await MainThread.InvokeOnMainThreadAsync(() => { if (updatedCount > 0) { _allPOIs.Clear(); _allPOIs.AddRange(refreshed); ApplyFilter(); } StatusMessage = updatedCount > 0 ? LocalizationService.GetString("Home_Status_Synced")?.Replace("{0}", updatedCount.ToString()) ?? $"Updated {updatedCount} locations." : LocalizationService.GetString("Home_Status_NoNew") ?? "No new data."; });
+                await MainThread.InvokeOnMainThreadAsync(() => { if (updatedCount > 0) { _allPOIs.Clear(); _allPOIs.AddRange(refreshed); _poiCache.UpdateCache(refreshed); ApplyFilter(); } StatusMessage = updatedCount > 0 ? LocalizationService.GetString("Home_Status_Synced")?.Replace("{0}", updatedCount.ToString()) ?? $"Updated {updatedCount} locations." : LocalizationService.GetString("Home_Status_NoNew") ?? "No new data."; });
             }
             catch (Exception ex)
             {
@@ -279,7 +282,7 @@ namespace VinhKhanhstreetfoods.ViewModels
                 var updatedCount = await _poiRepository.SyncPOIsFromAdminAsync(force: true);
                 var refreshed = await _poiRepository.GetActivePOIsAsync();
 
-                await MainThread.InvokeOnMainThreadAsync(() => { if (updatedCount > 0) { _allPOIs.Clear(); _allPOIs.AddRange(refreshed); ApplyFilter(); } StatusMessage = updatedCount > 0 ? LocalizationService.GetString("Home_Status_Synced")?.Replace("{0}", updatedCount.ToString()) ?? $"Updated {updatedCount} locations." : LocalizationService.GetString("Home_Status_NoNew") ?? "No new data."; });
+                await MainThread.InvokeOnMainThreadAsync(() => { if (updatedCount > 0) { _allPOIs.Clear(); _allPOIs.AddRange(refreshed); _poiCache.UpdateCache(refreshed); ApplyFilter(); } StatusMessage = updatedCount > 0 ? LocalizationService.GetString("Home_Status_Synced")?.Replace("{0}", updatedCount.ToString()) ?? $"Updated {updatedCount} locations." : LocalizationService.GetString("Home_Status_NoNew") ?? "No new data."; });
 
                 // Refresh UI components if needed
                 await RefreshUIComponentsAsync();

@@ -5,31 +5,16 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:local="clr-namespace:VinhKhanhstreetfoods.Views"
     FlyoutBehavior="Disabled"
-    BackgroundColor="White"
-    TitleColor="#1a1a1a"
-    ForegroundColor="#000000"
-    NavBarHasShadow="True">
+    BackgroundColor="White">
 
     <TabBar>
-     <ShellContent
-     x:Name="HomeTab"
-  Title="Home"
-          Icon="home"
-         ContentTemplate="{DataTemplate local:HomePage}"
-          Route="home" />
-
-        <ShellContent
-            x:Name="MapTab"
-            Title="Map"
-            Icon="map"
- ContentTemplate="{DataTemplate local:MapPage}"
-          Route="map" />
-
-        <ShellContent
-      x:Name="SettingsTab"
-  Title="Settings"
-     Icon="settings"
-         ContentTemplate="{DataTemplate local:SettingsPage}"
-       Route="settings" />
+        <ShellContent Title="Home" Icon="home.png" Route="home" ContentTemplate="{DataTemplate local:HomePage}"/>
+        <ShellContent Title="Tours" Icon="route.png" Route="tour" ContentTemplate="{DataTemplate local:TourListPage}"/>
+     <ShellContent Title="Map" Icon="map.png" Route="map" ContentTemplate="{DataTemplate local:MapPage}"/>
+ <ShellContent Title="Settings" Icon="settings.png" Route="settings" ContentTemplate="{DataTemplate local:SettingsPage}"/>
     </TabBar>
+
+    <ShellContent Route="tourdetail" ContentTemplate="{DataTemplate local:TourDetailPage}" />
+    <ShellContent Route="detail" ContentTemplate="{DataTemplate local:POIDetailPage}" />
+    <ShellContent Route="camera" ContentTemplate="{DataTemplate local:CameraPage}" />
 </Shell>
