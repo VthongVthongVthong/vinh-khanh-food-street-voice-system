@@ -1529,7 +1529,7 @@ try {
         let currentAudioMap = null;
 
         // Cấu hình API Keys
-        const ELEVEN_LABS_API_KEY = "";
+        const ELEVEN_LABS_API_KEY = "sk_8db9fdb8efa165866e85ccc071c5ef803364bbd93324fe05";
         
         async function playTTS(lang, text) {
             if (!text) {

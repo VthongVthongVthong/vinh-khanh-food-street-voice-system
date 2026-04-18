@@ -45,23 +45,20 @@ private ObservableCollection<POI>? _currentPoiCollection;
         ApplyLocalizedText();
         _ = ApplyMapLocalizedJsAsync();
 
-  if (BindingContext is MapViewModel vm)
+        if (BindingContext is MapViewModel vm)
         {
             _ = vm.EnsurePOIsLoadedAsync();
 
      vm.PropertyChanged += ViewModel_PropertyChanged;
             SubscribeToPoiCollection(vm.AllPOIs);
             MapWebView.Navigating += MapWebView_Navigating;
+            MapWebView.Navigated += MapWebView_Navigated;
 
-   Dispatcher.DispatchDelayed(TimeSpan.FromMilliseconds(600), async () =>
-          {
-         if (vm.UserLatitude != 0 && vm.UserLongitude != 0)
-                    UpdateMapLocation(vm.UserLatitude, vm.UserLongitude);
-
-       UpdateTrackingState(vm.IsTracking);
-      await RenderPOIsAsync(vm.AllPOIs);
-    await TryFocusPendingPoiAsync();
-});
+            if (vm.UserLatitude != 0 && vm.UserLongitude != 0)
+            {
+                UpdateMapLocation(vm.UserLatitude, vm.UserLongitude);
+            }
+            UpdateTrackingState(vm.IsTracking);
         }
     }
 
@@ -99,6 +96,22 @@ private ObservableCollection<POI>? _currentPoiCollection;
         }
      UnsubscribePoiCollection();
         MapWebView.Navigating -= MapWebView_Navigating;
+        MapWebView.Navigated -= MapWebView_Navigated;
+    }
+
+    private async void MapWebView_Navigated(object? sender, WebNavigatedEventArgs e)
+    {
+        if (BindingContext is MapViewModel vm)
+        {
+            if (vm.UserLatitude != 0 && vm.UserLongitude != 0)
+            {
+                UpdateMapLocation(vm.UserLatitude, vm.UserLongitude);
+            }
+
+            UpdateTrackingState(vm.IsTracking);
+            await RenderPOIsAsync(vm.AllPOIs);
+            await TryFocusPendingPoiAsync();
+        }
     }
 
     protected override void OnDisappearing()
@@ -179,24 +192,73 @@ if (BindingContext is MapViewModel vm)
          {
    SubscribeToPoiCollection(vm.AllPOIs);
      _ = RenderPOIsAsync(vm.AllPOIs);
+     _ = RenderHeatmapAsync(vm.HotScores, vm.AllPOIs);
  // Update locations count
     var locationText = _resourceManager.GetString("Map_Locations") ?? "??a ?i?m";
       LocationsCountLabel.Text = $"{vm.AllPOIs.Count} {locationText}";
           }
 }
+        else if (e.PropertyName == nameof(MapViewModel.HotScores) || e.PropertyName == nameof(MapViewModel.SelectedHour))
+        {
+            if (BindingContext is MapViewModel vm)
+                _ = RenderHeatmapAsync(vm.HotScores, vm.AllPOIs);
+        }
+    }
+
+    private async Task RenderHeatmapAsync(Dictionary<int, double> hotScores, IEnumerable<POI> pois)
+    {
+        if (hotScores == null || pois == null) return;
+        
+        try
+        {
+            var features = new List<object>();
+            foreach(var poi in pois)
+            {
+                if (hotScores.TryGetValue(poi.Id, out var score) && score > 0)
+                {
+                    features.Add(new {
+                        type = "Feature",
+                        geometry = new {
+                            type = "Point",
+                            coordinates = new[] { poi.Longitude, poi.Latitude }
+                        },
+                        properties = new {
+                            id = poi.Id,
+                            hotScore = score
+                        }
+                    });
+                }
+            }
+
+            var geojson = new {
+                type = "FeatureCollection",
+                features = features
+            };
+
+            var jsonString = JsonSerializer.Serialize(geojson);
+            var js = $"updateHotspots({jsonString});";
+            await MainThread.InvokeOnMainThreadAsync(() => MapWebView.EvaluateJavaScriptAsync(js));
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[MapPage] Heatmap render error: {ex.Message}");
+        }
     }
 
     private async void UpdateTrackingState(bool isTracking)
     {
         try
-      {
-     string js = $"setTrackingState({isTracking.ToString().ToLower()});";
-        await MapWebView.EvaluateJavaScriptAsync(js);
+        {
+            string js = $"setTrackingState({isTracking.ToString().ToLower()});";
+            await MainThread.InvokeOnMainThreadAsync(async () => 
+            {
+                await MapWebView.EvaluateJavaScriptAsync(js);
+            });
         }
         catch (Exception ex)
         {
-     System.Diagnostics.Debug.WriteLine($"Error updating tracking state script: {ex.Message}");
- }
+            System.Diagnostics.Debug.WriteLine($"Error updating tracking state script: {ex.Message}");
+        }
     }
 
     private async void UpdateMapLocation(double lat, double lng)
@@ -205,14 +267,21 @@ if (BindingContext is MapViewModel vm)
 
         try
         {
-   string js = $"updateLocation({lat.ToString(System.Globalization.CultureInfo.InvariantCulture)}, {lng.ToString(System.Globalization.CultureInfo.InvariantCulture)});";
-    await MapWebView.EvaluateJavaScriptAsync(js);
+            string latStr = lat.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            string lngStr = lng.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            
+            string js = $"updateLocation({latStr}, {lngStr});";
+            
+            await MainThread.InvokeOnMainThreadAsync(async () => 
+            {
+                await MapWebView.EvaluateJavaScriptAsync(js);
+            });
         }
-catch (Exception ex)
-    {
-       System.Diagnostics.Debug.WriteLine($"Error updating map script: {ex.Message}");
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error updating map script: {ex.Message}");
         }
-  }
+    }
 
     private async Task RenderPOIsAsync(IEnumerable<POI>? pois)
     {
@@ -332,7 +401,6 @@ StatsGrid.IsVisible = false;
             MainScrollView.Orientation = ScrollOrientation.Neither;
 
  MapWebView.HeightRequest = DeviceDisplay.MainDisplayInfo.Height / DeviceDisplay.MainDisplayInfo.Density;
-          ToggleFullScreenBtn.Text = "?";
       ToggleFullScreenBtn.Margin = new Thickness(10, 45, 10, 10);
   }
         else
@@ -352,8 +420,13 @@ StatsHeaderLabel.IsVisible = true;
             MainScrollView.Orientation = ScrollOrientation.Vertical;
 
             MapWebView.HeightRequest = 350;
-            ToggleFullScreenBtn.Text = "?";
        ToggleFullScreenBtn.Margin = new Thickness(10);
       }
+    }
+
+    private async void OnHomeClicked(object sender, EventArgs e)
+    {
+        // Go back to the Home tab
+        await Shell.Current.GoToAsync("//home");
     }
 }

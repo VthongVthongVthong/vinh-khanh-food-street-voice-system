@@ -32,6 +32,9 @@
                     </StackLayout>
 
                     <Frame Grid.Column="2" BackgroundColor="#F4A950" CornerRadius="20" Padding="10" HasShadow="False" WidthRequest="40" HeightRequest="40" VerticalOptions="Center" HorizontalOptions="Center">
+                        <Frame.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnHomeClicked" />
+                        </Frame.GestureRecognizers>
                         <Image Source="home.png" WidthRequest="18" HeightRequest="18" HorizontalOptions="Center" VerticalOptions="Center" />
                     </Frame>
                 </Grid>
@@ -120,28 +123,214 @@
                                     cursor: pointer;
                                 }
                                 .poi-popup button:active { opacity: 0.9; }
-                                </style>
-                                </head>
-                                <body>
-                                <div id="map"></div>
-                                <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
-                                <script>
-                                mapboxgl.accessToken = "bca01773651908dcc9bc6320f7c16973ce";
-                                const map = new mapboxgl.Map({
-                                    container: 'map',
-                                    style: 'https://maps.track-asia.com/styles/v1/streets.json?key=bca01773651908dcc9bc6320f7c16973ce',
-                                    center: [106.700981,10.776530],
-                                    zoom: 15
-                                });
 
+                                /* Hiệu ứng HOT / Đang Trending */
+                                .poi-marker.poi-fire {
+                                    box-shadow: 0 0 15px 5px rgba(255,87,34,0.8), 0 0 30px 10px rgba(255,152,0,0.6) !important;
+                                    border: 3px solid #ffeb3b !important;
+                                    animation: pulse-fire 1s infinite alternate;
+                                    z-index: 999;
+                                }
+
+                                @keyframes pulse-fire {
+                                    0% { box-shadow: 0 0 15px 5px rgba(255,87,34,0.7), 0 0 30px 10px rgba(255,152,0,0.5); }
+                                    100% { box-shadow: 0 0 25px 10px rgba(255,87,34,1), 0 0 50px 20px rgba(255,152,0,0.8); }
+                                }
+
+                                .poi-hot-badge {
+                                    position: absolute;
+                                    top: -12px;
+                                    right: -25px;
+                                    background: #ef4444;
+                                    color: white;
+                                    font-size: 10px;
+                                    padding: 2px 6px;
+                                    border-radius: 10px;
+                                    font-weight: bold;
+                                    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                                    animation: bounce 1s infinite;
+                                    white-space: nowrap;
+                                }
+                                @keyframes bounce {
+                                    0%, 100% { transform: translateY(0); }
+                                    50% { transform: translateY(-4px); }
+                                }
+
+                                /* Chấm xanh vị trí người dùng */
+                                .user-marker-container {
+                                    position: relative;
+                                    width: 20px;
+                                    height: 20px;
+                                    z-index: 99999 !important;
+                                }
+                                .user-marker-dot {
+                                    width: 16px;
+                                    height: 16px;
+                                    background-color: #4285F4;
+                                    border: 3px solid white;
+                                    border-radius: 50%;
+                                    box-shadow: 0 0 8px rgba(0,0,0,0.5);
+                                    position: absolute;
+                                    top: 50%;
+                                    left: 50%;
+                                    transform: translate(-50%, -50%);
+                                    z-index: 9999 !important;
+                                }
+                                .user-marker-pulse {
+                                    width: 40px;
+                                    height: 40px;
+                                    background-color: rgba(66, 133, 244, 0.4);
+                                    border-radius: 50%;
+                                    position: absolute;
+                                    top: 50%;
+                                    left: 50%;
+                                    transform: translate(-50%, -50%);
+                                    animation: user-pulse 1.5s infinite ease-out;
+                                    z-index: 9998 !important;
+                                    pointer-events: none;
+                                }
+                                @keyframes user-pulse {
+                                    0% { transform: translate(-50%, -50%) scale(0.4); opacity: 1; }
+                                    100% { transform: translate(-50%, -50%) scale(1.2); opacity: 0; }
+                                }
+                                </style>
+                                <script>
                                 let userMarker = null;
                                 let isLocationEnabled = false;
                                 const poiMarkers = new Map();
+                                const poiElements = new Map();
                                 let hasFirstFix = false;
                                 let detailButtonText = 'View details';
 
+                                let pendingLocation = null;
+
                                 function setDetailButtonText(text) {
                                     detailButtonText = text || 'View details';
+                                }
+
+                                function updateHotspots(geoJsonData) {
+                                    if (!geoJsonData || !geoJsonData.features) return;
+                                    
+                                    // Chỉ cho phép addSource khi style map đã tải xong
+                                    if (!map.loaded()) {
+                                        map.once('load', () => updateHotspots(geoJsonData));
+                                        return;
+                                    }
+
+                                    // Lặp qua các icon POI để cập nhật hiệu ứng lửa
+                                    poiElements.forEach((el, id) => {
+                                        el.classList.remove('poi-fire');
+                                        const badge = el.querySelector('.poi-hot-badge');
+                                        if (badge) badge.remove();
+                                    });
+
+                                    geoJsonData.features.forEach(f => {
+                                        // Điểm số > 0 để dễ thấy hiệu ứng ngay
+                                        if (f.properties.hotScore > 0) {
+                                            const el = poiElements.get(f.properties.id);
+                                            if (el) {
+                                                el.classList.add('poi-fire');
+                                                // Thêm nhãn HOT
+                                                if (!el.querySelector('.poi-hot-badge')) {
+                                                    const badge = document.createElement('div');
+                                                    badge.className = 'poi-hot-badge';
+                                                    badge.innerHTML = '🔥 HOT';
+                                                    el.appendChild(badge);
+                                                }
+                                            }
+                                        }
+                                    });
+                                    
+                                    if (!map.getSource('hotspots')) {
+                                        map.addSource('hotspots', {
+                                            'type': 'geojson',
+                                            'data': geoJsonData
+                                        });
+
+                                        map.addLayer({
+                                            'id': 'hotspots-heat',
+                                            'type': 'heatmap',
+                                            'source': 'hotspots',
+                                            'maxzoom': 18,
+                                            'paint': {
+                                                // Tăng cường độ đậm nhạt dựa theo hotScore
+                                                'heatmap-weight': [
+                                                    'interpolate',
+                                                    ['linear'],
+                                                    ['get', 'hotScore'],
+                                                    0, 0,
+                                                    100, 1
+                                                ],
+                                                // Tăng mức lan tỏa toàn cầu khi zoom level tăng
+                                                'heatmap-intensity': [
+                                                    'interpolate',
+                                                    ['linear'],
+                                                    ['zoom'],
+                                                    13, 0.5,
+                                                    18, 2
+                                                ],
+                                                // Phổ màu: từ trong suốt, sang cam nhạt, cam đậm, đỏ ở điểm cao nhất (tạo cảm giác hot)
+                                                'heatmap-color': [
+                                                    'interpolate',
+                                                    ['linear'],
+                                                    ['heatmap-density'],
+                                                    0, 'rgba(33,102,172,0)',
+                                                    0.2, 'rgba(255,189,102,0.8)',
+                                                    0.5, 'rgba(244,169,80,0.9)',
+                                                    0.8, 'rgba(239,68,68,1)',
+                                                    1, 'rgba(185,28,28,1)'
+                                                ],
+                                                // Bán kính vùng lan tỏa cũng tăng theo zoom
+                                                'heatmap-radius': [
+                                                    'interpolate',
+                                                    ['linear'],
+                                                    ['zoom'],
+                                                    13, 15,
+                                                    18, 50
+                                                ],
+                                                // Làm cho màu overlay (để vẫn thấy đường xá)
+                                                'heatmap-opacity': 0.8
+                                            }
+                                        }, 'waterway-label'); // Đặt dưới lớp tên đường
+                                        
+                                        // Thêm lớp pulse cho các điểm hot đột biến (score > 80)
+                                        map.addLayer({
+                                            'id': 'hotspots-point',
+                                            'type': 'circle',
+                                            'source': 'hotspots',
+                                            'minzoom': 13,
+                                            'paint': {
+                                                'circle-radius': [
+                                                    'interpolate',
+                                                    ['linear'],
+                                                    ['zoom'],
+                                                    14, [
+                                                        'interpolate',
+                                                        ['linear'],
+                                                        ['get', 'hotScore'],
+                                                        70, 0,
+                                                        80, 5,
+                                                        100, 10
+                                                    ],
+                                                    18, [
+                                                        'interpolate',
+                                                        ['linear'],
+                                                        ['get', 'hotScore'],
+                                                        70, 0,
+                                                        80, 15,
+                                                        100, 25
+                                                    ]
+                                                ],
+                                                'circle-color': '#EF4444',
+                                                'circle-stroke-color': 'rgba(255, 255, 255, 0.8)',
+                                                'circle-stroke-width': 2,
+                                                'circle-opacity': 0.7
+                                            }
+                                        });
+
+                                    } else {
+                                        map.getSource('hotspots').setData(geoJsonData);
+                                    }
                                 }
 
                                 function focusPOI(id) {
@@ -160,9 +349,29 @@
                                     }
                                 }
 
+                                function createUserElement() {
+                                    const container = document.createElement('div');
+                                    container.className = 'user-marker-container';
+
+                                    const pulse = document.createElement('div');
+                                    pulse.className = 'user-marker-pulse';
+
+                                    const dot = document.createElement('div');
+                                    dot.className = 'user-marker-dot';
+                                    
+                                    container.appendChild(pulse);
+                                    container.appendChild(dot);
+                                    return container;
+                                }
+
                                 function updateLocation(lat, lng) {
+                                    if (typeof map === 'undefined' || !map) {
+                                        pendingLocation = { lat: lat, lng: lng };
+                                        return;
+                                    }
+
                                     if (!userMarker) {
-                                        userMarker = new mapboxgl.Marker({ color: '#FF0000' })
+                                        userMarker = new mapboxgl.Marker({ element: createUserElement() })
                                             .setLngLat([lng, lat])
                                             .addTo(map);
                                         map.flyTo({ center: [lng, lat], speed: 1.5, zoom: 16 });
@@ -201,6 +410,7 @@
                                 function renderPOIs(pois) {
                                     poiMarkers.forEach(m => m.remove());
                                     poiMarkers.clear();
+                                    poiElements.clear();
 
                                     if (!pois || pois.length === 0) return;
 
@@ -222,6 +432,7 @@
                                             .addTo(map);
 
                                         poiMarkers.set(p.id, marker);
+                                        poiElements.set(p.id, el);
                                         bounds.extend([p.lng, p.lat]);
                                     });
 
@@ -229,6 +440,30 @@
                                         map.fitBounds(bounds, { padding: 40, maxZoom: 17 });
                                     }
                                 }
+                                </script>
+                                </head>
+                                <body>
+                                <div id="map"></div>
+                                <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+                                <script>
+                                mapboxgl.accessToken = "bca01773651908dcc9bc6320f7c16973ce";
+                                window.map = new mapboxgl.Map({
+                                    container: 'map',
+                                    style: 'https://maps.track-asia.com/styles/v1/streets.json?key=bca01773651908dcc9bc6320f7c16973ce',
+                                    center: [106.700981,10.776530],
+                                    zoom: 15
+                                });
+
+                                 
+
+                                if (pendingLocation) {
+                                    updateLocation(pendingLocation.lat, pendingLocation.lng);
+                                    pendingLocation = null;
+                                }
+
+                                window.map.on('load', () => {
+                                    // De trong
+                                });
 
                                 class CustomGeolocateControl {
                                     onAdd(map) {
@@ -237,11 +472,12 @@
                                         this.container.className = 'mapboxgl-ctrl mapboxgl-ctrl-group';
 
                                         const btn = document.createElement('button');
-                                        btn.className = 'mapboxgl-ctrl-icon mapboxgl-ctrl-geolocate';
+                                        btn.className = 'mapboxgl-ctrl-icon';
                                         btn.id = 'auto-geolocate-btn';
                                         btn.type = 'button';
                                         btn.title = 'My location';
                                         btn.onclick = () => recenterMap();
+                                        btn.innerHTML = `<svg width="20" height="20" viewBox="0 0 16 16" fill="none" style="margin-top: 4px;" xmlns="http://www.w3.org/2000/svg"><path d="M8 10C9.10457 10 10 9.10457 10 8C10 6.89543 9.10457 6 8 6C6.89543 6 6 6.89543 6 8C6 9.10457 6.89543 10 8 10Z" fill="#333333"/><path fill-rule="evenodd" clip-rule="evenodd" d="M2.08296 7C2.50448 4.48749 4.48749 2.50448 7 2.08296V0H9V2.08296C11.5125 2.50448 13.4955 4.48749 13.917 7H16V9H13.917C13.4955 11.5125 11.5125 13.4955 9 13.917V16H7V13.917C4.48749 13.4955 2.50448 11.5125 2.08296 9H0V7H2.08296ZM4 8C4 5.79086 5.79086 4 8 4C10.2091 4 12 5.79086 12 8C12 10.2091 10.2091 12 8 12C5.79086 12 4 10.2091 4 8Z" fill="#333333"/></svg>`;
 
                                         this.container.appendChild(btn);
                                         return this.container;
@@ -252,8 +488,8 @@
                                     }
                                 }
 
-                                map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
-                                map.addControl(new CustomGeolocateControl(), 'bottom-right');
+                                window.map.addControl(new CustomGeolocateControl(), 'bottom-right');
+                                window.map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
                                 </script>
                                 </body>
                                 </html>
@@ -264,25 +500,46 @@
                     </WebView>
                 </Frame>
 
-                <Button x:Name="ToggleFullScreenBtn"
-                        Text="⛶"
-                        FontSize="20"
-                        BackgroundColor="#AA000000"
-                        TextColor="White"
+                <ImageButton x:Name="ToggleFullScreenBtn"
+                        Source="zoom.png"
+                        BackgroundColor="#F4A950"
                         CornerRadius="20"
                         WidthRequest="40"
                         HeightRequest="40"
                         HorizontalOptions="End"
                         VerticalOptions="Start"
                         Margin="10"
-                        Padding="0"
+                        Padding="10"
+                        ZIndex="100"
                         Clicked="OnToggleFullScreenClicked" />
             </Grid>
 
-            <!-- Nearby Restaurants Header -->
-   <Grid x:Name="NearbyHeaderGrid" ColumnDefinitions="Auto, *, Auto" VerticalOptions="Center" Margin="0,10,0,0">
-                <Label x:Name="NearbyHeaderTitleLabel" FontSize="18" FontAttributes="Bold" TextColor="#1F2937" Grid.Column="0" />
-          <Label x:Name="LocationsCountLabel" FontSize="12" TextColor="#F4A950" Grid.Column="2" VerticalOptions="Center" />
+            <!-- Time Slider & Nearby Restaurants Header -->
+            <Grid Margin="0,10,0,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                
+                <!-- Time Slider -->
+                <Frame BackgroundColor="White" CornerRadius="12" Padding="15,10" HasShadow="False" Grid.Row="0" Margin="0,0,0,15">
+                    <StackLayout>
+                        <StackLayout Orientation="Horizontal" HorizontalOptions="FillAndExpand">
+                            <Label Text="Khám phá theo giờ" FontSize="14" FontAttributes="Bold" TextColor="#4B5563" HorizontalOptions="StartAndExpand" />
+                            <Label Text="{Binding SelectedHour, StringFormat='{0}:00'}" FontSize="14" FontAttributes="Bold" TextColor="#F4A950" HorizontalOptions="End" />
+                        </StackLayout>
+                        <Slider Minimum="16" Maximum="24" Value="{Binding SelectedHour, Mode=TwoWay}" MinimumTrackColor="#F4A950" ThumbColor="#F4A950" Margin="0,5,0,0" />
+                        <StackLayout Orientation="Horizontal" HorizontalOptions="FillAndExpand">
+                            <Label Text="16:00" FontSize="10" TextColor="#9CA3AF" HorizontalOptions="StartAndExpand" />
+                            <Label Text="00:00" FontSize="10" TextColor="#9CA3AF" HorizontalOptions="End" />
+                        </StackLayout>
+                    </StackLayout>
+                </Frame>
+
+                <Grid x:Name="NearbyHeaderGrid" Grid.Row="1" ColumnDefinitions="Auto, *, Auto" VerticalOptions="Center">
+                    <Label x:Name="NearbyHeaderTitleLabel" FontSize="18" FontAttributes="Bold" TextColor="#1F2937" Grid.Column="0" />
+                    <Label x:Name="LocationsCountLabel" FontSize="12" TextColor="#F4A950" Grid.Column="2" VerticalOptions="Center" />
+                </Grid>
             </Grid>
 
             <!-- Horizontal Collection of POIs -->

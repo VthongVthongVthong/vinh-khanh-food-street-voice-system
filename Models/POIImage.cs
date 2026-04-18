@@ -14,7 +14,8 @@ namespace VinhKhanhstreetfoods.Models
         [NotNull]
         public string ImageUrl { get; set; } = string.Empty;
 
-   [NotNull]
+        [NotNull]
+        [Column("imageType")]
         public string Type { get; set; } = string.Empty; // "avatar", "gallery", "banner", etc.
 
         public int DisplayOrder { get; set; } = 0;

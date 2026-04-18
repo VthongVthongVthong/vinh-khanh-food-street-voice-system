@@ -54,6 +54,9 @@ namespace VinhKhanhstreetfoods
             builder.Services.AddSingleton<UserService>();
             builder.Services.AddSingleton<PresenceTrackerService>();
             builder.Services.AddSingleton<POICacheService>();
+            builder.Services.AddSingleton<PoiRecommendationService>();
+            builder.Services.AddSingleton<MapHeatmapService>();
+            builder.Services.AddSingleton<POICacheService>();
 
             // HTTP client for API calls
             builder.Services.AddSingleton(new HttpClient());

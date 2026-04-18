@@ -118,19 +118,29 @@ return;
        });
        });
 
-           // ? Handle all triggered POIs on main thread
-                foreach (var (poi, distance) in triggeredPois)
-                {
-                     lock (_activeVisits)
-                     {
-                         if (!_activeVisits.ContainsKey(poi.Id))
-                         {
-                             _activeVisits[poi.Id] = DateTime.Now;
-                         }
-                     }
-         System.Diagnostics.Debug.WriteLine($"[GeofenceEngine] ?? TRIGGER: {poi.Name} ({distance:F1}m)");
-       await TriggerPOI(poi, distance);
-            }
+           // 🎯 Handle all triggered POIs on main thread (Realtime tracking/Visit log)
+           foreach (var (poi, distance) in triggeredPois)
+           {
+               lock (_activeVisits)
+               {
+                   if (!_activeVisits.ContainsKey(poi.Id))
+                   {
+                       _activeVisits[poi.Id] = DateTime.Now;
+                   }
+               }
+           }
+
+           // 🎯 Áp dụng thuật toán Priority Resolution Algorithm để chọn ra POI duy nhất phát Audio
+           var bestMatch = triggeredPois
+               .OrderByDescending(x => x.poi.Priority) // Ưu tiên 1: Lấy mức Priority lớn nhất
+               .ThenBy(x => x.distance)                // Ưu tiên 2: Khoảng cách tới POI gần nhất
+               .FirstOrDefault();
+
+           if (bestMatch.poi != null)
+           {
+               System.Diagnostics.Debug.WriteLine($"[GeofenceEngine] 🔥 BEST AUDIO TRIGGER: {bestMatch.poi.Name} ({bestMatch.distance:F1}m) - Priority: {bestMatch.poi.Priority}");
+               await TriggerPOI(bestMatch.poi, bestMatch.distance);
+           }
 
             foreach (var (poi, enterTime) in exitedPois)
             {
