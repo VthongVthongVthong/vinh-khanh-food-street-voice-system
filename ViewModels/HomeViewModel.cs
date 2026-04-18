@@ -334,6 +334,9 @@ namespace VinhKhanhstreetfoods.ViewModels
                 var refreshed = await _poiRepository.GetActivePOIsAsync();
 
                 await MainThread.InvokeOnMainThreadAsync(() => { if (updatedCount > 0) { _allPOIs.Clear(); _allPOIs.AddRange(refreshed); _poiCache.UpdateCache(refreshed); ApplyFilter(); } StatusMessage = updatedCount > 0 ? LocalizationService.GetString("Home_Status_Synced")?.Replace("{0}", updatedCount.ToString()) ?? $"Updated {updatedCount} locations." : LocalizationService.GetString("Home_Status_NoNew") ?? "No new data."; });
+
+                // Cập nhật lại Trending POIs (Gợi ý cho bạn)
+                _ = Task.Run(async () => await LoadTrendingPoisAsync());
             }
             catch (Exception ex)
             {
@@ -362,6 +365,9 @@ namespace VinhKhanhstreetfoods.ViewModels
                 var refreshed = await _poiRepository.GetActivePOIsAsync();
 
                 await MainThread.InvokeOnMainThreadAsync(() => { if (updatedCount > 0) { _allPOIs.Clear(); _allPOIs.AddRange(refreshed); _poiCache.UpdateCache(refreshed); ApplyFilter(); } StatusMessage = updatedCount > 0 ? LocalizationService.GetString("Home_Status_Synced")?.Replace("{0}", updatedCount.ToString()) ?? $"Updated {updatedCount} locations." : LocalizationService.GetString("Home_Status_NoNew") ?? "No new data."; });
+
+                // Cập nhật lại Trending POIs (Gợi ý cho bạn)
+                _ = Task.Run(async () => await LoadTrendingPoisAsync());
 
                 // Refresh UI components if needed
                 await RefreshUIComponentsAsync();
