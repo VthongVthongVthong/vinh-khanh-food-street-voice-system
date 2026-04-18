@@ -75,6 +75,7 @@ namespace VinhKhanhstreetfoods.ViewModels
 
             ResetSettingsCommand = new Command(ResetSettings);
             DownloadLanguagePackCommand = new Command(async () => await DownloadLanguagePackAsync(), () => !IsDownloadingLanguagePack);
+            InstallTTSVoiceCommand = new Command(async () => await InstallTTSVoiceAsync());
 
             LoginCommand = new Command(ExecuteLogin);
             LogoutCommand = new Command(ExecuteLogout);
@@ -255,6 +256,7 @@ namespace VinhKhanhstreetfoods.ViewModels
 
         public ICommand ResetSettingsCommand { get; }
         public ICommand DownloadLanguagePackCommand { get; }
+        public ICommand InstallTTSVoiceCommand { get; }
 
         private void LoadSettings()
         {
@@ -442,6 +444,65 @@ namespace VinhKhanhstreetfoods.ViewModels
 
                 _isApplyingLanguage = value;
                 OnPropertyChanged();
+            }
+        }
+
+        public async Task<bool> CheckIfLanguageInstalledAsync(string languageCode)
+        {
+            try
+            {
+                var locales = await Microsoft.Maui.Media.TextToSpeech.Default.GetLocalesAsync();
+                return locales.Any(l => l.Language.Equals(languageCode, StringComparison.OrdinalIgnoreCase));
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[SettingsViewModel] TTS loc error: {ex.Message}");
+                return true; 
+            }
+        }
+
+        public void OpenTTSDownloadSettings()
+        {
+#if ANDROID
+            try
+            {
+                var intent = new Android.Content.Intent();
+                intent.SetAction(Android.Speech.Tts.TextToSpeech.Engine.ActionInstallTtsData);
+                intent.AddFlags(Android.Content.ActivityFlags.NewTask); 
+                Android.App.Application.Context.StartActivity(intent);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Không thể mở cài đặt TTS: {ex.Message}");
+            }
+#else
+            MainThread.BeginInvokeOnMainThread(async () => {
+                await Shell.Current.DisplayAlert("Lưu ý", "Vui lòng vào Cài đặt máy -> Trợ năng -> Nội dung được đọc -> Giọng nói để tải thêm.", "OK");
+            });
+#endif
+        }
+
+        public async Task InstallTTSVoiceAsync()
+        {
+            var languageCode = SelectedNarrationLanguage?.CultureCode ?? "vi";
+            var langName = LanguageOptions.FirstOrDefault(x => x.CultureCode == languageCode)?.DisplayName ?? languageCode;
+
+            bool isInstalled = await CheckIfLanguageInstalledAsync(languageCode);
+            
+            if (isInstalled)
+            {
+                await Shell.Current.DisplayAlert("Thông báo", $"Tuyệt vời! Máy bạn đã có sẵn giọng đọc {langName}.", "OK");
+            }
+            else
+            {
+                bool confirm = await Shell.Current.DisplayAlert("Cần tải dữ liệu", 
+                    $"Máy bạn chưa có dữ liệu phát âm {langName} offline. Bạn có muốn mở Cài đặt hệ thống để tải không?", 
+                    "Mở Cài đặt", "Hủy");
+                    
+                if (confirm)
+                {
+                    OpenTTSDownloadSettings();
+                }
             }
         }
 
