@@ -105,7 +105,12 @@ namespace VinhKhanhstreetfoods
             });
 
             // Tour ViewModels
-            builder.Services.AddSingleton<TourListViewModel>();
+            builder.Services.AddSingleton<TourListViewModel>(sp =>
+            {
+                var tourRepository = sp.GetRequiredService<ITourRepository>();
+                var localizationManager = sp.GetRequiredService<LocalizationResourceManager>();
+                return new TourListViewModel(tourRepository, localizationManager);
+            });
             builder.Services.AddSingleton<TourDetailViewModel>(sp =>
             {
                 var tourRepository = sp.GetRequiredService<ITourRepository>();

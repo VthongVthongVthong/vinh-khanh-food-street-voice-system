@@ -13,6 +13,9 @@
         <ResourceDictionary>
     <converters:InvertedBoolConverter x:Key="InvertedBoolConverter" />
      <converters:BoolToOpacityConverter x:Key="BoolToOpacityConverter" />
+     <converters:TourDescriptionConverter x:Key="TourDescriptionConverter" />
+     <converters:TourCoverImageConverter x:Key="TourCoverImageConverter" />
+   <converters:ViewDetailsTextConverter x:Key="ViewDetailsTextConverter" />
      </ResourceDictionary>
     </ContentPage.Resources>
 
@@ -24,9 +27,9 @@
  <!-- Header -->
     <Grid Grid.Row="0" BackgroundColor="{StaticResource BgPage}" Padding="20,20,20,10" ColumnDefinitions="Auto,*" ColumnSpacing="12">
     <StackLayout Grid.Column="0" Spacing="4" VerticalOptions="Center">
-     <Label Text="Cac Lo Trinh" Style="{StaticResource PageTitle}" TextColor="{StaticResource TextDark}" />
-<Label Text="Chon lo trinh de kham pha" FontSize="13" TextColor="{StaticResource TextMuted}" />
-       </StackLayout>
+     <Label x:Name="TourListTitleLabel" Style="{StaticResource PageTitle}" TextColor="{StaticResource TextDark}" />
+<Label x:Name="TourListSubtitleLabel" FontSize="13" TextColor="{StaticResource TextMuted}" />
+</StackLayout>
       </Grid>
 
 <!-- Content -->
@@ -58,32 +61,43 @@ Scale="1.2"
       <CollectionView.ItemTemplate>
     <DataTemplate x:DataType="local:Tour">
   <Border Style="{StaticResource MainCardStyle}" Padding="16" Margin="20,0,20,0">
-     <Grid ColumnDefinitions="*" RowDefinitions="Auto,Auto,Auto" RowSpacing="8">
+     <Grid ColumnDefinitions="*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="8">
+
+   <!-- Tour Cover Image in Border -->
+   <Border Grid.Row="0"
+    Style="{StaticResource ImageThumbnailStyle}"
+  WidthRequest="-1"
+    HeightRequest="160"
+    Margin="-16,-16,-16,8"
+    Padding="0">
+    <Image Source="{Binding CoverImageUrl}"
+     Aspect="AspectFill" />
+   </Border>
 
    <!-- Tour Name -->
-   <Label Grid.Row="0"
+   <Label Grid.Row="1"
     Text="{Binding Name}"
     Style="{StaticResource CardTitle}"
-       TextColor="{StaticResource TextDark}"
+TextColor="{StaticResource TextDark}"
      LineBreakMode="WordWrap" />
 
       <!-- Tour Description -->
-     <Label Grid.Row="1"
-   Text="{Binding Description}"
-    FontSize="12"
+     <Label Grid.Row="2"
+   Text="{Binding ., Converter={StaticResource TourDescriptionConverter}}"
+ FontSize="12"
 TextColor="{StaticResource TextMuted}"
    LineBreakMode="TailTruncation"
      MaxLines="2" />
 
      <!-- Action Text -->
-    <StackLayout Grid.Row="2"
+    <StackLayout Grid.Row="3"
       Orientation="Horizontal"
-    HorizontalOptions="End">
-       <Label Text="Xem chi tiet " FontSize="11" TextColor="{StaticResource BrandOrange}" />
-       <Label Text=">" FontSize="12" TextColor="{StaticResource BrandOrange}" FontAttributes="Bold" />
+ HorizontalOptions="End">
+  <Label Text="{Binding ., Converter={StaticResource ViewDetailsTextConverter}}" FontSize="11" TextColor="{StaticResource BrandOrange}" />
+    <Label Text=">" FontSize="12" TextColor="{StaticResource BrandOrange}" FontAttributes="Bold" />
     </StackLayout>
 
-         </Grid>
+     </Grid>
        </Border>
       </DataTemplate>
   </CollectionView.ItemTemplate>

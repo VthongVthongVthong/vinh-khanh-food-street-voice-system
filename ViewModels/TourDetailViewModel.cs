@@ -103,6 +103,27 @@ public class TourDetailViewModel : INotifyPropertyChanged
     public ICommand StartTourCommand { get; }
     public ICommand GoBackCommand { get; }
 
+    /// <summary>
+    /// Get localized description for a tour based on current language
+    /// </summary>
+    public string GetTourDescription(Tour tour)
+    {
+        if (tour == null)
+            return string.Empty;
+
+        var currentLanguage = _localizationManager.CurrentLanguage;
+        return currentLanguage switch
+        {
+            "en" => tour.DescriptionEn ?? tour.Description ?? string.Empty,
+            "zh" => tour.DescriptionZh ?? tour.Description ?? string.Empty,
+            "ja" => tour.DescriptionJa ?? tour.Description ?? string.Empty,
+            "ko" => tour.DescriptionKo ?? tour.Description ?? string.Empty,
+            "fr" => tour.DescriptionFr ?? tour.Description ?? string.Empty,
+            "ru" => tour.DescriptionRu ?? tour.Description ?? string.Empty,
+            _ => tour.Description ?? string.Empty
+        };
+    }
+
     private async Task LoadTourAsync(int tourId)
     {
         try

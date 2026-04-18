@@ -38,15 +38,19 @@ public class TourRepository : ITourRepository
     {
         await InitializeAsync();
         
-        // Auto-sync if needed (throttled)
+        // Auto-sync if needed (throttled) - WAIT for sync to complete
         if (DateTime.UtcNow - _lastSyncUtc >= SyncThrottle)
-        {
-            _ = SyncToursFromFirebaseAsync(); // Fire and forget
+      {
+         Debug.WriteLine("[TourRepository] Syncing from Firebase before returning tours...");
+await SyncToursFromFirebaseAsync(); // Wait for sync instead of fire-and-forget
         }
         
-        return await _database!.Table<Tour>()
-            .Where(t => t.IsActive == 1)
+        var tours = await _database!.Table<Tour>()
+      .Where(t => t.IsActive == 1)
             .ToListAsync();
+        
+        Debug.WriteLine($"[TourRepository] GetAllToursAsync returning {tours.Count} tours");
+        return tours;
     }
 
     public async Task<Tour?> GetTourByIdAsync(int id)
@@ -84,101 +88,139 @@ public class TourRepository : ITourRepository
     {
         try
         {
-            await InitializeAsync();
+  await InitializeAsync();
 
-            var url = "https://vinhkhanh-68a4b-default-rtdb.asia-southeast1.firebasedatabase.app/.json";
-            using var request = new HttpRequestMessage(HttpMethod.Get, url);
-            request.Headers.CacheControl = new System.Net.Http.Headers.CacheControlHeaderValue 
-            { 
-                NoCache = true, 
-                NoStore = true 
-            };
+       var url = "https://vinhkhanh-68a4b-default-rtdb.asia-southeast1.firebasedatabase.app/.json";
+ using var request = new HttpRequestMessage(HttpMethod.Get, url);
+     request.Headers.CacheControl = new System.Net.Http.Headers.CacheControlHeaderValue 
+          { 
+     NoCache = true, 
+        NoStore = true 
+         };
 
-            var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
- using var response = await _httpClient.SendAsync(request, cts.Token);
-      if (!response.IsSuccessStatusCode)
+  var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+     using var response = await _httpClient.SendAsync(request, cts.Token);
+         if (!response.IsSuccessStatusCode)
      {
-           Debug.WriteLine($"[TourRepository] Firebase sync failed: HTTP {response.StatusCode}");
-             return 0;
+         Debug.WriteLine($"[TourRepository] Firebase sync failed: HTTP {response.StatusCode}");
+      return 0;
+   }
+
+     var json = await response.Content.ReadAsStringAsync();
+ if (string.IsNullOrWhiteSpace(json) || json == "null")
+            {
+   Debug.WriteLine("[TourRepository] Firebase returned empty or null response");
+     return 0;
             }
 
-        var json = await response.Content.ReadAsStringAsync();
-  if (string.IsNullOrWhiteSpace(json) || json == "null")
-         return 0;
+        Debug.WriteLine($"[TourRepository] Firebase response length: {json.Length} chars");
 
-            using var document = JsonDocument.Parse(json);
-            var root = document.RootElement;
+      using var document = JsonDocument.Parse(json);
+        var root = document.RootElement;
 
-            var tourCount = 0;
-       var tourPoiCount = 0;
+  var tourCount = 0;
+  var tourPoiCount = 0;
 
-   // Parse Tour array
-    if (TryGetProperty(root, "Tour", out var tourElement) && tourElement.ValueKind == JsonValueKind.Array)
+    // Parse Tour array
+            if (TryGetProperty(root, "Tour", out var tourElement) && tourElement.ValueKind == JsonValueKind.Array)
+        {
+                Debug.WriteLine($"[TourRepository] Found Tour array with {tourElement.GetArrayLength()} items");
+  
+          foreach (var item in tourElement.EnumerateArray())
   {
-      foreach (var item in tourElement.EnumerateArray())
-      {
-            if (item.ValueKind != JsonValueKind.Object)
-     continue;
+     if (item.ValueKind != JsonValueKind.Object)
+    continue;
 
-       var tour = MapJsonToTour(item);
-    if (tour != null)
-   {
-     var existing = await _database.FindAsync<Tour>(tour.Id);
-            if (existing != null)
-      await _database.UpdateAsync(tour);
-      else
-    await _database.InsertAsync(tour);
-   tourCount++;
-             }
+            var tour = MapJsonToTour(item);
+         if (tour != null)
+    {
+           var existing = await _database!.FindAsync<Tour>(tour.Id);
+     if (existing != null)
+     {
+      Debug.WriteLine($"[TourRepository] Updating existing tour: Id={tour.Id}");
+       await _database.UpdateAsync(tour);
           }
-}
+   else
+   {
+   Debug.WriteLine($"[TourRepository] Inserting new tour: Id={tour.Id}");
+             await _database.InsertAsync(tour);
+    }
+          tourCount++;
+            }
+      }
+            }
+            else
+{
+      Debug.WriteLine("[TourRepository] Tour array not found in Firebase response");
+            }
 
             // Parse TourPOI array
-          if (TryGetProperty(root, "TourPOI", out var tourPoiElement) && tourPoiElement.ValueKind == JsonValueKind.Array)
-      {
-       // Clear old mappings
-          await _database.ExecuteAsync("DELETE FROM TourPOI");
+ if (TryGetProperty(root, "TourPOI", out var tourPoiElement) && tourPoiElement.ValueKind == JsonValueKind.Array)
+          {
+          Debug.WriteLine($"[TourRepository] Found TourPOI array with {tourPoiElement.GetArrayLength()} items");
+           
+          // Clear old mappings
+      await _database!.ExecuteAsync("DELETE FROM TourPOI");
 
-   foreach (var item in tourPoiElement.EnumerateArray())
-      {
-      if (item.ValueKind != JsonValueKind.Object)
-          continue;
+  foreach (var item in tourPoiElement.EnumerateArray())
+                {
+          if (item.ValueKind != JsonValueKind.Object)
+  continue;
 
-  var tourPoi = MapJsonToTourPOI(item);
-      if (tourPoi != null)
-                    {
-      await _database.InsertAsync(tourPoi);
+             var tourPoi = MapJsonToTourPOI(item);
+                 if (tourPoi != null)
+      {
+             await _database.InsertAsync(tourPoi);
      tourPoiCount++;
+         }
+         }
+}
+          else
+    {
+     Debug.WriteLine("[TourRepository] TourPOI array not found in Firebase response");
       }
-                }
- }
 
-            _lastSyncUtc = DateTime.UtcNow;
-  Debug.WriteLine($"[TourRepository] Synced {tourCount} tours, {tourPoiCount} tour-poi mappings");
-      return tourCount;
+      _lastSyncUtc = DateTime.UtcNow;
+Debug.WriteLine($"[TourRepository] ? Synced {tourCount} tours, {tourPoiCount} tour-poi mappings");
+            return tourCount;
         }
-      catch (Exception ex)
-        {
-       Debug.WriteLine($"[TourRepository] Sync error: {ex.Message}");
-  return 0;
+        catch (Exception ex)
+    {
+   Debug.WriteLine($"[TourRepository] ? Sync error: {ex.Message}");
+ Debug.WriteLine($"[TourRepository] ? Stack trace: {ex.StackTrace}");
+      return 0;
         }
     }
 
     private static Tour? MapJsonToTour(JsonElement item)
     {
       var id = GetInt(item, "id");
-        if (id <= 0)
- return null;
+      if (id <= 0)
+    {
+   Debug.WriteLine($"[TourRepository] Skipping tour with invalid id: {id}");
+     return null;
+    }
 
-        return new Tour
+        var tour = new Tour
         {
    Id = id,
-            Name = GetString(item, "name") ?? "Unnamed Tour",
-            Description = GetString(item, "description"),
-     IsActive = GetIntOrDefault(item, 1, "isActive", "is_active"),
+Name = GetString(item, "name") ?? "Unnamed Tour",
+  Description = GetString(item, "description"),
+         DescriptionEn = GetString(item, "descriptionEn"),
+         DescriptionZh = GetString(item, "descriptionZh"),
+   DescriptionJa = GetString(item, "descriptionJa"),
+     DescriptionKo = GetString(item, "descriptionKo"),
+   DescriptionFr = GetString(item, "descriptionFr"),
+ DescriptionRu = GetString(item, "descriptionRu"),
+IsActive = GetIntOrDefault(item, 1, "isActive", "is_active"),
+EstimatedMinutes = GetIntOrNull(item, "estimatedMinutes", "estimated_minutes"),
+       CoverImageUrl = GetString(item, "coverImageUrl", "cover_image_url"),
 CreatedAt = GetDateTime(item, "createdAt", "created_at") ?? DateTime.Now,
  UpdatedAt = GetDateTime(item, "updatedAt", "updated_at") ?? DateTime.Now
     };
+        
+    Debug.WriteLine($"[TourRepository] Mapped tour: Id={tour.Id}, Name={tour.Name}, IsActive={tour.IsActive}");
+        return tour;
     }
 
     private static TourPOI? MapJsonToTourPOI(JsonElement item)
@@ -242,6 +284,21 @@ CreatedAt = GetDateTime(item, "createdAt", "created_at") ?? DateTime.Now,
         var val = GetInt(obj, names);
         return val > 0 ? val : defaultValue;
     }
+
+    private static int? GetIntOrNull(JsonElement obj, params string[] names)
+    {
+   foreach (var name in names)
+        {
+   if (TryGetProperty(obj, name, out var value))
+      {
+   if (value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var intVal))
+    return intVal;
+      if (value.ValueKind == JsonValueKind.String && int.TryParse(value.GetString(), out intVal))
+  return intVal;
+ }
+   }
+        return null;
+}
 
     private static DateTime? GetDateTime(JsonElement obj, params string[] names)
   {

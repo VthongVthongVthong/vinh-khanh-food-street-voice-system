@@ -15,6 +15,8 @@ xmlns:components="clr-namespace:VinhKhanhstreetfoods.Views.Components"
    <converters:StringNotNullOrEmptyConverter x:Key="StringNotNullOrEmptyConverter" />
       <converters:IsNullOrEmptyConverter x:Key="IsNullOrEmptyConverter" />
      <converters:IsNotNullOrEmptyConverter x:Key="IsNotNullOrEmptyConverter" />
+     <converters:TourDescriptionConverter x:Key="TourDescriptionConverter" />
+     <converters:POIDescriptionLocalizedConverter x:Key="POIDescriptionLocalizedConverter" />
     </ResourceDictionary>
   </ContentPage.Resources>
 
@@ -26,16 +28,16 @@ xmlns:components="clr-namespace:VinhKhanhstreetfoods.Views.Components"
      <!-- Header -->
     <Grid Grid.Row="0" BackgroundColor="{StaticResource BgPage}" Padding="20,20,20,10" ColumnDefinitions="Auto,*" ColumnSpacing="12">
   <Border Style="{StaticResource ImageThumbnailStyle}" WidthRequest="44" HeightRequest="44" BackgroundColor="White" Shadow="{StaticResource SoftShadow}" VerticalOptions="Center">
-     <Border.GestureRecognizers>
+  <Border.GestureRecognizers>
     <TapGestureRecognizer Command="{Binding GoBackCommand}" />
     </Border.GestureRecognizers>
       <Image Source="back_svgrepo_com.png" WidthRequest="20" HeightRequest="20" HorizontalOptions="Center" VerticalOptions="Center" />
-    </Border>
-      <StackLayout Grid.Column="1" Spacing="4" VerticalOptions="Center">
-     <Label Text="Chi Tiet Lo Trinh" Style="{StaticResource PageTitle}" TextColor="{StaticResource TextDark}" />
-    <Label Text="{Binding Tour.Description}" FontSize="13" TextColor="{StaticResource TextMuted}" LineBreakMode="TailTruncation" MaxLines="1" />
+ </Border>
+   <StackLayout Grid.Column="1" Spacing="4" VerticalOptions="Center">
+   <Label x:Name="TourDetailTitleLabel" Style="{StaticResource PageTitle}" TextColor="{StaticResource TextDark}" />
+    <Label Text="{Binding Tour, Converter={StaticResource TourDescriptionConverter}}" FontSize="13" TextColor="{StaticResource TextMuted}" LineBreakMode="TailTruncation" MaxLines="1" />
  </StackLayout>
-        </Grid>
+  </Grid>
 
      <!-- Loading Indicator -->
    <ActivityIndicator Grid.Row="1"
@@ -86,12 +88,12 @@ Text="{Binding StatusMessage}"
         CornerRadius="12"
      IsVisible="{Binding AvatarImageUrl, Converter={StaticResource IsNullOrEmptyConverter}}" />
 
-   <!-- POI Name and Address -->
+   <!-- POI Name and Description -->
  <StackLayout Grid.Column="1" Grid.Row="0" Spacing="4">
     <Label Text="{Binding Name}" Style="{StaticResource CardTitle}" TextColor="{StaticResource TextDark}" />
   </StackLayout>
 
-   <Label Grid.Column="1" Grid.Row="1" Text="{Binding Address}" Style="{StaticResource MutedText}" FontSize="12" LineBreakMode="TailTruncation" />
+   <Label Grid.Column="1" Grid.Row="1" Text="{Binding ., Converter={StaticResource POIDescriptionLocalizedConverter}}" Style="{StaticResource MutedText}" FontSize="12" LineBreakMode="WordWrap" MaxLines="2" />
  
   <!-- Chevron -->
    <Label Grid.Column="2" Grid.Row="0" Grid.RowSpan="2" Text=">" FontSize="18" TextColor="{StaticResource BrandOrange}" 
@@ -128,8 +130,8 @@ HeightRequest="50">
       <TapGestureRecognizer Command="{Binding StartTourCommand}" />
     </Border.GestureRecognizers>
  <HorizontalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="10">
-     <Image Source="play_1003_svgrepo_com.png" WidthRequest="20" HeightRequest="20" />
-   <Label Text="Bắt đầu hành trình" TextColor="White" FontSize="15" FontAttributes="Bold" />
+<Image Source="play_1003_svgrepo_com.png" WidthRequest="20" HeightRequest="20" />
+   <Label x:Name="StartTourButtonLabel" TextColor="White" FontSize="15" FontAttributes="Bold" />
   </HorizontalStackLayout>
  </Border>
 

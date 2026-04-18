@@ -107,5 +107,17 @@
 	"Common_Edit": "Edit",
 	"Common_Delete": "Delete",
 	"Common_Save": "Save",
-	"Common_Cancel": "Cancel"
+	"Common_Cancel": "Cancel",
+	"Tour_Title": "Tours",
+	"Tour_Subtitle": "Select a tour to explore",
+	"Tour_Detail_Title": "Tour Details",
+	"Tour_Detail_Subtitle": "Explore the stops",
+	"Tour_Description": "Description",
+	"Tour_NoTours": "No tours available",
+	"Tour_NoToursDesc": "No stops available",
+	"Tour_NoPOIs": "No POIs",
+	"Tour_NoPoiDesc": "This tour has no locations yet",
+	"Tour_StartTour": "Start Tour",
+	"Tour_EstimatedTime": "Estimated time: {0} minutes",
+	"Tour_ViewDetails": "View Details"
 }

@@ -1,3 +1,5 @@
+using VinhKhanhstreetfoods.Models;
+using VinhKhanhstreetfoods.Services;
 using VinhKhanhstreetfoods.ViewModels;
 
 namespace VinhKhanhstreetfoods.Views;
@@ -6,6 +8,7 @@ namespace VinhKhanhstreetfoods.Views;
 public partial class TourDetailPage : ContentPage
 {
     private readonly TourDetailViewModel _viewModel;
+    private readonly LocalizationResourceManager _resourceManager;
     private int _tourId;
 
     public TourDetailPage(TourDetailViewModel viewModel)
@@ -13,6 +16,24 @@ public partial class TourDetailPage : ContentPage
         InitializeComponent();
         _viewModel = viewModel;
         BindingContext = _viewModel;
+   
+        // Get resource manager for localization
+        _resourceManager = LocalizationResourceManager.Instance;
+        Resources["resourceManager"] = _resourceManager;
+  
+        // Subscribe to language changes
+        _resourceManager.LanguageChanged += (s, e) => UpdateLocalizedStrings();
+        
+        // Set localized strings when page is loaded
+        Loaded += (s, e) => UpdateLocalizedStrings();
+    }
+
+    private void UpdateLocalizedStrings()
+    {
+        if (TourDetailTitleLabel != null)
+         TourDetailTitleLabel.Text = _resourceManager.GetString("Tour_Detail_Title") ?? "Chi Ti?t L? Trình";
+        if (StartTourButtonLabel != null)
+         StartTourButtonLabel.Text = _resourceManager.GetString("Tour_StartTour") ?? "B?t ??u hành trình";
     }
 
     public int TourId
