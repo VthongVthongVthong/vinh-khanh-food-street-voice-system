@@ -83,6 +83,59 @@
                             SelectedItem="{Binding SelectedPOI, Mode=TwoWay}"
                             SelectionChangedCommand="{Binding OpenDetailCommand}"
                             SelectionChangedCommandParameter="{Binding SelectedPOI}">
+                <CollectionView.Header>
+                    <!-- Right Now Recommendations -->
+                    <StackLayout IsVisible="{Binding IsTrendingPoisVisible}"
+                                 Margin="0,0,0,16">
+                        <Label Text="🔥 Gợi ý cho bạn lúc này"
+                               FontAttributes="Bold"
+                               FontSize="16"
+                               TextColor="{StaticResource TextDark}"
+                               Margin="20,0,20,8"/>
+                        <CollectionView ItemsSource="{Binding TrendingPois}"
+                                        SelectionMode="Single"
+                                        SelectedItem="{Binding SelectedTrendingPOI, Mode=TwoWay}"
+                                        SelectionChangedCommand="{Binding OpenTrendingDetailCommand}"
+                                        SelectionChangedCommandParameter="{Binding SelectedTrendingPOI}">
+                            <CollectionView.ItemsLayout>
+                                <LinearItemsLayout Orientation="Horizontal" ItemSpacing="12" />
+                            </CollectionView.ItemsLayout>
+                            <CollectionView.ItemTemplate>
+                                <DataTemplate x:DataType="local2:TimeBasedPoiRecommendation">
+                                    <Border Style="{StaticResource MainCardStyle}" WidthRequest="200" Margin="20,0,0,0" Padding="0">
+                                        <Grid RowDefinitions="100,Auto">
+                                            <Image Grid.Row="0"
+                                                   Source="{Binding ImageUrl}"
+                                                   Aspect="AspectFill"
+                                                   HeightRequest="100" />
+                                            <StackLayout Grid.Row="1" Padding="12">
+                                                <Label Text="{Binding PoiName}"
+                                                       FontAttributes="Bold"
+                                                       FontSize="14"
+                                                       TextColor="{StaticResource TextDark}"
+                                                       LineBreakMode="TailTruncation"
+                                                       MaxLines="1"/>
+                                                <Border BackgroundColor="#FFF4E5"
+                                                        StrokeThickness="0"
+                                                        Padding="4,2"
+                                                        Margin="0,4,0,0"
+                                                        HorizontalOptions="Start">
+                                                    <Border.StrokeShape>
+                                                        <RoundRectangle CornerRadius="4" />
+                                                    </Border.StrokeShape>
+                                                    <Label Text="{Binding HighlightTag}"
+                                                           FontSize="10"
+                                                           TextColor="{StaticResource BrandOrange}"/>
+                                                </Border>
+                                            </StackLayout>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </CollectionView.ItemTemplate>
+                        </CollectionView>
+                    </StackLayout>
+                </CollectionView.Header>
+                
                 <CollectionView.ItemsLayout>
                     <LinearItemsLayout Orientation="Vertical" ItemSpacing="16" />
                 </CollectionView.ItemsLayout>

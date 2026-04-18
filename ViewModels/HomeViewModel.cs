@@ -14,14 +14,18 @@ namespace VinhKhanhstreetfoods.ViewModels
         private readonly GeofenceEngine _geofenceEngine;
         private readonly IPOIRepository _poiRepository;
         private readonly AudioManager _audioManager;
+        private readonly PoiRecommendationService _poiRecommendationService;
 
         private readonly List<POI> _allPOIs = new();
         private ObservableCollection<POI> _nearbyPOIs;
+        private ObservableCollection<TimeBasedPoiRecommendation> _trendingPois;
+        private bool _isTrendingPoisVisible;
         private string _statusMessage;
         private bool _isLocationServiceRunning;
         private double _userLatitude;
         private double _userLongitude;
         private POI? _selectedPOI;
+        private TimeBasedPoiRecommendation? _selectedTrendingPOI;
         private bool _isNavigating;
         private bool _isLoading;
         private string _searchText = string.Empty;
@@ -34,20 +38,33 @@ namespace VinhKhanhstreetfoods.ViewModels
             LocationService locationService,
             GeofenceEngine geofenceEngine,
             IPOIRepository poiRepository,
-            AudioManager audioManager)
+            AudioManager audioManager,
+            PoiRecommendationService poiRecommendationService)
         {
             _locationService = locationService ?? throw new ArgumentNullException(nameof(locationService));
             _geofenceEngine = geofenceEngine ?? throw new ArgumentNullException(nameof(geofenceEngine));
             _poiRepository = poiRepository ?? throw new ArgumentNullException(nameof(poiRepository));
             _audioManager = audioManager ?? throw new ArgumentNullException(nameof(audioManager));
+            _poiRecommendationService = poiRecommendationService ?? throw new ArgumentNullException(nameof(poiRecommendationService));
 
             NearbyPOIs = new ObservableCollection<POI>();
+            TrendingPois = new ObservableCollection<TimeBasedPoiRecommendation>();
+            IsTrendingPoisVisible = false;
             StatusMessage = LocalizationService.GetString("Home_Status_Ready") ?? "App ready. Press START to track location.";
             IsLoading = false;
 
             StartLocationServiceCommand = new Command(async () => await StartLocationService());
             StopLocationServiceCommand = new Command(async () => await StopLocationService());
             OpenDetailCommand = new Command<POI>(async poi => await OpenDetailAsync(poi));
+            OpenTrendingDetailCommand = new Command<TimeBasedPoiRecommendation>(async trendingPoi => {
+                if (trendingPoi == null) return;
+                
+                // Clear selection TRƯỚC KHI navigate để tránh MAUI CollectionView focus lại khi back về
+                SelectedTrendingPOI = null;
+
+                var poi = _allPOIs.FirstOrDefault(p => p.Id == trendingPoi.PoiId);
+                if (poi != null) await OpenDetailAsync(poi);
+            });
             RefreshDataCommand = new Command(async () => await RefreshDataAsync(), () => !IsRefreshing);
             RefreshAppCommand = new Command(async () => await RefreshAppAsync(), () => !IsRefreshing);
 
@@ -56,6 +73,18 @@ namespace VinhKhanhstreetfoods.ViewModels
             _audioManager.AudioStarted += OnAudioStarted;
             _audioManager.AudioCompleted += OnAudioCompleted;
             _poiRepository.POIsSynced += OnRepositoryPoisSynced;
+        }
+
+        public ObservableCollection<TimeBasedPoiRecommendation> TrendingPois
+        {
+            get => _trendingPois;
+            set { _trendingPois = value; OnPropertyChanged(); }
+        }
+
+        public bool IsTrendingPoisVisible
+        {
+            get => _isTrendingPoisVisible;
+            set { _isTrendingPoisVisible = value; OnPropertyChanged(); }
         }
 
         public ObservableCollection<POI> NearbyPOIs
@@ -73,6 +102,19 @@ namespace VinhKhanhstreetfoods.ViewModels
                     return;
 
                 _selectedPOI = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public TimeBasedPoiRecommendation? SelectedTrendingPOI
+        {
+            get => _selectedTrendingPOI;
+            set
+            {
+                if (Equals(_selectedTrendingPOI, value))
+                    return;
+
+                _selectedTrendingPOI = value;
                 OnPropertyChanged();
             }
         }
@@ -139,6 +181,7 @@ namespace VinhKhanhstreetfoods.ViewModels
         public ICommand StartLocationServiceCommand { get; }
         public ICommand StopLocationServiceCommand { get; }
         public ICommand OpenDetailCommand { get; }
+        public ICommand OpenTrendingDetailCommand { get; }
         public ICommand RefreshDataCommand { get; }
         public ICommand RefreshAppCommand { get; }
 
@@ -148,6 +191,40 @@ namespace VinhKhanhstreetfoods.ViewModels
                 return;
 
             await LoadInitialDataAsync();
+        }
+
+        private async Task LoadTrendingPoisAsync()
+        {
+            try
+            {
+                var now = DateTime.Now;
+                var currentDay = now.DayOfWeek;
+                string timeBlock = now.Hour switch
+                {
+                    < 6 => "Night",
+                    < 11 => "Morning",
+                    < 14 => "Noon",
+                    < 18 => "Afternoon",
+                    < 22 => "Evening",
+                    _ => "Night"
+                };
+
+                var trending = await _poiRecommendationService.GetTrendingPoisAsync(currentDay, timeBlock);
+
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    TrendingPois.Clear();
+                    foreach (var poi in trending)
+                    {
+                        TrendingPois.Add(poi);
+                    }
+                    IsTrendingPoisVisible = TrendingPois.Count > 0;
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[HomeViewModel] Error loading trending POIs: {ex.Message}");
+            }
         }
 
         private async Task LoadInitialDataAsync()
@@ -174,6 +251,8 @@ namespace VinhKhanhstreetfoods.ViewModels
                 });
 
                 System.Diagnostics.Debug.WriteLine($"[HomeViewModel] Loaded {allPOIs?.Count ?? 0} active POIs from database");
+
+                _ = Task.Run(async () => await LoadTrendingPoisAsync());
 
                 if (allPOIs == null || allPOIs.Count == 0)
                 {
@@ -390,6 +469,10 @@ namespace VinhKhanhstreetfoods.ViewModels
             try
             {
                 _isNavigating = true;
+                
+                // Clear selection TRƯỚC KHI navigate để UI xử lý luôn, tránh dính bug selection của MAUI khi GoBack
+                SelectedPOI = null;
+                
                 await Shell.Current.GoToAsync($"detail?poiId={poi.Id}", true);
             }
             catch (Exception ex)
@@ -399,7 +482,6 @@ namespace VinhKhanhstreetfoods.ViewModels
             }
             finally
             {
-                SelectedPOI = null;
                 _isNavigating = false;
             }
         }

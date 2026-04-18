@@ -14,6 +14,7 @@ namespace VinhKhanhstreetfoods.ViewModels
         private readonly LocationService _locationService;
         private readonly AudioManager _audioManager;
         private readonly SettingsService _settingsService;
+        private readonly MapHeatmapService _heatmapService;
 
         private ObservableCollection<POI> _allPOIs;
         private POI _selectedPOI;
@@ -24,15 +25,26 @@ namespace VinhKhanhstreetfoods.ViewModels
         private string _statusMessage;
         private int _isSyncingFromAdmin;
 
+        // Heatmap Properties
+        private int _selectedHour = DateTime.Now.Hour >= 16 && DateTime.Now.Hour <= 24 ? DateTime.Now.Hour == 24 ? 0 : DateTime.Now.Hour : 19;
+        private Dictionary<int, double> _hotScores = new();
+
         public event PropertyChangedEventHandler? PropertyChanged;
 
-        public MapViewModel(IPOIRepository poiRepository, MapService mapService, LocationService locationService, AudioManager audioManager, SettingsService settingsService)
+        public MapViewModel(
+            IPOIRepository poiRepository,
+            MapService mapService,
+            LocationService locationService,
+            AudioManager audioManager,
+            SettingsService settingsService,
+            MapHeatmapService heatmapService)
         {
             _poiRepository = poiRepository ?? throw new ArgumentNullException(nameof(poiRepository));
             _mapService = mapService ?? throw new ArgumentNullException(nameof(mapService));
             _locationService = locationService ?? throw new ArgumentNullException(nameof(locationService));
             _audioManager = audioManager ?? throw new ArgumentNullException(nameof(audioManager));
             _settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
+            _heatmapService = heatmapService ?? throw new ArgumentNullException(nameof(heatmapService));
 
             AllPOIs = new ObservableCollection<POI>();
             StatusMessage = "T?i b?n d?...";
@@ -136,6 +148,42 @@ namespace VinhKhanhstreetfoods.ViewModels
             set { _statusMessage = value; OnPropertyChanged(); }
         }
 
+        public int SelectedHour
+        {
+            get => _selectedHour;
+            set 
+            { 
+                if (_selectedHour != value)
+                {
+                    _selectedHour = value; 
+                    OnPropertyChanged(); 
+                    _ = RefreshHotScoresAsync();
+                }
+            }
+        }
+
+        public Dictionary<int, double> HotScores
+        {
+            get => _hotScores;
+            private set
+            {
+                _hotScores = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public async Task RefreshHotScoresAsync()
+        {
+            var day = DateTime.Now.DayOfWeek;
+            int h = SelectedHour == 24 ? 0 : SelectedHour;
+            var scores = await _heatmapService.GetHotScoresAsync(day, h);
+            
+            // To run on MainThread so UI gets updated bindings if necessary
+            MainThread.BeginInvokeOnMainThread(() => {
+                HotScores = scores;
+            });
+        }
+
         public ICommand OpenMapCommand { get; }
         public ICommand RefreshCommand { get; }
         public ICommand OpenDetailCommand { get; }
@@ -170,6 +218,8 @@ namespace VinhKhanhstreetfoods.ViewModels
             try
             {
                 System.Diagnostics.Debug.WriteLine("[MapViewModel] Starting POI load...");
+                
+                await RefreshHotScoresAsync();
 
                 if (_poiRepository == null)
                 {
