@@ -4,6 +4,8 @@ using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
+using Microsoft.Maui.Networking;
+using Microsoft.Maui.Storage;
 using VinhKhanhstreetfoods.Models;
 
 namespace VinhKhanhstreetfoods.Services
@@ -22,10 +24,25 @@ namespace VinhKhanhstreetfoods.Services
 
         public async Task<List<TimeBasedPoiRecommendation>> GetTrendingPoisAsync(DayOfWeek dayOfWeek, string timeBlock)
         {
+            string cacheKey = $"TrendingPois_Cache_{dayOfWeek}_{timeBlock}";
             var recommendations = new List<TimeBasedPoiRecommendation>();
 
             try
             {
+                if (Connectivity.Current.NetworkAccess != NetworkAccess.Internet)
+                {
+                    string cachedData = Preferences.Get(cacheKey, string.Empty);
+                    if (!string.IsNullOrEmpty(cachedData))
+                    {
+                        var cachedList = System.Text.Json.JsonSerializer.Deserialize<List<TimeBasedPoiRecommendation>>(cachedData);
+                        if (cachedList != null && cachedList.Any())
+                        {
+                            return cachedList;
+                        }
+                    }
+                    return recommendations;
+                }
+
                 // In a real production app, you might want a backend API to aggregate these,
                 // but since the requirement is to do it in MAUI, we download the necessary data.
                 // Note: For a very large DB, consider doing this aggregation on a Cloud Function.
@@ -117,10 +134,24 @@ namespace VinhKhanhstreetfoods.Services
                         HighlightTag = tag
                     });
                 }
+
+                if (recommendations.Any())
+                {
+                    Preferences.Set(cacheKey, System.Text.Json.JsonSerializer.Serialize(recommendations));
+                }
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[PoiRecommendationService] Error: {ex.Message}");
+                string cachedData = Preferences.Get(cacheKey, string.Empty);
+                if (!string.IsNullOrEmpty(cachedData))
+                {
+                    var cachedList = System.Text.Json.JsonSerializer.Deserialize<List<TimeBasedPoiRecommendation>>(cachedData);
+                    if (cachedList != null)
+                    {
+                        return cachedList;
+                    }
+                }
             }
 
             return recommendations;

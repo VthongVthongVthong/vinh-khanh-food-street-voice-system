@@ -155,26 +155,54 @@
                                     0%, 100% { transform: translateY(0); }
                                     50% { transform: translateY(-4px); }
                                 }
-                                </style>
-                                </head>
-                                <body>
-                                <div id="map"></div>
-                                <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
-                                <script>
-                                mapboxgl.accessToken = "bca01773651908dcc9bc6320f7c16973ce";
-                                const map = new mapboxgl.Map({
-                                    container: 'map',
-                                    style: 'https://maps.track-asia.com/styles/v1/streets.json?key=bca01773651908dcc9bc6320f7c16973ce',
-                                    center: [106.700981,10.776530],
-                                    zoom: 15
-                                });
 
+                                /* Chấm xanh vị trí người dùng */
+                                .user-marker-container {
+                                    position: relative;
+                                    width: 20px;
+                                    height: 20px;
+                                    z-index: 99999 !important;
+                                }
+                                .user-marker-dot {
+                                    width: 16px;
+                                    height: 16px;
+                                    background-color: #4285F4;
+                                    border: 3px solid white;
+                                    border-radius: 50%;
+                                    box-shadow: 0 0 8px rgba(0,0,0,0.5);
+                                    position: absolute;
+                                    top: 50%;
+                                    left: 50%;
+                                    transform: translate(-50%, -50%);
+                                    z-index: 9999 !important;
+                                }
+                                .user-marker-pulse {
+                                    width: 40px;
+                                    height: 40px;
+                                    background-color: rgba(66, 133, 244, 0.4);
+                                    border-radius: 50%;
+                                    position: absolute;
+                                    top: 50%;
+                                    left: 50%;
+                                    transform: translate(-50%, -50%);
+                                    animation: user-pulse 1.5s infinite ease-out;
+                                    z-index: 9998 !important;
+                                    pointer-events: none;
+                                }
+                                @keyframes user-pulse {
+                                    0% { transform: translate(-50%, -50%) scale(0.4); opacity: 1; }
+                                    100% { transform: translate(-50%, -50%) scale(1.2); opacity: 0; }
+                                }
+                                </style>
+                                <script>
                                 let userMarker = null;
                                 let isLocationEnabled = false;
                                 const poiMarkers = new Map();
                                 const poiElements = new Map();
                                 let hasFirstFix = false;
                                 let detailButtonText = 'View details';
+
+                                let pendingLocation = null;
 
                                 function setDetailButtonText(text) {
                                     detailButtonText = text || 'View details';
@@ -321,9 +349,29 @@
                                     }
                                 }
 
+                                function createUserElement() {
+                                    const container = document.createElement('div');
+                                    container.className = 'user-marker-container';
+
+                                    const pulse = document.createElement('div');
+                                    pulse.className = 'user-marker-pulse';
+
+                                    const dot = document.createElement('div');
+                                    dot.className = 'user-marker-dot';
+                                    
+                                    container.appendChild(pulse);
+                                    container.appendChild(dot);
+                                    return container;
+                                }
+
                                 function updateLocation(lat, lng) {
+                                    if (typeof map === 'undefined' || !map) {
+                                        pendingLocation = { lat: lat, lng: lng };
+                                        return;
+                                    }
+
                                     if (!userMarker) {
-                                        userMarker = new mapboxgl.Marker({ color: '#FF0000' })
+                                        userMarker = new mapboxgl.Marker({ element: createUserElement() })
                                             .setLngLat([lng, lat])
                                             .addTo(map);
                                         map.flyTo({ center: [lng, lat], speed: 1.5, zoom: 16 });
@@ -392,6 +440,30 @@
                                         map.fitBounds(bounds, { padding: 40, maxZoom: 17 });
                                     }
                                 }
+                                </script>
+                                </head>
+                                <body>
+                                <div id="map"></div>
+                                <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+                                <script>
+                                mapboxgl.accessToken = "bca01773651908dcc9bc6320f7c16973ce";
+                                window.map = new mapboxgl.Map({
+                                    container: 'map',
+                                    style: 'https://maps.track-asia.com/styles/v1/streets.json?key=bca01773651908dcc9bc6320f7c16973ce',
+                                    center: [106.700981,10.776530],
+                                    zoom: 15
+                                });
+
+                                 
+
+                                if (pendingLocation) {
+                                    updateLocation(pendingLocation.lat, pendingLocation.lng);
+                                    pendingLocation = null;
+                                }
+
+                                window.map.on('load', () => {
+                                    // De trong
+                                });
 
                                 class CustomGeolocateControl {
                                     onAdd(map) {
@@ -400,11 +472,12 @@
                                         this.container.className = 'mapboxgl-ctrl mapboxgl-ctrl-group';
 
                                         const btn = document.createElement('button');
-                                        btn.className = 'mapboxgl-ctrl-icon mapboxgl-ctrl-geolocate';
+                                        btn.className = 'mapboxgl-ctrl-icon';
                                         btn.id = 'auto-geolocate-btn';
                                         btn.type = 'button';
                                         btn.title = 'My location';
                                         btn.onclick = () => recenterMap();
+                                        btn.innerHTML = `<svg width="20" height="20" viewBox="0 0 16 16" fill="none" style="margin-top: 4px;" xmlns="http://www.w3.org/2000/svg"><path d="M8 10C9.10457 10 10 9.10457 10 8C10 6.89543 9.10457 6 8 6C6.89543 6 6 6.89543 6 8C6 9.10457 6.89543 10 8 10Z" fill="#333333"/><path fill-rule="evenodd" clip-rule="evenodd" d="M2.08296 7C2.50448 4.48749 4.48749 2.50448 7 2.08296V0H9V2.08296C11.5125 2.50448 13.4955 4.48749 13.917 7H16V9H13.917C13.4955 11.5125 11.5125 13.4955 9 13.917V16H7V13.917C4.48749 13.4955 2.50448 11.5125 2.08296 9H0V7H2.08296ZM4 8C4 5.79086 5.79086 4 8 4C10.2091 4 12 5.79086 12 8C12 10.2091 10.2091 12 8 12C5.79086 12 4 10.2091 4 8Z" fill="#333333"/></svg>`;
 
                                         this.container.appendChild(btn);
                                         return this.container;
@@ -415,8 +488,8 @@
                                     }
                                 }
 
-                                map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
-                                map.addControl(new CustomGeolocateControl(), 'bottom-right');
+                                window.map.addControl(new CustomGeolocateControl(), 'bottom-right');
+                                window.map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
                                 </script>
                                 </body>
                                 </html>
@@ -429,7 +502,7 @@
 
                 <ImageButton x:Name="ToggleFullScreenBtn"
                         Source="zoom.png"
-                        BackgroundColor="#AA000000"
+                        BackgroundColor="#F4A950"
                         CornerRadius="20"
                         WidthRequest="40"
                         HeightRequest="40"
