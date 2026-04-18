@@ -29,6 +29,12 @@ namespace VinhKhanhstreetfoods.ViewModels
         private int _selectedHour = 16;
         private Dictionary<int, double> _hotScores = new();
 
+        // 🆕 Radius Filter Properties
+        private double _radiusFilterKm = 5.0; // 🔄 Changed default to 5km
+        private ObservableCollection<POI> _filteredPOIs;
+        private bool _isLocationEnabled;
+        private bool _hasPOIsInRadius;
+
         public event PropertyChangedEventHandler? PropertyChanged;
 
         public MapViewModel(
@@ -47,6 +53,7 @@ namespace VinhKhanhstreetfoods.ViewModels
             _heatmapService = heatmapService ?? throw new ArgumentNullException(nameof(heatmapService));
 
             AllPOIs = new ObservableCollection<POI>();
+            FilteredPOIs = new ObservableCollection<POI>();
             StatusMessage = "T?i b?n d?...";
             IsTracking = _locationService.IsTracking;
 
@@ -127,18 +134,22 @@ namespace VinhKhanhstreetfoods.ViewModels
 
                 UserLatitude = location.Latitude;
                 UserLongitude = location.Longitude;
-                StatusMessage = $"V? tr�: {location.Latitude:F4}, {location.Longitude:F4}";
+                StatusMessage = $"Vị trí: {location.Latitude:F4}, {location.Longitude:F4}";
+    
+                // 🆕 Set location enabled when we have valid coordinates
+                // ✅ FIX: Check if it's actually a valid location (not 0,0)
+                if (location.Latitude != 0 && location.Longitude != 0 && !IsLocationEnabled)
+                 {
+                    IsLocationEnabled = true;
+                }
+  
+                // 🆕 Cập nhật khoảng cách cho POI khi vị trí thay đổi
+                ApplyRadiusFilter();
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[MapViewModel] Error in OnLocationUpdated: {ex.Message}");
             }
-        }
-
-        public ObservableCollection<POI> AllPOIs
-        {
-            get => _allPOIs;
-            set { _allPOIs = value; OnPropertyChanged(); }
         }
 
         public POI SelectedPOI
@@ -150,14 +161,14 @@ namespace VinhKhanhstreetfoods.ViewModels
         public double UserLatitude
         {
             get => _userLatitude;
-            set { _userLatitude = value; OnPropertyChanged(); }
+    set { _userLatitude = value; OnPropertyChanged(); }
         }
 
         public double UserLongitude
-        {
+    {
             get => _userLongitude;
-            set { _userLongitude = value; OnPropertyChanged(); }
-        }
+set { _userLongitude = value; OnPropertyChanged(); }
+    }
 
         public bool IsTracking
         {
@@ -167,9 +178,71 @@ namespace VinhKhanhstreetfoods.ViewModels
 
         public string StatusMessage
         {
-            get => _statusMessage;
+    get => _statusMessage;
             set { _statusMessage = value; OnPropertyChanged(); }
         }
+
+        public ObservableCollection<POI> AllPOIs
+        {
+     get => _allPOIs;
+      set { _allPOIs = value; OnPropertyChanged(); }
+        }
+
+        // 🆕 Filtered POIs based on radius
+        public ObservableCollection<POI> FilteredPOIs
+        {
+            get => _filteredPOIs;
+            set { _filteredPOIs = value; OnPropertyChanged(); }
+        }
+
+     // 🆕 Radius Filter (0-10km)
+        public double RadiusFilterKm
+        {
+   get => _radiusFilterKm;
+  set
+      {
+          if (_radiusFilterKm != value)
+  {
+  _radiusFilterKm = value; 
+            OnPropertyChanged(); 
+ ApplyRadiusFilter();
+         }
+    }
+        }
+
+     // 🆕 Is location enabled (GPS is on)
+public bool IsLocationEnabled
+     {
+        get => _isLocationEnabled;
+       set 
+         { 
+   if (_isLocationEnabled != value)
+                {
+ _isLocationEnabled = value; 
+       OnPropertyChanged();
+     if (!value)
+ {
+     // Khi tắt định vị, xóa FilteredPOIs
+     FilteredPOIs = new ObservableCollection<POI>();
+       HasPOIsInRadius = false;
+           }
+       }
+            }
+        }
+
+  // 🆕 Has POIs in current radius
+     public bool HasPOIsInRadius
+        {
+      get => _hasPOIsInRadius;
+      set 
+            { 
+if (_hasPOIsInRadius != value)
+     {
+    _hasPOIsInRadius = value; 
+         OnPropertyChanged();
+       }
+    }
+  }
 
         public int SelectedHour
         {
@@ -205,6 +278,91 @@ namespace VinhKhanhstreetfoods.ViewModels
             MainThread.BeginInvokeOnMainThread(() => {
                 HotScores = scores;
             });
+        }
+
+        // 🆕 Áp dụng bộ lọc bán kính và cập nhật khoảng cách
+        public void ApplyRadiusFilter()
+        {
+            try
+ {
+       // ✅ FIX: Add safety checks to prevent crash during debug
+                if (AllPOIs == null)
+     {
+        FilteredPOIs = new ObservableCollection<POI>();
+     HasPOIsInRadius = false;
+         return;
+      }
+
+if (AllPOIs.Count == 0)
+        {
+        FilteredPOIs = new ObservableCollection<POI>();
+      HasPOIsInRadius = false;
+                  return;
+           }
+
+       var userLat = UserLatitude;
+      var userLng = UserLongitude;
+
+     // ✅ FIX: If location is not enabled or coordinates are invalid, don't filter
+      if (!IsLocationEnabled || (userLat == 0 && userLng == 0))
+      {
+      FilteredPOIs = new ObservableCollection<POI>();
+        HasPOIsInRadius = false;
+            return;
+         }
+
+          var filtered = new List<POI>();
+            foreach (var poi in AllPOIs)
+    {
+        try
+   {
+          // ✅ FIX: Add safety check for null POI
+    if (poi == null)
+    continue;
+
+       // ✅ FIX: CalculateDistance returns km, not meters
+                 double distanceKm = _mapService.CalculateDistance(userLat, userLng, poi.Latitude, poi.Longitude);
+
+              // Lưu lại khoảng cách để hiển thị
+   poi.DistanceFromUser = distanceKm;
+
+     // Nếu khoảng cách <= bán kính lọc, thêm vào danh sách
+       if (distanceKm <= RadiusFilterKm)
+               {
+  filtered.Add(poi);
+   }
+       }
+      catch (Exception poiEx)
+   {
+    System.Diagnostics.Debug.WriteLine($"[MapViewModel] Error processing POI in ApplyRadiusFilter: {poiEx.Message}");
+       // Continue processing other POIs
+     }
+ }
+
+     // Sắp xếp theo khoảng cách gần nhất
+     filtered = filtered.OrderBy(p => p.DistanceFromUser).ToList();
+
+     MainThread.BeginInvokeOnMainThread(() =>
+      {
+            try
+                {
+              FilteredPOIs = new ObservableCollection<POI>(filtered);
+     // ✅ FIX: Set HasPOIsInRadius based on filtered count
+  HasPOIsInRadius = filtered.Count > 0;
+ }
+           catch (Exception updateEx)
+          {
+     System.Diagnostics.Debug.WriteLine($"[MapViewModel] Error updating FilteredPOIs: {updateEx.Message}");
+      }
+      });
+     }
+ catch (Exception ex)
+            {
+ System.Diagnostics.Debug.WriteLine($"[MapViewModel] Error in ApplyRadiusFilter: {ex.Message}");
+  // Ensure we're in a safe state
+    FilteredPOIs = new ObservableCollection<POI>();
+     HasPOIsInRadius = false;
+            }
         }
 
         public ICommand OpenMapCommand { get; }

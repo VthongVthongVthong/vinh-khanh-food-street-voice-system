@@ -104,14 +104,15 @@ private ObservableCollection<POI>? _currentPoiCollection;
         if (BindingContext is MapViewModel vm)
         {
             if (vm.UserLatitude != 0 && vm.UserLongitude != 0)
-            {
-                UpdateMapLocation(vm.UserLatitude, vm.UserLongitude);
-            }
+          {
+              UpdateMapLocation(vm.UserLatitude, vm.UserLongitude);
+ }
 
             UpdateTrackingState(vm.IsTracking);
-            await RenderPOIsAsync(vm.AllPOIs);
-            await TryFocusPendingPoiAsync();
-        }
+            // ?? Render FilteredPOIs instead of AllPOIs
+            await RenderPOIsAsync(vm.FilteredPOIs);
+   await TryFocusPendingPoiAsync();
+    }
     }
 
     protected override void OnDisappearing()
@@ -176,33 +177,82 @@ HeaderSubtitleLabel.Text = _resourceManager.GetString("Home_Featured_Desc");
 
     private void ViewModel_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-      if (e.PropertyName == nameof(MapViewModel.UserLatitude) || e.PropertyName == nameof(MapViewModel.UserLongitude))
-   {
-       if (BindingContext is MapViewModel vm)
-     UpdateMapLocation(vm.UserLatitude, vm.UserLongitude);
-        }
-    else if (e.PropertyName == nameof(MapViewModel.IsTracking))
- {
-if (BindingContext is MapViewModel vm)
-    UpdateTrackingState(vm.IsTracking);
-        }
-        else if (e.PropertyName == nameof(MapViewModel.AllPOIs))
-  {
-   if (BindingContext is MapViewModel vm)
-         {
-   SubscribeToPoiCollection(vm.AllPOIs);
-     _ = RenderPOIsAsync(vm.AllPOIs);
-     _ = RenderHeatmapAsync(vm.HotScores, vm.AllPOIs);
- // Update locations count
-    var locationText = _resourceManager.GetString("Map_Locations") ?? "??a ?i?m";
-      LocationsCountLabel.Text = $"{vm.AllPOIs.Count} {locationText}";
-          }
-}
-        else if (e.PropertyName == nameof(MapViewModel.HotScores) || e.PropertyName == nameof(MapViewModel.SelectedHour))
+        if (e.PropertyName == nameof(MapViewModel.UserLatitude) || e.PropertyName == nameof(MapViewModel.UserLongitude))
         {
             if (BindingContext is MapViewModel vm)
-                _ = RenderHeatmapAsync(vm.HotScores, vm.AllPOIs);
+      {
+    UpdateMapLocation(vm.UserLatitude, vm.UserLongitude);
+    // ? FIX: Also apply radius filter when location updates
+        ApplyRadiusFilter();
+      }
+     }
+      else if (e.PropertyName == nameof(MapViewModel.IsTracking))
+   {
+     if (BindingContext is MapViewModel vm)
+            UpdateTrackingState(vm.IsTracking);
+ }
+        else if (e.PropertyName == nameof(MapViewModel.AllPOIs))
+        {
+            if (BindingContext is MapViewModel vm)
+            {
+          SubscribeToPoiCollection(vm.AllPOIs);
+         _ = RenderPOIsAsync(vm.AllPOIs);
+          _ = RenderHeatmapAsync(vm.HotScores, vm.AllPOIs);
+    // Update locations count
+            var locationText = _resourceManager.GetString("Map_Locations") ?? "??a ?i?m";
+      LocationsCountLabel.Text = $"{vm.AllPOIs.Count} {locationText}";
+            }
+    }
+        // ?? Monitor FilteredPOIs changes
+        else if (e.PropertyName == nameof(MapViewModel.FilteredPOIs))
+ {
+  if (BindingContext is MapViewModel vm)
+     _ = RenderPOIsAsync(vm.FilteredPOIs);
         }
+        // ?? Monitor RadiusFilterKm changes
+    else if (e.PropertyName == nameof(MapViewModel.RadiusFilterKm))
+    {
+    if (BindingContext is MapViewModel vm)
+    {
+    // Radius changed, re-render filtered POIs on map
+_ = RenderPOIsAsync(vm.FilteredPOIs);
+ }
+        }
+     // ?? Monitor IsLocationEnabled changes
+        else if (e.PropertyName == nameof(MapViewModel.IsLocationEnabled))
+  {
+     if (BindingContext is MapViewModel vm)
+         {
+       // Re-apply filter when location enabled/disabled
+ ApplyRadiusFilter();
+}
+        }
+  // ?? Monitor HasPOIsInRadius changes
+        else if (e.PropertyName == nameof(MapViewModel.HasPOIsInRadius))
+   {
+      // UI will automatically update due to binding
+        }
+        else if (e.PropertyName == nameof(MapViewModel.HotScores) || e.PropertyName == nameof(MapViewModel.SelectedHour))
+     {
+    if (BindingContext is MapViewModel vm)
+        _ = RenderHeatmapAsync(vm.HotScores, vm.AllPOIs);
+}
+    }
+
+  // ?? Helper method to apply radius filter
+    private void ApplyRadiusFilter()
+    {
+     try
+{
+     if (BindingContext is MapViewModel vm)
+  {
+  vm.ApplyRadiusFilter();
+        }
+}
+catch (Exception ex)
+{
+  System.Diagnostics.Debug.WriteLine($"[MapPage] Error in ApplyRadiusFilter: {ex.Message}");
+}
     }
 
     private async Task RenderHeatmapAsync(Dictionary<int, double> hotScores, IEnumerable<POI> pois)
@@ -330,9 +380,10 @@ _currentPoiCollection.CollectionChanged += PoiCollectionChanged;
 
     private void PoiCollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
     {
- if (BindingContext is MapViewModel vm)
-         _ = RenderPOIsAsync(vm.AllPOIs);
-    }
+    if (BindingContext is MapViewModel vm)
+   // ?? Render FilteredPOIs to respect current radius filter
+ _ = RenderPOIsAsync(vm.FilteredPOIs);
+  }
 
     private async Task TryFocusPendingPoiAsync()
     {
