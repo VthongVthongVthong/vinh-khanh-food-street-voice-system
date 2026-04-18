@@ -35,7 +35,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         if ($role === 'ADMIN') {
                             header("Location: index.php");
                         } else {
-                            header("Location: index_partner.php");
+                            header("Location: dashboard_partner.php");
                         }
                         exit;
                     } else {

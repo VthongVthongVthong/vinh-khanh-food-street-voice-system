@@ -82,9 +82,9 @@ function syncPoiImageToFirebase($pdo, $id, $action = 'put') {
 // Hàm upload ảnh lên Cloudinary
 function uploadToCloudinary($tmpFile) {
     if (!$tmpFile || !file_exists($tmpFile)) return null;
-    $cloudName = '';
-    $apiKey = '';
-    $apiSecret = '';
+    $cloudName = 'db0clbmer';
+    $apiKey = '533653929198788';
+    $apiSecret = '4HRSM8TGQuOqYQSEN2igZM5pgYc';
     $timestamp = time();
     $signature = sha1("timestamp=" . $timestamp . $apiSecret);
     

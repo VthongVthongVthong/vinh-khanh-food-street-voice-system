@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 session_start();
 require_once 'db.php';
 
@@ -85,9 +85,9 @@ function syncPoiImageToFirebase($pdo, $id, $action = 'put') {
 // Hàm upload ảnh lên Cloudinary
 function uploadToCloudinary($tmpFile) {
     if (!$tmpFile || !file_exists($tmpFile)) return null;
-    $cloudName = '';
-    $apiKey = '';
-    $apiSecret = '';
+    $cloudName = 'db0clbmer';
+    $apiKey = '533653929198788';
+    $apiSecret = '4HRSM8TGQuOqYQSEN2igZM5pgYc';
     $timestamp = time();
     $signature = sha1("timestamp=" . $timestamp . $apiSecret);
     
@@ -533,7 +533,7 @@ try {
 
             <!-- Navigation -->
             <nav class="p-4 space-y-1">
-                <a href="#" class="flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-gray-50 hover:text-gray-900 rounded-lg font-medium transition-colors">
+                <a href="dashboard_partner.php" class="flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-gray-50 hover:text-gray-900 rounded-lg font-medium transition-colors">
                     <i class="fas fa-th-large w-5 text-center"></i>
                     Tổng quan
                 </a>
@@ -544,10 +544,6 @@ try {
                 <a href="#" class="flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-gray-50 hover:text-gray-900 rounded-lg font-medium transition-colors">
                     <i class="fas fa-ticket-alt w-5 text-center"></i>
                     Khuyến mãi
-                </a>
-                <a href="#" class="flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-gray-50 hover:text-gray-900 rounded-lg font-medium transition-colors">
-                    <i class="fas fa-chart-line w-5 text-center"></i>
-                    Thống kê & Insight
                 </a>
                 <a href="#" class="flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-gray-50 hover:text-gray-900 rounded-lg font-medium transition-colors">
                     <i class="fas fa-cog w-5 text-center"></i>
