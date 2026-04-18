@@ -82,9 +82,9 @@ function syncPoiImageToFirebase($pdo, $id, $action = 'put') {
 // Hàm upload ảnh lên Cloudinary
 function uploadToCloudinary($tmpFile) {
     if (!$tmpFile || !file_exists($tmpFile)) return null;
-    $cloudName = 'db0clbmer';
-    $apiKey = '533653929198788';
-    $apiSecret = '4HRSM8TGQuOqYQSEN2igZM5pgYc';
+    $cloudName = '';
+    $apiKey = '';
+    $apiSecret = '';
     $timestamp = time();
     $signature = sha1("timestamp=" . $timestamp . $apiSecret);
     
@@ -499,6 +499,7 @@ try {
 <!DOCTYPE html>
 <html lang="vi">
 <head>
+    <link rel="icon" type="image/png" href="img/icon.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vĩnh Khánh CMS - Quản lý POI</title>

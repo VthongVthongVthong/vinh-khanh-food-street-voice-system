@@ -139,6 +139,7 @@ foreach ($last30Days as $date => $data) {
 <!DOCTYPE html>
 <html lang="vi">
 <head>
+    <link rel="icon" type="image/png" href="img/icon.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tổng quan doanh nghiệp - Vendor Portal</title>
