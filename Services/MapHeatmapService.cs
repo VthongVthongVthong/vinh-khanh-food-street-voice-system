@@ -30,19 +30,19 @@ namespace VinhKhanhstreetfoods.Services
 
                 // 1. Real-time Presence
                 var realTimePresence = userPresence
-                    .Where(p => p.PoiId.HasValue && p.UpdatedAt.DayOfWeek == targetDay && p.UpdatedAt.Hour == targetHour)
+                    .Where(p => p.PoiId.HasValue && p.UpdatedAt.Hour == targetHour)
                     .GroupBy(p => p.PoiId!.Value)
                     .ToDictionary(g => g.Key, g => g.Count());
 
                 // 2. Historical Density
                 var historicalVisits = visitLogs
-                    .Where(v => v.VisitTime.DayOfWeek == targetDay && v.VisitTime.Hour == targetHour)
+                    .Where(v => v.VisitTime.Hour == targetHour)
                     .GroupBy(v => v.PoiId)
                     .ToDictionary(g => g.Key, g => g.Select(v => v.SessionId).Distinct().Count());
 
                 // 3. Quality Multiplier (Audio Completion)
                 var qualityScores = audioPlayLogs
-                    .Where(a => a.PlayTime.DayOfWeek == targetDay && a.PlayTime.Hour == targetHour)
+                    .Where(a => a.PlayTime.Hour == targetHour)
                     .GroupBy(a => a.PoiId)
                     .ToDictionary(g => g.Key, g => g.Average(a => a.CompletionRate));
 
@@ -137,7 +137,7 @@ namespace VinhKhanhstreetfoods.Services
             public string VisitTimeString { get; set; } = string.Empty;
             [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
             public string SessionId { get; set; } = string.Empty;
-            public DateTime VisitTime => DateTime.TryParse(VisitTimeString, out var dt) ? dt : DateTime.MinValue;
+            public DateTime VisitTime => DateTime.TryParse(VisitTimeString, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var dt) ? dt : DateTime.MinValue;
         }
 
         private class AudioPlayLogDto
@@ -148,7 +148,7 @@ namespace VinhKhanhstreetfoods.Services
             public string PlayTimeString { get; set; } = string.Empty;
             [System.Text.Json.Serialization.JsonPropertyName("completionRate")]
             public double CompletionRate { get; set; }
-            public DateTime PlayTime => DateTime.TryParse(PlayTimeString, out var dt) ? dt : DateTime.MinValue;
+            public DateTime PlayTime => DateTime.TryParse(PlayTimeString, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var dt) ? dt : DateTime.MinValue;
         }
 
         private class UserPresenceDto
@@ -157,7 +157,7 @@ namespace VinhKhanhstreetfoods.Services
             public int? PoiId { get; set; }
             [System.Text.Json.Serialization.JsonPropertyName("updatedAt")]
             public string UpdatedAtString { get; set; } = string.Empty;
-            public DateTime UpdatedAt => DateTime.TryParse(UpdatedAtString, out var dt) ? dt : DateTime.MinValue;
+            public DateTime UpdatedAt => DateTime.TryParse(UpdatedAtString, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var dt) ? dt : DateTime.MinValue;
         }
     }
 }

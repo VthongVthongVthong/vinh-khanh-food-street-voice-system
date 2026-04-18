@@ -26,7 +26,7 @@ namespace VinhKhanhstreetfoods.ViewModels
         private int _isSyncingFromAdmin;
 
         // Heatmap Properties
-        private int _selectedHour = DateTime.Now.Hour >= 16 && DateTime.Now.Hour <= 24 ? DateTime.Now.Hour == 24 ? 0 : DateTime.Now.Hour : 19;
+        private int _selectedHour = 16;
         private Dictionary<int, double> _hotScores = new();
 
         public event PropertyChangedEventHandler? PropertyChanged;
@@ -66,6 +66,29 @@ namespace VinhKhanhstreetfoods.ViewModels
             if (_settingsService != null)
             {
                 _settingsService.PreferredLanguageChanged += OnPreferredLanguageChanged;
+            }
+
+            SetDefaultTimeSlider();
+        }
+
+        private void SetDefaultTimeSlider()
+        {
+            int currentHour = DateTime.Now.Hour; // Trả về giá trị từ 0 đến 23
+
+            // Nếu người dùng mở app trong khoảng từ 16h đến 23h59
+            if (currentHour >= 16 && currentHour <= 23)
+            {
+                SelectedHour = currentHour;
+            }
+            // Trường hợp đặc biệt: Nếu là đúng 12h đêm (0h sáng), gán bằng mốc 24 trên Slider
+            else if (currentHour == 0)
+            {
+                SelectedHour = 24; 
+            }
+            // Nếu nằm ngoài vùng này (từ 1h sáng đến 15h chiều)
+            else
+            {
+                SelectedHour = 16;
             }
         }
 

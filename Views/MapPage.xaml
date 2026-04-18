@@ -211,9 +211,9 @@
                                 function updateHotspots(geoJsonData) {
                                     if (!geoJsonData || !geoJsonData.features) return;
                                     
-                                    // Chỉ cho phép addSource khi style map đã tải xong
-                                    if (!map.loaded()) {
-                                        map.once('load', () => updateHotspots(geoJsonData));
+                                    // THAY ĐỔI: Dùng isStyleLoaded() thay vì loaded()
+                                    if (typeof window.map === 'undefined' || !window.map.isStyleLoaded()) {
+                                        if (window.map) window.map.once('styledata', () => updateHotspots(geoJsonData));
                                         return;
                                     }
 
@@ -241,13 +241,13 @@
                                         }
                                     });
                                     
-                                    if (!map.getSource('hotspots')) {
-                                        map.addSource('hotspots', {
+                                    if (!window.map.getSource('hotspots')) {
+                                        window.map.addSource('hotspots', {
                                             'type': 'geojson',
                                             'data': geoJsonData
                                         });
 
-                                        map.addLayer({
+                                        window.map.addLayer({
                                             'id': 'hotspots-heat',
                                             'type': 'heatmap',
                                             'source': 'hotspots',
@@ -294,7 +294,7 @@
                                         }, 'waterway-label'); // Đặt dưới lớp tên đường
                                         
                                         // Thêm lớp pulse cho các điểm hot đột biến (score > 80)
-                                        map.addLayer({
+                                        window.map.addLayer({
                                             'id': 'hotspots-point',
                                             'type': 'circle',
                                             'source': 'hotspots',
@@ -329,7 +329,7 @@
                                         });
 
                                     } else {
-                                        map.getSource('hotspots').setData(geoJsonData);
+                                        window.map.getSource('hotspots').setData(geoJsonData);
                                     }
                                 }
 
@@ -337,9 +337,9 @@
                                     const marker = poiMarkers.get(id);
                                     if (!marker) return;
                                     const ll = marker.getLngLat();
-                                    map.flyTo({ center: ll, zoom: 17, speed: 1.5 });
+                                    if (window.map) window.map.flyTo({ center: ll, zoom: 17, speed: 1.5 });
                                     const popup = marker.getPopup?.();
-                                    if (popup) popup.addTo(map);
+                                    if (popup && window.map) popup.addTo(window.map);
                                 }
 
                                 function setTrackingState(isActive) {
@@ -365,7 +365,7 @@
                                 }
 
                                 function updateLocation(lat, lng) {
-                                    if (typeof map === 'undefined' || !map) {
+                                    if (typeof window.map === 'undefined' || !window.map) {
                                         pendingLocation = { lat: lat, lng: lng };
                                         return;
                                     }
@@ -373,23 +373,23 @@
                                     if (!userMarker) {
                                         userMarker = new mapboxgl.Marker({ element: createUserElement() })
                                             .setLngLat([lng, lat])
-                                            .addTo(map);
-                                        map.flyTo({ center: [lng, lat], speed: 1.5, zoom: 16 });
+                                            .addTo(window.map);
+                                        window.map.flyTo({ center: [lng, lat], speed: 1.5, zoom: 16 });
                                         hasFirstFix = true;
                                     } else {
                                         userMarker.setLngLat([lng, lat]);
                                         if (isLocationEnabled) {
-                                            map.flyTo({ center: [lng, lat], speed: 1.5, zoom: 16 });
+                                            window.map.flyTo({ center: [lng, lat], speed: 1.5, zoom: 16 });
                                         } else if (!hasFirstFix) {
-                                            map.flyTo({ center: [lng, lat], speed: 1.5, zoom: 16 });
+                                            window.map.flyTo({ center: [lng, lat], speed: 1.5, zoom: 16 });
                                             hasFirstFix = true;
                                         }
                                     }
                                 }
 
                                 function recenterMap() {
-                                    if (userMarker) {
-                                        map.flyTo({ center: userMarker.getLngLat(), speed: 1.5, zoom: 16 });
+                                    if (userMarker && window.map) {
+                                        window.map.flyTo({ center: userMarker.getLngLat(), speed: 1.5, zoom: 16 });
                                         hasFirstFix = true;
                                     }
                                 }
@@ -429,15 +429,15 @@
                                         const marker = new mapboxgl.Marker({ element: el })
                                             .setLngLat([p.lng, p.lat])
                                             .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(popupHtml))
-                                            .addTo(map);
+                                            .addTo(window.map);
 
                                         poiMarkers.set(p.id, marker);
                                         poiElements.set(p.id, el);
                                         bounds.extend([p.lng, p.lat]);
                                     });
 
-                                    if (!bounds.isEmpty()) {
-                                        map.fitBounds(bounds, { padding: 40, maxZoom: 17 });
+                                    if (!bounds.isEmpty() && window.map) {
+                                        window.map.fitBounds(bounds, { padding: 40, maxZoom: 17 });
                                     }
                                 }
                                 </script>

@@ -379,12 +379,14 @@ var idValue = query.Split('&', StringSplitOptions.RemoveEmptyEntries)
     }
 
     private bool _isFullScreen = false;
-    private void OnToggleFullScreenClicked(object sender, EventArgs e)
+    private async void OnToggleFullScreenClicked(object sender, EventArgs e)
     {
      _isFullScreen = !_isFullScreen;
 
     if (_isFullScreen)
         {
+            await MainScrollView.ScrollToAsync(0, 0, false);
+            
      Shell.SetTabBarIsVisible(this, false);
       NavigationPage.SetHasNavigationBar(this, false);
 
