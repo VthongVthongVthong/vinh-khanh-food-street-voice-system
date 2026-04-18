@@ -32,7 +32,7 @@
 
   "Home_Title": "빈 칸",
   "Home_Location": "음식 거리, 4구",
-  "Home_Welcome_Title": "요리 여행에 오신 것을 환영합니다!",
+  "Home_Welcome_Title": "요리 여행에 오신 것을 환환합니다!",
   "Home_Welcome_Desc": "호치민시에서 가장 유명한 음식 거리에 있는 50개 이상의 훌륭한 레스토랑을 발견하세요. 각 목적지는 당신이 발견하기를 기다리는 맛의 이야기입니다.",
   "Home_Search_Placeholder": "레스토랑, 음식 검색...",
   "Home_Featured_Title": "상세정보 보기",
@@ -85,7 +85,7 @@
 
   "Map_Title": "지도",
   "Map_CurrentLocation": "현재 위치",
-  "Map_Restaurants": "레스토랑",
+  "Map_Restaurants": "근처 레스토랑",
   "Map_LoadingLocations": "위치 로드 중...",
   "Map_NoLocations": "레스토랑을 찾을 수 없습니다",
   "Map_Listen": "듣기",
@@ -94,6 +94,20 @@
   "Map_Locations": "위치",
   "Map_Stats_Explored": "탐색",
   "Map_Stats_Listened": "들었음",
+
+  "Map_EmptyState_Title": "반경 내에 POI 없음",
+  "Map_EmptyState_Description": "현재 반경 내에 POI가 없습니다",
+  "Map_EmptyState_Distance": "km",
+  "Map_EmptyState_Near": "당신 근처",
+  "Map_EmptyState_Hint": "위치를 확인하거나 검색 반경을 늘려 레스토랑을 찾으십시오.",
+  "Map_TimeSlider_Label": "시간별 탐색",
+  "Map_RadiusSlider_Label": "주변 검색 반경",
+  "Map_RadiusSlider_Format": "{0:F1} km",
+  "Map_Recommendation_Title": "🔥 지금 당신을 위한 추천",
+  "Map_HighlightTag_Trending": "🔥 뛰어나고 경험할 가치가 있습니다!",
+  "Map_HighlightTag_Popular": "🔥 현재 인기있음",
+  "Map_HighlightTag_HiddenGem": "💎 숨겨진 보석, 오디오를 들을 가치가 있음",
+  "Map_HighlightTag_Explore": "지금 탐색",
 
   "Nav_Home": "홈",
   "Nav_Map": "지도",

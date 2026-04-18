@@ -32,6 +32,12 @@ _localizationService = LocalizationService.Instance;
      OnLanguageChanged();
        }
       };
+      
+      // ? NEW: Subscribe to ResourceManager language changes
+      _resourceManager.LanguageChanged += (s, e) =>
+      {
+          OnLanguageChanged();
+      };
 }
 
    /// <summary>
@@ -60,9 +66,13 @@ _localizationService = LocalizationService.Instance;
 
        private void OnLanguageChanged()
       {
-  // Notify all properties have changed
+  // ? Ensure we're on MainThread before notifying
+  MainThread.BeginInvokeOnMainThread(() =>
+      {
+      // Notify all properties have changed
      PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(null));
-      }
+      });
+  }
 
         protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {

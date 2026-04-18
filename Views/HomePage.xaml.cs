@@ -62,6 +62,9 @@ public partial class HomePage : ContentPage
         SearchEntry.Placeholder = _resourceManager.GetString("Home_Search_Placeholder");
         StartLocationButton.Text = _resourceManager.GetString("Home_Button_StartLocation");
         StopLocationButton.Text = _resourceManager.GetString("Home_Button_StopLocation");
+
+        // ✅ NEW: Code-behind for Recommendation title
+        RecommendationTitleLabel.Text = _resourceManager.GetString("Map_Recommendation_Title") ?? "🔥 Gợi ý cho bạn lúc này";
     }
 
     private async void OnQrButtonClicked(object sender, EventArgs e)

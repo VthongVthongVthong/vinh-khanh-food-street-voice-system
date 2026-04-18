@@ -87,7 +87,7 @@
                     <!-- Right Now Recommendations -->
                     <StackLayout IsVisible="{Binding IsTrendingPoisVisible}"
                                  Margin="0,0,0,16">
-                        <Label Text="🔥 Gợi ý cho bạn lúc này"
+                        <Label x:Name="RecommendationTitleLabel"
                                FontAttributes="Bold"
                                FontSize="16"
                                TextColor="{StaticResource TextDark}"

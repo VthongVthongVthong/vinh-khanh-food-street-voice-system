@@ -22,10 +22,12 @@ private ObservableCollection<POI>? _currentPoiCollection;
         _localizationService = LocalizationService.Instance;
   _resourceManager = LocalizationResourceManager.Instance;
         _localizationService.PropertyChanged += OnLanguageChanged;
+        // ? NEW: Subscribe to ResourceManager language changes for converter bindings
+        _resourceManager.LanguageChanged += OnResourceManagerLanguageChanged;
 
-        ApplyLocalizedText();
+   ApplyLocalizedText();
     }
-
+    
     public int PoiId
     {
       set
@@ -33,6 +35,17 @@ private ObservableCollection<POI>? _currentPoiCollection;
             _pendingPoiId = value;
             _ = TryFocusPendingPoiAsync();
   }
+    }
+
+    protected override void OnAppearing()
+    {
+     base.OnAppearing();
+        _localizationService.PropertyChanged -= OnLanguageChanged;
+   _localizationService.PropertyChanged += OnLanguageChanged;
+        // ? NEW: Re-subscribe to ResourceManager when page appears
+        _resourceManager.LanguageChanged -= OnResourceManagerLanguageChanged;
+     _resourceManager.LanguageChanged += OnResourceManagerLanguageChanged;
+        ApplyLocalizedText();
     }
 
     protected override void OnNavigatedTo(NavigatedToEventArgs args)
@@ -119,6 +132,8 @@ private ObservableCollection<POI>? _currentPoiCollection;
     {
         base.OnDisappearing();
     _localizationService.PropertyChanged -= OnLanguageChanged;
+    // ? NEW: Unsubscribe from ResourceManager
+        _resourceManager.LanguageChanged -= OnResourceManagerLanguageChanged;
     }
 
     private void OnLanguageChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -131,9 +146,21 @@ private ObservableCollection<POI>? _currentPoiCollection;
  _ = ApplyMapLocalizedJsAsync();
      // Refresh localization properties in ViewModel
     if (BindingContext is MapViewModel vm)
+     vm.RefreshLocalizationStrings();
+        });
+      }
+    }
+    
+    // ? NEW: Handle ResourceManager language changes
+    private void OnResourceManagerLanguageChanged(object? sender, EventArgs e)
+ {
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            // Refresh ALL localization when ResourceManager language changes
+         ApplyLocalizedText();
+          if (BindingContext is MapViewModel vm)
         vm.RefreshLocalizationStrings();
         });
-        }
     }
 
     private void ApplyLocalizedText()
@@ -149,12 +176,23 @@ HeaderSubtitleLabel.Text = _resourceManager.GetString("Home_Featured_Desc");
    StatsHeaderLabel.Text = _resourceManager.GetString("Map_Restaurants");
    StatsExploredLabel.Text = _resourceManager.GetString("POI_ViewOnMap");
    StatsListenedLabel.Text = _resourceManager.GetString("Home_AudioBadge");
+   
+     // ? Code-behind for converter binding labels (Time Slider & Radius Slider)
+  TimeSliderLabel.Text = _resourceManager.GetString("Map_TimeSlider_Label") ?? "Khám phá theo gi?";
+  RadiusSliderLabel.Text = _resourceManager.GetString("Map_RadiusSlider_Label") ?? "Bán kính quét xung quanh";
+  
+  // ? NEW: Code-behind for Empty State labels
+  EmptyStateTitleLabel.Text = _resourceManager.GetString("Map_EmptyState_Title") ?? "Không có POI nào trong bán kính";
+  EmptyStateDescLabel.Text = _resourceManager.GetString("Map_EmptyState_Description") ?? "Hi?n t?i không có POI nào trong bán kính";
+  EmptyStateDistanceLabel.Text = _resourceManager.GetString("Map_EmptyState_Distance") ?? "km";
+  EmptyStateNearLabel.Text = _resourceManager.GetString("Map_EmptyState_Near") ?? "g?n b?n";
+  EmptyStateHintLabel.Text = _resourceManager.GetString("Map_EmptyState_Hint") ?? "Hãy ki?m tra ??nh v? c?a b?n ho?c t?ng bán kính quét ?? tìm nhà hàng.";
 
-        // Update locations count label
-        if (BindingContext is MapViewModel vm)
-        {
+        // ? FIX: Update locations count label - count FilteredPOIs (POI in radius only)
+  if (BindingContext is MapViewModel vm)
+  {
   var locationText = _resourceManager.GetString("Map_Locations") ?? "??a ?i?m";
-  LocationsCountLabel.Text = $"{vm.AllPOIs.Count} {locationText}";
+  LocationsCountLabel.Text = $"{vm.FilteredPOIs.Count} {locationText}";
     }
  }
 
@@ -194,20 +232,25 @@ HeaderSubtitleLabel.Text = _resourceManager.GetString("Home_Featured_Desc");
         else if (e.PropertyName == nameof(MapViewModel.AllPOIs))
         {
             if (BindingContext is MapViewModel vm)
-            {
-          SubscribeToPoiCollection(vm.AllPOIs);
-         _ = RenderPOIsAsync(vm.AllPOIs);
+      {
+       SubscribeToPoiCollection(vm.AllPOIs);
+ _ = RenderPOIsAsync(vm.AllPOIs);
           _ = RenderHeatmapAsync(vm.HotScores, vm.AllPOIs);
-    // Update locations count
+    // ? FIX: Update locations count - count FilteredPOIs (POI in radius)
             var locationText = _resourceManager.GetString("Map_Locations") ?? "??a ?i?m";
-      LocationsCountLabel.Text = $"{vm.AllPOIs.Count} {locationText}";
-            }
+      LocationsCountLabel.Text = $"{vm.FilteredPOIs.Count} {locationText}";
+   }
     }
         // ?? Monitor FilteredPOIs changes
         else if (e.PropertyName == nameof(MapViewModel.FilteredPOIs))
  {
   if (BindingContext is MapViewModel vm)
+  {
      _ = RenderPOIsAsync(vm.FilteredPOIs);
+     // ? FIX: Update count when FilteredPOIs changes
+     var locationText = _resourceManager.GetString("Map_Locations") ?? "??a ?i?m";
+     LocationsCountLabel.Text = $"{vm.FilteredPOIs.Count} {locationText}";
+  }
         }
         // ?? Monitor RadiusFilterKm changes
     else if (e.PropertyName == nameof(MapViewModel.RadiusFilterKm))

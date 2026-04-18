@@ -32,6 +32,9 @@ namespace VinhKhanhstreetfoods.ViewModels
         private string _searchText = string.Empty;
         private int _isSyncingFromAdmin;
         private bool _isRefreshing;
+        
+        // ✅ NEW: Store reference to LocalizationResourceManager for language change detection
+     private readonly LocalizationResourceManager _resourceManager;
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -48,33 +51,39 @@ namespace VinhKhanhstreetfoods.ViewModels
             _audioManager = audioManager ?? throw new ArgumentNullException(nameof(audioManager));
             _poiRecommendationService = poiRecommendationService ?? throw new ArgumentNullException(nameof(poiRecommendationService));
             _poiCache = POICacheService.Instance;
+    
+     // ✅ NEW: Inject LocalizationResourceManager
+          _resourceManager = LocalizationResourceManager.Instance;
 
-            NearbyPOIs = new ObservableCollection<POI>();
-            TrendingPois = new ObservableCollection<TimeBasedPoiRecommendation>();
-            IsTrendingPoisVisible = false;
-            StatusMessage = LocalizationService.GetString("Home_Status_Ready") ?? "App ready. Press START to track location.";
+   NearbyPOIs = new ObservableCollection<POI>();
+         TrendingPois = new ObservableCollection<TimeBasedPoiRecommendation>();
+   IsTrendingPoisVisible = false;
+ StatusMessage = LocalizationService.GetString("Home_Status_Ready") ?? "App ready. Press START to track location.";
             IsLoading = false;
 
             StartLocationServiceCommand = new Command(async () => await StartLocationService());
             StopLocationServiceCommand = new Command(async () => await StopLocationService());
             OpenDetailCommand = new Command<POI>(async poi => await OpenDetailAsync(poi));
-            OpenTrendingDetailCommand = new Command<TimeBasedPoiRecommendation>(async trendingPoi => {
-                if (trendingPoi == null) return;
-                
-                // Clear selection TRƯỚC KHI navigate để tránh MAUI CollectionView focus lại khi back về
-                SelectedTrendingPOI = null;
+       OpenTrendingDetailCommand = new Command<TimeBasedPoiRecommendation>(async trendingPoi => {
+        if (trendingPoi == null) return;
+      
+   // Clear selection TRƯỚC KHI navigate để tránh MAUI CollectionView focus lại khi back về
+     SelectedTrendingPOI = null;
 
-                var poi = _allPOIs.FirstOrDefault(p => p.Id == trendingPoi.PoiId);
-                if (poi != null) await OpenDetailAsync(poi);
-            });
-            RefreshDataCommand = new Command(async () => await RefreshDataAsync(), () => !IsRefreshing);
+       var poi = _allPOIs.FirstOrDefault(p => p.Id == trendingPoi.PoiId);
+             if (poi != null) await OpenDetailAsync(poi);
+  });
+          RefreshDataCommand = new Command(async () => await RefreshDataAsync(), () => !IsRefreshing);
             RefreshAppCommand = new Command(async () => await RefreshAppAsync(), () => !IsRefreshing);
 
             _locationService.LocationUpdated += OnLocationUpdated;
-            _geofenceEngine.POITriggered += OnPOITriggered;
-            _audioManager.AudioStarted += OnAudioStarted;
-            _audioManager.AudioCompleted += OnAudioCompleted;
-            _poiRepository.POIsSynced += OnRepositoryPoisSynced;
+   _geofenceEngine.POITriggered += OnPOITriggered;
+          _audioManager.AudioStarted += OnAudioStarted;
+       _audioManager.AudioCompleted += OnAudioCompleted;
+        _poiRepository.POIsSynced += OnRepositoryPoisSynced;
+        
+       // ✅ NEW: Subscribe to language changes to refresh trending POIs with new localized tags
+        _resourceManager.LanguageChanged += OnLanguageChanged;
         }
 
         public ObservableCollection<TimeBasedPoiRecommendation> TrendingPois
@@ -592,8 +601,22 @@ namespace VinhKhanhstreetfoods.ViewModels
             }
         }
 
+        // ✅ NEW: Xử lý khi ngôn ngữ được thay đổi - reload trending POIs với Highlight Tags mới
+        private async void OnLanguageChanged(object? sender, EventArgs e)
+     {
+    try
+      {
+     // Reload trending POIs để highlight tags được update với ngôn ngữ mới
+  _ = Task.Run(async () => await LoadTrendingPoisAsync());
+           }
+     catch (Exception ex)
+      {
+      System.Diagnostics.Debug.WriteLine($"[HomeViewModel] Language change error: {ex.Message}");
+  }
+        }
+
         protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+          => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }
 

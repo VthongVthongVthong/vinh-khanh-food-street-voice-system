@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.Maui.Networking;
 using Microsoft.Maui.Storage;
 using VinhKhanhstreetfoods.Models;
+using VinhKhanhstreetfoods.Services;
 
 namespace VinhKhanhstreetfoods.Services
 {
@@ -14,12 +15,14 @@ namespace VinhKhanhstreetfoods.Services
     {
         private readonly HttpClient _httpClient;
         private readonly IPOIRepository _poiRepository;
+        private readonly LocalizationResourceManager _resourceManager;
         private const string FirebaseBaseUrl = "https://vinhkhanh-68a4b-default-rtdb.asia-southeast1.firebasedatabase.app";
 
-        public PoiRecommendationService(HttpClient httpClient, IPOIRepository poiRepository)
+        public PoiRecommendationService(HttpClient httpClient, IPOIRepository poiRepository, LocalizationResourceManager resourceManager)
         {
             _httpClient = httpClient;
             _poiRepository = poiRepository;
+            _resourceManager = resourceManager ?? LocalizationResourceManager.Instance;
         }
 
         public async Task<List<TimeBasedPoiRecommendation>> GetTrendingPoisAsync(DayOfWeek dayOfWeek, string timeBlock)
@@ -159,13 +162,14 @@ namespace VinhKhanhstreetfoods.Services
 
         private string GetHighlightTag(int visitCount, double avgCompletion)
         {
+            // Get localized strings for highlight tags
             if (visitCount >= 3 && avgCompletion >= 85)
-                return "🔥 Nổi bật và đáng trải nghiệm!";
+                return _resourceManager.GetString("Map_HighlightTag_Trending") ?? "🔥 Nổi bật và đáng trải nghiệm!";
             if (visitCount >= 3)
-                return "🔥 Đang được yêu thích lúc này";
+                return _resourceManager.GetString("Map_HighlightTag_Popular") ?? "🔥 Đang được yêu thích lúc này";
             if (avgCompletion >= 90)
-                return "💎 Viên ngọc ẩn, rất đáng nghe audio";
-            return "Khám phá ngay";
+                return _resourceManager.GetString("Map_HighlightTag_HiddenGem") ?? "💎 Viên ngọc ẩn, rất đáng nghe audio";
+            return _resourceManager.GetString("Map_HighlightTag_Explore") ?? "Khám phá ngay";
         }
 
         private bool IsInTimeBlock(DateTime time, DayOfWeek targetDay, string targetBlock)
