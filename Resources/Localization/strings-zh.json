@@ -128,8 +128,11 @@
   "Tour_NoPOIs": "没有兴趣点",
   "Tour_NoPoiDesc": "此路线暂无地点",
   "Tour_StartTour": "开始路线",
+  "Tour_EndTour": "结束路线",
   "Tour_EstimatedTime": "估计时间: {0} 分钟",
   "Tour_ViewDetails": "查看详情",
+  "Tour_EstimatedMinutes": "分钟",
+  "Tour_QRCodeTitle": "路线二维码",
 
   "Common_Loading": "加载中...",
   "Common_Error": "发生错误",

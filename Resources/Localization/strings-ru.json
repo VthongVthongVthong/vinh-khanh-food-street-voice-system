@@ -127,8 +127,11 @@
   "Tour_NoPOIs": "Нет POI",
   "Tour_NoPoiDesc": "В этом туре пока нет местоположений",
   "Tour_StartTour": "Начать тур",
+  "Tour_EndTour": "Завершить тур",
   "Tour_EstimatedTime": "Предполагаемое время: {0} минут",
   "Tour_ViewDetails": "Просмотр деталей",
+  "Tour_EstimatedMinutes": "минут",
+  "Tour_QRCodeTitle": "QR код тура",
 
   "Common_Loading": "Загрузка...",
   "Common_Error": "Произошла ошибка",

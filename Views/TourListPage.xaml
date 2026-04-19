@@ -16,6 +16,7 @@
      <converters:TourDescriptionConverter x:Key="TourDescriptionConverter" />
      <converters:TourCoverImageConverter x:Key="TourCoverImageConverter" />
    <converters:ViewDetailsTextConverter x:Key="ViewDetailsTextConverter" />
+   <converters:EstimatedMinutesConverter x:Key="EstimatedMinutesConverter" />
      </ResourceDictionary>
     </ContentPage.Resources>
 
@@ -61,7 +62,7 @@ Scale="1.2"
       <CollectionView.ItemTemplate>
     <DataTemplate x:DataType="local:Tour">
   <Border Style="{StaticResource MainCardStyle}" Padding="16" Margin="20,0,20,0">
-     <Grid ColumnDefinitions="*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="8">
+     <Grid ColumnDefinitions="*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="8">
 
    <!-- Tour Cover Image in Border -->
    <Border Grid.Row="0"
@@ -81,16 +82,24 @@ Scale="1.2"
 TextColor="{StaticResource TextDark}"
      LineBreakMode="WordWrap" />
 
-      <!-- Tour Description -->
+   <!-- Tour Description -->
      <Label Grid.Row="2"
    Text="{Binding ., Converter={StaticResource TourDescriptionConverter}}"
  FontSize="12"
 TextColor="{StaticResource TextMuted}"
    LineBreakMode="TailTruncation"
-     MaxLines="2" />
+  MaxLines="2" />
+
+     <!-- Estimated Time -->
+     <Label Grid.Row="3"
+   Text="{Binding EstimatedMinutes, Converter={StaticResource EstimatedMinutesConverter}}"
+   FontSize="11"
+   TextColor="{StaticResource TextMuted}"
+ Margin="0,4,0,0"
+  IsVisible="{Binding EstimatedMinutes, Converter={StaticResource IsNotNullOrEmptyConverter}}" />
 
      <!-- Action Text -->
-    <StackLayout Grid.Row="3"
+    <StackLayout Grid.Row="4"
       Orientation="Horizontal"
  HorizontalOptions="End">
   <Label Text="{Binding ., Converter={StaticResource ViewDetailsTextConverter}}" FontSize="11" TextColor="{StaticResource BrandOrange}" />

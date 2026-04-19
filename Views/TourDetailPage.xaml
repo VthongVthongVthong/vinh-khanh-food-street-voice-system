@@ -18,6 +18,8 @@ xmlns:components="clr-namespace:VinhKhanhstreetfoods.Views.Components"
      <converters:IsNotNullOrEmptyConverter x:Key="IsNotNullOrEmptyConverter" />
      <converters:TourDescriptionConverter x:Key="TourDescriptionConverter" />
      <converters:POIDescriptionLocalizedConverter x:Key="POIDescriptionLocalizedConverter" />
+   <converters:TourStartedToColorConverter x:Key="TourStartedToColorConverter" />
+   <converters:TourStartedToIconConverter x:Key="TourStartedToIconConverter" />
     </ResourceDictionary>
   </ContentPage.Resources>
 
@@ -110,9 +112,9 @@ Text="{Binding StatusMessage}"
  <ContentView Padding="20" HorizontalOptions="Center" VerticalOptions="Center">
 <StackLayout Spacing="12">
    <Label Text="No POIs" FontSize="40" HorizontalOptions="Center" FontAttributes="Bold"/>
-     <Label Text="Khong co diem dung" Style="{StaticResource CardTitle}" TextColor="{StaticResource TextMuted}" HorizontalOptions="Center" />
-  <Label Text="Lo trinh nay chua co dia diem" Style="{StaticResource MutedText}" HorizontalOptions="Center" />
-  </StackLayout>
+     <Label Text="Không có điểm dừng" Style="{StaticResource CardTitle}" TextColor="{StaticResource TextMuted}" HorizontalOptions="Center" />
+  <Label Text="Lộ trình này chưa có địa điểm" Style="{StaticResource MutedText}" HorizontalOptions="Center" />
+</StackLayout>
      </ContentView>
    </DataTemplate>
     </CollectionView.EmptyViewTemplate>
@@ -122,7 +124,7 @@ Text="{Binding StatusMessage}"
         <ContentView Padding="20">
             <Border Style="{StaticResource MainCardStyle}" Padding="20">
                 <StackLayout Spacing="10">
-                    <Label Text="Mã QR Lộ Trình" 
+                    <Label x:Name="QRCodeTitleLabel"
                            Style="{StaticResource CardTitle}"
                            Margin="0,0,0,0" />
                     <zxing:BarcodeGeneratorView
@@ -139,13 +141,14 @@ Text="{Binding StatusMessage}"
 
       <!-- Start Tour Button -->
         <Border Grid.Row="2" Margin="16,12,16,24" Padding="0"
-      Style="{StaticResource PrimaryButtonStyle}"
-HeightRequest="50">
-       <Border.GestureRecognizers>
+      BackgroundColor="{Binding IsTourStarted, Converter={StaticResource TourStartedToColorConverter}}"
+HeightRequest="50"
+Style="{StaticResource PrimaryButtonStyle}">
+<Border.GestureRecognizers>
       <TapGestureRecognizer Command="{Binding StartTourCommand}" />
     </Border.GestureRecognizers>
  <HorizontalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="10">
-<Image Source="play_1003_svgrepo_com.png" WidthRequest="20" HeightRequest="20" />
+<Image Source="{Binding IsTourStarted, Converter={StaticResource TourStartedToIconConverter}}" WidthRequest="20" HeightRequest="20" />
    <Label x:Name="StartTourButtonLabel" TextColor="White" FontSize="15" FontAttributes="Bold" />
   </HorizontalStackLayout>
  </Border>

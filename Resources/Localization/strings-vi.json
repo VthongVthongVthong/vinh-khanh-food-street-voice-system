@@ -127,8 +127,11 @@
     "Tour_NoPOIs": "Không có điểm POI",
     "Tour_NoPoiDesc": "Lộ trình này chưa có địa điểm",
     "Tour_StartTour": "Bắt đầu hành trình",
+    "Tour_EndTour": "Kết thúc hành trình",
     "Tour_EstimatedTime": "Thời gian ước tính: {0} phút",
     "Tour_ViewDetails": "Xem chi tiết",
+    "Tour_EstimatedMinutes": "phút",
+    "Tour_QRCodeTitle": "Mã QR Lộ Trình",
 
     "Auth_Profile_Account": "Tài khoản: {0}",
     "Auth_Button_Login": "Đăng nhập",

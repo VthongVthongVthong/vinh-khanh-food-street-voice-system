@@ -127,8 +127,11 @@
   "Tour_NoPOIs": "Aucun POI",
   "Tour_NoPoiDesc": "Cette excursion n'a pas encore d'emplacements",
   "Tour_StartTour": "Démarrer l'Excursion",
+  "Tour_EndTour": "Terminer l'Excursion",
   "Tour_EstimatedTime": "Temps estimé: {0} minutes",
   "Tour_ViewDetails": "Voir les détails",
+  "Tour_EstimatedMinutes": "minutes",
+  "Tour_QRCodeTitle": "Code QR du Tour",
 
   "Common_Loading": "Chargement...",
   "Common_Error": "Une erreur s'est produite",

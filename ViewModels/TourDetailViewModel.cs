@@ -23,6 +23,7 @@ public class TourDetailViewModel : INotifyPropertyChanged
     private string _statusMessage = string.Empty;
     private bool _isNavigating;
     private bool _avatarsLoaded = false;
+    private bool _isTourStarted = false;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -108,9 +109,20 @@ public class TourDetailViewModel : INotifyPropertyChanged
         set
         {
             if (_statusMessage == value) return;
-            _statusMessage = value;
-            OnPropertyChanged();
+          _statusMessage = value;
+     OnPropertyChanged();
         }
+    }
+
+    public bool IsTourStarted
+    {
+      get => _isTourStarted;
+        set
+      {
+            if (_isTourStarted == value) return;
+            _isTourStarted = value;
+            OnPropertyChanged();
+    }
     }
 
     public ICommand SelectPoiCommand { get; }
@@ -239,39 +251,73 @@ public class TourDetailViewModel : INotifyPropertyChanged
 
     private async Task StartTourAsync()
     {
-        if (Tour == null || TourPois.Count == 0)
+   if (Tour == null || TourPois.Count == 0)
         {
-            StatusMessage = "Không th? b?t ??u l? trình";
-            return;
+         StatusMessage = "Không thể bắt đầu lộ trình";
+     return;
         }
 
-        try
+   try
+  {
+            // If tour is already started, end it instead
+ if (IsTourStarted)
+         {
+   await EndTourAsync();
+         return;
+     }
+
+   // Get current narration language from settings
+ var narrationLanguage = _settingsService.PreferredLanguage ?? "vi";
+          
+  System.Diagnostics.Debug.WriteLine($"[TourDetailViewModel] Starting tour with {TourPois.Count} POIs, language: {narrationLanguage}");
+
+    // Pre-resolve translations for all POIs in background
+   _ = _audioManager.PreResolveTranslationsAsync(TourPois, narrationLanguage);
+
+       // Add all POIs to queue in order
+       foreach (var poi in TourPois)
+ {
+   _audioManager.AddToQueue(poi);
+ }
+
+     // Start tracking this tour session via Vercel Worker / Firebase Analytics
+       _ = _presenceTrackerService.StartTourLogAsync(Tour.Id, TourPois.Select(p => p.Id).ToList(), narrationLanguage);
+
+          StatusMessage = $"Đã thêm {TourPois.Count} điểm dừng vào hàng chờ phát";
+            IsTourStarted = true;
+   System.Diagnostics.Debug.WriteLine($"[TourDetailViewModel] Added {TourPois.Count} POIs to audio queue");
+  }
+ catch (Exception ex)
+   {
+   StatusMessage = $"Lỗi khởi động lộ trình: {ex.Message}";
+   System.Diagnostics.Debug.WriteLine($"[TourDetailViewModel] Start tour error: {ex.Message}");
+        }
+    }
+
+    private async Task EndTourAsync()
+    {
+   try
         {
-            // Get current narration language from settings
-            var narrationLanguage = _settingsService.PreferredLanguage ?? "vi";
-            
-            System.Diagnostics.Debug.WriteLine($"[TourDetailViewModel] Starting tour with {TourPois.Count} POIs, language: {narrationLanguage}");
+            System.Diagnostics.Debug.WriteLine($"[TourDetailViewModel] Ending tour");
 
-            // Pre-resolve translations for all POIs in background
-            _ = _audioManager.PreResolveTranslationsAsync(TourPois, narrationLanguage);
+     // Stop current audio playback
+            _audioManager.StopCurrent();
 
-            // Add all POIs to queue in order
-            foreach (var poi in TourPois)
-            {
-                _audioManager.AddToQueue(poi);
-            }
+            // Clear queue
+      _audioManager.ClearQueue();
 
-            // Start tracking this tour session via Vercel Worker / Firebase Analytics
-            _ = _presenceTrackerService.StartTourLogAsync(Tour.Id, TourPois.Select(p => p.Id).ToList(), narrationLanguage);
+            StatusMessage = "Đã kết thúc hành trình";
+         IsTourStarted = false;
 
-            StatusMessage = $"?ã thêm {TourPois.Count} ?i?m d?ng vào hàng ch? phát";
-            System.Diagnostics.Debug.WriteLine($"[TourDetailViewModel] Added {TourPois.Count} POIs to audio queue");
+            System.Diagnostics.Debug.WriteLine($"[TourDetailViewModel] Tour ended, audio stopped and queue cleared");
         }
         catch (Exception ex)
         {
-            StatusMessage = $"L?i kh?i ??ng l? trình: {ex.Message}";
-            System.Diagnostics.Debug.WriteLine($"[TourDetailViewModel] Start tour error: {ex.Message}");
+            StatusMessage = $"Lỗi kết thúc lộ trình: {ex.Message}";
+            System.Diagnostics.Debug.WriteLine($"[TourDetailViewModel] End tour error: {ex.Message}");
         }
+
+await Task.CompletedTask;
     }
 
     public async Task LoadTourPoiAvatarsAsync()

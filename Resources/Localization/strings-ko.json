@@ -128,8 +128,11 @@
   "Tour_NoPOIs": "POI 없음",
   "Tour_NoPoiDesc": "이 투어에는 아직 장소가 없습니다",
   "Tour_StartTour": "투어 시작",
+  "Tour_EndTour": "투어 종료",
   "Tour_EstimatedTime": "예상 시간: {0} 분",
   "Tour_ViewDetails": "자세히 보기",
+  "Tour_EstimatedMinutes": "분",
+  "Tour_QRCodeTitle": "투어 QR 코드",
 
   "Common_Loading": "로드 중...",
   "Common_Error": "오류가 발생했습니다",
