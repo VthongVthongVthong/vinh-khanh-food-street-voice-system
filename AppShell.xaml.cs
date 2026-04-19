@@ -35,20 +35,20 @@ public partial class AppShell : Shell
           _hybridPopupService = serviceProvider.GetRequiredService<HybridPopupService>();
 
   _localizationService.PropertyChanged += OnLanguageChanged;
-            
+       
             // ✅ Defer overlay setup after UI thread settles
-            MainThread.BeginInvokeOnMainThread(async () =>
-    {
-     try
- {
-     await InitializeHybridPopupOverlayAsync();
-     ApplyLocalizedTabTitles();
+           MainThread.BeginInvokeOnMainThread(async () =>
+   {
+         try
+      {
+  await InitializeHybridPopupOverlayAsync();
+                ApplyLocalizedTabTitles();
+         }
+    catch (Exception ex)
+  {
+    Debug.WriteLine($"[AppShell] ❌ Error in deferred init: {ex.Message}");
     }
-           catch (Exception ex)
-{
-      Debug.WriteLine($"[AppShell] ❌ Error in deferred init: {ex.Message}");
- }
-    });
+            });
         }
         catch (Exception ex)
    {
@@ -143,24 +143,28 @@ private void OnHybridPopupClosed(object? sender, EventArgs e)
     private void ApplyLocalizedTabTitles()
     {
         try
-        {
-          // ✅ Find XAML controls by name safely
+  {
+        // ✅ Find XAML controls by name safely
        var homeTab = this.FindByName<ShellContent>("HomeTab");
-   var mapTab = this.FindByName<ShellContent>("MapTab");
-    var settingsTab = this.FindByName<ShellContent>("SettingsTab");
+   var toursTab = this.FindByName<ShellContent>("ToursTab");
+            var mapTab = this.FindByName<ShellContent>("MapTab");
+            var settingsTab = this.FindByName<ShellContent>("SettingsTab");
 
-          if (homeTab != null)
-        homeTab.Title = _resourceManager.GetString("Nav_Home");
- 
-      if (mapTab != null)
-  mapTab.Title = _resourceManager.GetString("Nav_Map");
-  
- if (settingsTab != null)
-      settingsTab.Title = _resourceManager.GetString("Nav_Settings");
- }
-   catch (Exception ex)
-     {
-   Debug.WriteLine($"[AppShell] ⚠️ Error applying tab titles: {ex.Message}");
+        if (homeTab != null)
+    homeTab.Title = _resourceManager.GetString("Nav_Home");
+
+            if (toursTab != null)
+    toursTab.Title = _resourceManager.GetString("Nav_Tours");
+
+            if (mapTab != null)
+      mapTab.Title = _resourceManager.GetString("Nav_Map");
+
+            if (settingsTab != null)
+        settingsTab.Title = _resourceManager.GetString("Nav_Settings");
+        }
+  catch (Exception ex)
+      {
+        Debug.WriteLine($"[AppShell] ⚠️ Error applying tab titles: {ex.Message}");
         }
     }
 

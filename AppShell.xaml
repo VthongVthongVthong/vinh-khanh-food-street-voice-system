@@ -8,10 +8,10 @@
     BackgroundColor="White">
 
     <TabBar>
-        <ShellContent Title="Home" Icon="home.png" Route="home" ContentTemplate="{DataTemplate local:HomePage}"/>
-        <ShellContent Title="Tours" Icon="route.png" Route="tour" ContentTemplate="{DataTemplate local:TourListPage}"/>
-     <ShellContent Title="Map" Icon="map.png" Route="map" ContentTemplate="{DataTemplate local:MapPage}"/>
- <ShellContent Title="Settings" Icon="settings.png" Route="settings" ContentTemplate="{DataTemplate local:SettingsPage}"/>
+        <ShellContent x:Name="HomeTab" Icon="home.png" Route="home" ContentTemplate="{DataTemplate local:HomePage}"/>
+        <ShellContent x:Name="ToursTab" Icon="route.png" Route="tour" ContentTemplate="{DataTemplate local:TourListPage}"/>
+        <ShellContent x:Name="MapTab" Icon="map.png" Route="map" ContentTemplate="{DataTemplate local:MapPage}"/>
+        <ShellContent x:Name="SettingsTab" Icon="settings.png" Route="settings" ContentTemplate="{DataTemplate local:SettingsPage}"/>
     </TabBar>
 
     <ShellContent Route="tourdetail" ContentTemplate="{DataTemplate local:TourDetailPage}" />

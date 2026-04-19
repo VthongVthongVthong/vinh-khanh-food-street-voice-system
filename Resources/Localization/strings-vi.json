@@ -59,7 +59,7 @@
     "Home_Status_Synced": "Đã đồng bộ {0} địa điểm mới từ máy chủ.",
     "Home_Status_NoNew": "Không có dữ liệu mới hoặc server chưa trả JSON.",
     "Home_Button_StartLocation": "BẬT ĐỊNH VỊ",
-    "Home_Button_StopLocation": "TẮT ĐỊNH VỊ",
+    "Home_BUTTON_StopLocation": "TẮT ĐỊNH VỊ",
 
     "POI_Title": "Chi tiết nhà hàng",
     "POI_Share": "Chia sẻ",
@@ -110,8 +110,8 @@
     "Map_HighlightTag_Explore": "Khám phá ngay",
 
     "Nav_Home": "Trang chủ",
+    "Nav_Tours": "Lộ trình",
     "Nav_Map": "Bản đồ",
-    "Nav_Profile": "Hồ sơ",
     "Nav_Settings": "Cài đặt",
 
     "NowPlayingBar_NearYou": "Gần bạn",
