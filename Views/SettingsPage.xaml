@@ -20,10 +20,11 @@
                     <StackLayout Spacing="15" Orientation="Horizontal">
                         <StackLayout VerticalOptions="Center" HorizontalOptions="FillAndExpand">
                             <Label Text="{Binding LoggedInUserName}" FontAttributes="Bold" FontSize="18" TextColor="{StaticResource TextDark}" />
-                            <Label Text="{Binding LoggedInUserName, StringFormat='Tài khoản: {0}'}" FontSize="12" TextColor="{StaticResource TextMuted}" />
+                            <Label x:Name="ProfileAccountLabel"
+                                   FontSize="12" TextColor="{StaticResource TextMuted}" />
                         </StackLayout>
                         
-                        <Button Text="Đăng nhập" 
+                        <Button x:Name="LoginButton"
                                 Command="{Binding LoginCommand}" 
                                 IsVisible="{Binding IsLoggedIn, Converter={StaticResource InvertedBoolConverter}}"
                                 BackgroundColor="{StaticResource BrandOrange}" 
@@ -31,7 +32,7 @@
                                 CornerRadius="8" 
                                 VerticalOptions="Center" />
                                 
-                        <Button Text="Đăng xuất" 
+                        <Button x:Name="LogoutButton"
                                 Command="{Binding LogoutCommand}" 
                                 IsVisible="{Binding IsLoggedIn}"
                                 BackgroundColor="Transparent" 

@@ -41,6 +41,12 @@ public partial class SettingsPage : ContentPage
         Title = _resourceManager.GetString("Settings_Title");
 
         HeaderLabel.Text = _resourceManager.GetString("Settings_Header");
+      
+        // Profile Section
+        LoginButton.Text = _resourceManager.GetString("Auth_Button_Login");
+        LogoutButton.Text = _resourceManager.GetString("Auth_Button_Logout");
+        UpdateProfileAccountLabel();
+        
         LanguageSectionLabel.Text = _resourceManager.GetString("Settings_Language_Section");
         UiLanguageLabel.Text = _resourceManager.GetString("Settings_Language_UI");
         UiLanguagePicker.Title = _resourceManager.GetString("Settings_Language_UIPickerTitle");
@@ -67,6 +73,16 @@ public partial class SettingsPage : ContentPage
 
         TriggerValueLabel.RemoveBinding(Label.TextProperty);
         TriggerValueLabel.SetBinding(Label.TextProperty, new Binding("TriggerRadiusMeters", stringFormat: _resourceManager.GetString("Settings_TriggerRadius_Current")));
+    }
+    
+    private void UpdateProfileAccountLabel()
+    {
+        var viewModel = BindingContext as SettingsViewModel;
+    if (viewModel != null)
+        {
+      ProfileAccountLabel.FormattedText = null;
+            ProfileAccountLabel.SetBinding(Label.TextProperty, new Binding("LoggedInUserName", stringFormat: _resourceManager.GetString("Auth_Profile_Account")));
+     }
     }
 
     protected override void OnDisappearing()

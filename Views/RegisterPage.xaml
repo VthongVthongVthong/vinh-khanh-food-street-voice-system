@@ -14,7 +14,7 @@
                 VerticalOptions="Center"
                 WidthRequest="320">
             <VerticalStackLayout Spacing="15">
-                <Label Text="Tạo Tài Khoản" Style="{StaticResource PageTitle}" HorizontalOptions="Center" TextColor="Black"/>
+                <Label x:Name="TitleLabel" Text="Tạo Tài Khoản" Style="{StaticResource PageTitle}" HorizontalOptions="Center" TextColor="Black"/>
 
                 <Entry x:Name="UsernameEntry" Placeholder="Tên đăng nhập" TextColor="Black" BackgroundColor="#EEEEEE" />
                 <Entry x:Name="EmailEntry" Placeholder="Địa chỉ Email" Keyboard="Email" TextColor="Black" BackgroundColor="#EEEEEE" />
@@ -30,15 +30,15 @@
                 <Button x:Name="RegisterButton" Text="Đăng ký" Clicked="OnRegisterClicked" BackgroundColor="{StaticResource BrandOrange}" TextColor="White" />
                 
                 <HorizontalStackLayout HorizontalOptions="Center" Spacing="5">
-                    <Label Text="Đã có tài khoản?" TextColor="Gray" VerticalOptions="Center" />
-                    <Label Text="Đăng nhập ngay" TextColor="{StaticResource BrandOrange}" FontAttributes="Bold" VerticalOptions="Center">
+                    <Label x:Name="HaveAccountLabel" Text="Đã có tài khoản?" TextColor="Gray" VerticalOptions="Center" />
+                    <Label x:Name="LoginNowLabel" Text="Đăng nhập ngay" TextColor="{StaticResource BrandOrange}" FontAttributes="Bold" VerticalOptions="Center">
                         <Label.GestureRecognizers>
                             <TapGestureRecognizer Tapped="OnLoginTapped" />
                         </Label.GestureRecognizers>
                     </Label>
                 </HorizontalStackLayout>
 
-                <Button Text="Đóng" Clicked="OnCloseClicked" BackgroundColor="Transparent" TextColor="Gray" />
+                <Button x:Name="CloseButton" Text="Đóng" Clicked="OnCloseClicked" BackgroundColor="Transparent" TextColor="Gray" />
             </VerticalStackLayout>
         </Border>
     </Grid>
