@@ -73,6 +73,18 @@ try {
             background-color: transparent;
             color: #dc2626;
         }
+
+        /* Hiệu ứng HOT / Đang Trending */
+        .poi-fire > div {
+            box-shadow: 0 0 15px 5px rgba(255,87,34,0.8), 0 0 30px 10px rgba(255,152,0,0.6) !important;
+            border: 2px solid #ffeb3b !important;
+            animation: pulse-fire 1s infinite alternate;
+        }
+
+        @keyframes pulse-fire {
+            0% { box-shadow: 0 0 15px 5px rgba(255,87,34,0.7), 0 0 30px 10px rgba(255,152,0,0.5); }
+            100% { box-shadow: 0 0 25px 10px rgba(255,87,34,1), 0 0 50px 20px rgba(255,152,0,0.8); }
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans antialiased flex h-screen overflow-hidden">
@@ -277,7 +289,30 @@ try {
                             <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-red-500"></div>
                         </label>
                     </div>
+                    <div class="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
+                        <span class="text-[13px] font-medium text-gray-700">Lọc theo khung giờ</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="toggleTimeFilter" class="sr-only peer">
+                            <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-brand-500"></div>
+                        </label>
+                    </div>
                 </div>
+
+                <!-- Time Slider overlay -->
+                <div class="absolute bottom-10 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_10px_25px_rgba(0,0,0,0.1)] border border-gray-100 p-4 z-10 w-[90%] max-w-sm flex-col gap-3 transition-opacity transition-transform" id="timeSliderContainer" style="display: none;">
+                    <div class="flex justify-between items-center text-sm font-bold text-gray-700">
+                        <span><i class="far fa-clock text-brand-500 mr-2"></i>Lọc theo Khung Giờ</span>
+                        <span id="timeSliderVal" class="text-brand-600 bg-brand-50 px-2.5 py-1 rounded-md text-xs font-mono">18:00 - 18:59</span>
+                    </div>
+                    <input type="range" id="timeSlider" min="16" max="23" value="18" step="1" 
+                           class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                    <div class="flex justify-between text-[11px] text-gray-400 font-medium pt-1">
+                        <span>16:00</span>
+                        <span>20:00</span>
+                        <span>23:00</span>
+                    </div>
+                </div>
+
             </div>
         </div>
     </main>
@@ -509,35 +544,33 @@ try {
                 source: 'heatmap-source',
                 maxzoom: 24,
                 paint: {
-                    // Cường độ tăng dần theo mật độ gom nhóm (mặc định 1 node = trọng số 1)
+                    // Cường độ tăng dần theo mật độ gom nhóm
                     'heatmap-weight': 1,
                     // Linear scale điều chỉnh màu sắc từ không có đến nhạt đến đậm
+                    'heatmap-intensity': [
+                        'interpolate', ['linear'], ['zoom'],
+                        13, 0.5,
+                        18, 2
+                    ],
                     'heatmap-color': [
                         'interpolate', ['linear'], ['heatmap-density'],
-                        0, 'rgba(255, 77, 21, 0)',
-                        0.2, 'rgba(255, 150, 100, 0.4)',
-                        0.4, 'rgba(255, 100, 50, 0.6)',
-                        0.6, 'rgba(255, 50, 0, 0.7)',
-                        0.8, 'rgba(200, 20, 0, 0.8)',
-                        1, 'rgba(150, 0, 0, 0.9)'
+                        0, 'rgba(33,102,172,0)',
+                        0.2, 'rgba(255,189,102,0.6)',
+                        0.5, 'rgba(244,169,80,0.8)',
+                        0.8, 'rgba(239,68,68,0.9)',
+                        1, 'rgba(185,28,28,1)'
                     ],
-                    // Tăng bán kính tương tác dựa vào zoom để luôn rõ trên màn hình
                     'heatmap-radius': [
                         'interpolate', ['linear'], ['zoom'],
                         0, 5,
                         15, 25,
-                        20, 45
+                        20, 55
                     ],
-                    // Làm mờ dần heatmap khi zoom cực lớn nếu không cần thiết
-                    'heatmap-opacity': [
-                        'interpolate', ['linear'], ['zoom'],
-                        15, 0.8,
-                        22, 0.6
-                    ]
+                    'heatmap-opacity': 0.8
                 }
             });
 
-            // Xử lý bật tắt Heatmap checkbox
+            // Lắng nghe sự kiện bật tắt Heatmap
             const toggleHeatmap = document.getElementById('toggleHeatmap');
             if (toggleHeatmap) {
                 toggleHeatmap.addEventListener('change', function(e) {
@@ -546,70 +579,159 @@ try {
                 });
             }
 
+            // Variables lưu dữ liệu Firebase để khỏi fetch nhiều lần 
+            let _visitLogs = [];
+            let _audioLogs = [];
+            let _presenceLogs = [];
+            let isLogFetched = false;
+
+            // Toggle hiển thị thanh Time Slider
+            const toggleTimeFilter = document.getElementById('toggleTimeFilter');
+            const timeSliderContainer = document.getElementById('timeSliderContainer');
+            const timeSlider = document.getElementById('timeSlider');
+            const timeSliderVal = document.getElementById('timeSliderVal');
+
+            if (toggleTimeFilter) {
+                toggleTimeFilter.addEventListener('change', function(e) {
+                    const isTimeFilterOn = e.target.checked;
+                    timeSliderContainer.style.display = isTimeFilterOn ? 'flex' : 'none';
+                    if (isLogFetched) {
+                        applyHeatmapFilter(isTimeFilterOn ? parseInt(timeSlider.value) : -1);
+                    }
+                });
+            }
+
+            // Xử lý slider thay đổi
+            timeSlider.addEventListener('input', function() {
+                const hour = parseInt(this.value);
+                timeSliderVal.textContent = `${hour}:00 - ${hour}:59`;
+                if(isLogFetched && toggleTimeFilter.checked) applyHeatmapFilter(hour);
+            });
+
+            // Hàm áp dụng logic lọc theo khung giờ và tính HotScore
+            function applyHeatmapFilter(targetHour) {
+                const features = [];
+                const poiScores = {}; // poiId -> { sessions: Set, completions: [], presences: 0 }
+
+                const getHour = (isoString) => {
+                    if (!isoString) return -1;
+                    const d = new Date(isoString);
+                    return d.getHours();
+                };
+
+                // Helper để add feature điểm nhiệt độc lập (phân tán xung quanh quán)
+                const addHeatmapFeature = (poiId, logLat, logLng) => {
+                    let lat = parseFloat(logLat || 0);
+                    let lng = parseFloat(logLng || 0);
+
+                    // Fallback to POI center if coords missing
+                    if ((isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) && poiId) {
+                        const marker = allMarkers.find(m => m.id === poiId);
+                        if (marker) {
+                            lat = marker.center[1] + (Math.random() - 0.5) * 0.00015;
+                            lng = marker.center[0] + (Math.random() - 0.5) * 0.00015;
+                        }
+                    }
+                    if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
+                        features.push({
+                            type: 'Feature',
+                            geometry: { type: 'Point', coordinates: [lng, lat] }
+                        });
+                    }
+                };
+
+                // Tính điểm visit
+                _visitLogs.forEach(v => {
+                    if (targetHour !== -1 && getHour(v.visitTime) !== targetHour) return;
+                    addHeatmapFeature(v.poiId, v.userLat || v.latitude || v.lat, v.userLng || v.longitude || v.lng);
+                    
+                    const pid = v.poiId;
+                    if (!pid) return;
+                    if (!poiScores[pid]) poiScores[pid] = { sessions: new Set(), completions: [], presences: 0 };
+                    if (v.sessionId) poiScores[pid].sessions.add(v.sessionId);
+                });
+
+                // Tính điểm audio
+                _audioLogs.forEach(a => {
+                    if (targetHour !== -1 && getHour(a.playTime) !== targetHour) return;
+                    addHeatmapFeature(a.poiId, a.userLat || a.latitude || a.lat, a.userLng || a.longitude || a.lng);
+
+                    const pid = a.poiId;
+                    if (!pid) return;
+                    if (!poiScores[pid]) poiScores[pid] = { sessions: new Set(), completions: [], presences: 0 };
+                    poiScores[pid].completions.push(a.completionRate || 0);
+                });
+
+                // Tính điểm User Presence realtime (updatedAt)
+                _presenceLogs.forEach(p => {
+                    if (targetHour !== -1 && getHour(p.updatedAt) !== targetHour) return;
+                    addHeatmapFeature(p.poiId, p.latitude || p.lat, p.longitude || p.lng);
+
+                    const pid = p.poiId;
+                    if (!pid) return;
+                    if (!poiScores[pid]) poiScores[pid] = { sessions: new Set(), completions: [], presences: 0 };
+                    poiScores[pid].presences++;
+                });
+
+                allMarkers.forEach(m => {
+                    m.element.classList.remove('poi-fire');
+                    const badge = m.element.querySelector('.poi-hot-badge');
+                    if (badge) badge.remove();
+
+                    const pid = m.id;
+                    const stats = poiScores[pid];
+                    if (!stats) return;
+
+                    const averageHistory = stats.sessions.size;
+                    const avgCompletion = stats.completions.length > 0 
+                                            ? stats.completions.reduce((a, b) => a + b, 0) / stats.completions.length 
+                                            : 0;
+                    const currentStrangers = stats.presences;
+
+                    // Công thức HotScore từ App C# 
+                    let score = (averageHistory * 10) + (avgCompletion * 0.3) + (currentStrangers * 20);
+                    score = Math.min(100, Math.max(0, score)); // Clamp 0-100
+
+                    // Chỉ kích hoạt render CSS HOT khi bộ lọc thời gian đang bật
+                    if (targetHour !== -1 && score > 30) {
+                        m.element.classList.add('poi-fire');
+                        const b = document.createElement('div');
+                        b.className = 'poi-hot-badge bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-md absolute -top-3 -right-3 font-bold shadow animate-bounce';
+                        b.innerHTML = '🔥 HOT';
+                        m.element.appendChild(b);
+                    }
+                });
+
+                // Cập nhật lên Source - Dùng features mới gom đủ từng điểm nhỏ của log!
+                map.getSource('heatmap-source').setData({
+                    type: 'FeatureCollection',
+                    features: features
+                });
+            }
+
             // Gọi Firebase lấy dữ liệu cho Heatmap
             async function loadHeatmapData() {
                 try {
                     const audioUrl = "https://vinhkhanh-68a4b-default-rtdb.asia-southeast1.firebasedatabase.app/AudioPlayLog.json";
                     const visitUrl = "https://vinhkhanh-68a4b-default-rtdb.asia-southeast1.firebasedatabase.app/VisitLog.json";
+                    const presenceUrl = "https://vinhkhanh-68a4b-default-rtdb.asia-southeast1.firebasedatabase.app/UserPresence.json";
 
-                    const [audioRes, visitRes] = await Promise.all([
-                        fetch(audioUrl), fetch(visitUrl)
+                    const [audioRes, visitRes, presenceRes] = await Promise.all([
+                        fetch(audioUrl), fetch(visitUrl), fetch(presenceUrl)
                     ]);
                     
                     const audioData = await audioRes.json() || {};
                     const visitData = await visitRes.json() || {};
+                    const presenceData = await presenceRes.json() || {};
                     
-                    let features = [];
-                    
-                    // Maps để hỗ trợ dò POI
-                    const poiMap = {};
-                    pois.forEach(p => {
-                        const pid = p.Id || p.id;
-                        poiMap[pid] = {
-                            lat: parseFloat(p.Latitude || p.latitude || 0),
-                            lng: parseFloat(p.Longitude || p.longitude || 0)
-                        };
-                    });
+                    _audioLogs = Object.values(audioData).filter(x => x);
+                    _visitLogs = Object.values(visitData).filter(x => x);
+                    _presenceLogs = Object.values(presenceData).filter(x => x);
+                    isLogFetched = true;
 
-                    // Xử lý chung các log
-                    const processLogs = (dataObj) => {
-                        const kArr = Object.keys(dataObj || {});
-                        for(let i=0; i<kArr.length; i++) {
-                            const log = dataObj[kArr[i]];
-                            if (!log) continue;
+                    // Lọc lần đầu tiên (hiển thị All Time vì toggle tắt)
+                    applyHeatmapFilter(-1);
 
-                            let lat = parseFloat(log.userLat || log.latitude || log.lat || 0);
-                            let lng = parseFloat(log.userLng || log.longitude || log.lng || 0);
-
-                            // Nếu Firebase không có tọa độ người dùng cụ thể, Fallback về Base Tọa độ của POI 
-                            if ((isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) && log.poiId) {
-                                const mapped = poiMap[log.poiId];
-                                if (mapped && mapped.lat !== 0) {
-                                    lat = mapped.lat;
-                                    lng = mapped.lng;
-                                    // Tạo ảo ảnh nhẹ (-0.00005 -> 0.00005) để các lượt tương tác cùng một quán không trùng khít nhau (nhấn mạnh được mật độ đậm/nhạt)
-                                    lat += (Math.random() - 0.5) * 0.00015;
-                                    lng += (Math.random() - 0.5) * 0.00015;
-                                }
-                            }
-
-                            if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
-                                features.push({
-                                    type: 'Feature',
-                                    geometry: { type: 'Point', coordinates: [lng, lat] }
-                                });
-                            }
-                        }
-                    };
-
-                    processLogs(audioData);
-                    processLogs(visitData);
-
-                    map.getSource('heatmap-source').setData({
-                        type: 'FeatureCollection',
-                        features: features
-                    });
-                    
                 } catch (e) {
                     console.error('Lỗi khi tải dữ liệu Heatmap:', e);
                 }
