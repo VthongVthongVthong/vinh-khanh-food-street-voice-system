@@ -118,7 +118,8 @@ namespace VinhKhanhstreetfoods
                 var localizationManager = sp.GetRequiredService<LocalizationResourceManager>();
                 var settingsService = sp.GetRequiredService<SettingsService>();
                 var audioManager = sp.GetRequiredService<AudioManager>();
-                return new TourDetailViewModel(tourRepository, poiRepository, localizationManager, settingsService, audioManager);
+                var presenceTrackerService = sp.GetRequiredService<PresenceTrackerService>();
+                return new TourDetailViewModel(tourRepository, poiRepository, localizationManager, settingsService, audioManager, presenceTrackerService);
             });
 
             // Register Views

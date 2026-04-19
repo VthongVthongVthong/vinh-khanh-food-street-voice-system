@@ -363,6 +363,12 @@ namespace VinhKhanhstreetfoods.Services
                     lock (_languageLock) { playedLang = _currentLanguage; }
                     
                     _ = _presenceTrackerService.LogAudioPlayAsync(poi.Id, playedLang, playTime, durationListened, completionRate);
+                    
+                    // Also flag this POI as visited if the user is in an active Tour
+                    if (completionRate > 10.0 || !isCancelled) 
+                    {
+                        _ = _presenceTrackerService.MarkPoiVisitedInTourAsync(poi.Id);
+                    }
 
                     AudioCompleted?.Invoke(this, poi);
                     _playbackCts?.Dispose();

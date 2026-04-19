@@ -9,10 +9,16 @@ public class PresenceTrackerService
     private readonly string _deviceId;
     private readonly string _sessionId;
 
-    // Đã thay đổi: Trỏ đến URL Vercel Worker của bạn
     private const string VercelWorkerUrl = "https://vinh-khanh-worker.vercel.app/api/updatePresence";
     private const string VercelAudioLogUrl = "https://vinh-khanh-worker.vercel.app/api/logAudioPlay";
     private const string VercelVisitLogUrl = "https://vinh-khanh-worker.vercel.app/api/logVisit";
+    private const string VercelTourLogUrl = "https://vinh-khanh-worker.vercel.app/api/logTour";
+
+    // Track active Tour sequence
+    public int? ActiveTourId { get; private set; }
+    public List<int> ActiveTourPoiIds { get; private set; } = new();
+    public int VisitedPoisCount { get; private set; }
+    public string ActiveTourLanguage { get; private set; } = "vi";
 
     public PresenceTrackerService()
     {
@@ -154,6 +160,73 @@ public class PresenceTrackerService
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[VisitLog] Exception: {ex.Message}");
+        }
+    }
+
+    public async Task StartTourLogAsync(int tourId, List<int> poiIds, string language)
+    {
+        ActiveTourId = tourId;
+        ActiveTourPoiIds = new List<int>(poiIds);
+        VisitedPoisCount = 0;
+        ActiveTourLanguage = language;
+        
+        await SyncTourLogToVercelAsync("ongoing");
+    }
+
+    public async Task MarkPoiVisitedInTourAsync(int poiId)
+    {
+        if (ActiveTourId != null && ActiveTourPoiIds.Contains(poiId))
+        {
+            VisitedPoisCount++;
+            
+            // Check if completed
+            string status = VisitedPoisCount >= ActiveTourPoiIds.Count ? "completed" : "ongoing";
+            await SyncTourLogToVercelAsync(status);
+            
+            if (status == "completed")
+            {
+                ActiveTourId = null;
+                ActiveTourPoiIds.Clear();
+            }
+        }
+    }
+
+    private async Task SyncTourLogToVercelAsync(string status)
+    {
+        if (ActiveTourId == null) return;
+
+        try
+        {
+            bool isLoggedIn = Preferences.Get("IsLoggedIn", false);
+            int? userId = isLoggedIn ? Preferences.Get("LoggedInUserId", 0) : null;
+            if (userId == 0) userId = null;
+
+            var payload = new
+            {
+                sessionId = _sessionId,
+                userId = userId,
+                deviceId = _deviceId,
+                tourId = ActiveTourId.Value,
+                language = ActiveTourLanguage,
+                status = status,
+                totalPOIs = ActiveTourPoiIds.Count,
+                visitedPOIs = VisitedPoisCount
+            };
+
+            var response = await _httpClient.PostAsJsonAsync(VercelTourLogUrl, payload);
+            if (response.IsSuccessStatusCode)
+            {
+                System.Diagnostics.Debug.WriteLine($"[TourLog] Đã đồng bộ TourLog thành công (Status: {status})");
+            }
+            else
+            {
+                var errorMsg = await response.Content.ReadAsStringAsync();
+                System.Diagnostics.Debug.WriteLine($"[TourLog] Lỗi gửi TourLog: {response.StatusCode} - {errorMsg}");
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[TourLog] Exception khi gửi TourLog: {ex.Message}");
         }
     }
 }

@@ -15,6 +15,7 @@ public class TourDetailViewModel : INotifyPropertyChanged
     private readonly SettingsService _settingsService;
     private readonly AudioManager _audioManager;
     private readonly POICacheService _poiCache;
+    private readonly PresenceTrackerService _presenceTrackerService;
     private Tour? _tour;
     private List<POI> _tourPois = new();
     private bool _isLoading;
@@ -30,7 +31,8 @@ public class TourDetailViewModel : INotifyPropertyChanged
         IPOIRepository poiRepository,
         LocalizationResourceManager localizationManager,
         SettingsService settingsService,
-        AudioManager audioManager)
+        AudioManager audioManager,
+        PresenceTrackerService presenceTrackerService)
     {
         _tourRepository = tourRepository;
         _poiRepository = poiRepository;
@@ -38,6 +40,7 @@ public class TourDetailViewModel : INotifyPropertyChanged
         _settingsService = settingsService;
         _audioManager = audioManager;
         _poiCache = POICacheService.Instance;
+        _presenceTrackerService = presenceTrackerService;
 
         SelectPoiCommand = new Command<POI>(async (poi) => await SelectPoiAsync(poi));
         StartTourCommand = new Command(async () => await StartTourAsync());
@@ -257,6 +260,9 @@ public class TourDetailViewModel : INotifyPropertyChanged
             {
                 _audioManager.AddToQueue(poi);
             }
+
+            // Start tracking this tour session via Vercel Worker / Firebase Analytics
+            _ = _presenceTrackerService.StartTourLogAsync(Tour.Id, TourPois.Select(p => p.Id).ToList(), narrationLanguage);
 
             StatusMessage = $"?ã thêm {TourPois.Count} ?i?m d?ng vào hàng ch? phát";
             System.Diagnostics.Debug.WriteLine($"[TourDetailViewModel] Added {TourPois.Count} POIs to audio queue");
