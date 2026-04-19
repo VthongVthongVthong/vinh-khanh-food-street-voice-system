@@ -59,6 +59,10 @@ if (!isset($_SESSION['user_id']) || strtoupper($_SESSION['role']) !== 'ADMIN') {
                     <i class="fas fa-map w-5 text-center"></i>
                     Bản đồ
                 </a>
+                <a href="tour.php" class="flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-gray-50 hover:text-gray-900 rounded-lg font-medium transition-colors">
+                    <i class="fas fa-route w-5 text-center"></i>
+                    Quản lý Tour
+                </a>
                 <a href="heatmap.php" class="flex items-center gap-3 px-4 py-3 bg-brand-50 text-brand-600 rounded-lg font-medium transition-colors">
                     <i class="fas fa-chart-area w-5 text-center"></i>
                     Phân tích Heatmap
