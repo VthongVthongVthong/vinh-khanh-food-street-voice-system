@@ -117,13 +117,13 @@ private ObservableCollection<POI>? _currentPoiCollection;
         if (BindingContext is MapViewModel vm)
         {
             if (vm.UserLatitude != 0 && vm.UserLongitude != 0)
-          {
+ {
               UpdateMapLocation(vm.UserLatitude, vm.UserLongitude);
  }
 
-            UpdateTrackingState(vm.IsTracking);
-            // ?? Render FilteredPOIs instead of AllPOIs
-            await RenderPOIsAsync(vm.FilteredPOIs);
+    UpdateTrackingState(vm.IsTracking);
+  // ? FIX: Render AllPOIs on the map (not FilteredPOIs)
+            await RenderPOIsAsync(vm.AllPOIs);
    await TryFocusPendingPoiAsync();
     }
     }
@@ -216,8 +216,8 @@ HeaderSubtitleLabel.Text = _resourceManager.GetString("Home_Featured_Desc");
     private void ViewModel_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(MapViewModel.UserLatitude) || e.PropertyName == nameof(MapViewModel.UserLongitude))
-        {
-            if (BindingContext is MapViewModel vm)
+    {
+      if (BindingContext is MapViewModel vm)
       {
     UpdateMapLocation(vm.UserLatitude, vm.UserLongitude);
     // ? FIX: Also apply radius filter when location updates
@@ -233,52 +233,50 @@ HeaderSubtitleLabel.Text = _resourceManager.GetString("Home_Featured_Desc");
         {
             if (BindingContext is MapViewModel vm)
       {
-       SubscribeToPoiCollection(vm.AllPOIs);
+ SubscribeToPoiCollection(vm.AllPOIs);
+ // ? FIX: Always render AllPOIs on the map (not FilteredPOIs)
  _ = RenderPOIsAsync(vm.AllPOIs);
           _ = RenderHeatmapAsync(vm.HotScores, vm.AllPOIs);
     // ? FIX: Update locations count - count FilteredPOIs (POI in radius)
-            var locationText = _resourceManager.GetString("Map_Locations") ?? "??a ?i?m";
+    var locationText = _resourceManager.GetString("Map_Locations") ?? "??a ?i?m";
       LocationsCountLabel.Text = $"{vm.FilteredPOIs.Count} {locationText}";
    }
     }
-        // ?? Monitor FilteredPOIs changes
+        // ?? Monitor FilteredPOIs changes (for CollectionView only, NOT the map)
         else if (e.PropertyName == nameof(MapViewModel.FilteredPOIs))
  {
+  // ? FIX: Only update the count label, map still renders AllPOIs
   if (BindingContext is MapViewModel vm)
   {
-     _ = RenderPOIsAsync(vm.FilteredPOIs);
-     // ? FIX: Update count when FilteredPOIs changes
+     // ? Update count when FilteredPOIs changes (for nearby section)
      var locationText = _resourceManager.GetString("Map_Locations") ?? "??a ?i?m";
      LocationsCountLabel.Text = $"{vm.FilteredPOIs.Count} {locationText}";
   }
-        }
+ }
         // ?? Monitor RadiusFilterKm changes
     else if (e.PropertyName == nameof(MapViewModel.RadiusFilterKm))
     {
-    if (BindingContext is MapViewModel vm)
-    {
-    // Radius changed, re-render filtered POIs on map
-_ = RenderPOIsAsync(vm.FilteredPOIs);
- }
-        }
+    // ? FIX: Radius change only affects FilteredPOIs for CollectionView, not the map
+    // Map still shows all POIs
+    }
      // ?? Monitor IsLocationEnabled changes
-        else if (e.PropertyName == nameof(MapViewModel.IsLocationEnabled))
+ else if (e.PropertyName == nameof(MapViewModel.IsLocationEnabled))
   {
      if (BindingContext is MapViewModel vm)
          {
-       // Re-apply filter when location enabled/disabled
+       // Re-apply filter when location enabled/disabled (for nearby collection only)
  ApplyRadiusFilter();
 }
-        }
+   }
   // ?? Monitor HasPOIsInRadius changes
-        else if (e.PropertyName == nameof(MapViewModel.HasPOIsInRadius))
+   else if (e.PropertyName == nameof(MapViewModel.HasPOIsInRadius))
    {
       // UI will automatically update due to binding
         }
         else if (e.PropertyName == nameof(MapViewModel.HotScores) || e.PropertyName == nameof(MapViewModel.SelectedHour))
      {
     if (BindingContext is MapViewModel vm)
-        _ = RenderHeatmapAsync(vm.HotScores, vm.AllPOIs);
+   _ = RenderHeatmapAsync(vm.HotScores, vm.AllPOIs);
 }
     }
 
@@ -424,8 +422,8 @@ _currentPoiCollection.CollectionChanged += PoiCollectionChanged;
     private void PoiCollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
     {
     if (BindingContext is MapViewModel vm)
-   // ?? Render FilteredPOIs to respect current radius filter
- _ = RenderPOIsAsync(vm.FilteredPOIs);
+   // ? FIX: Render AllPOIs on the map (not FilteredPOIs)
+ _ = RenderPOIsAsync(vm.AllPOIs);
   }
 
     private async Task TryFocusPendingPoiAsync()
