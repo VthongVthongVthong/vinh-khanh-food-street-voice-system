@@ -15,7 +15,7 @@ namespace VinhKhanhstreetfoods.ViewModels
     public class CameraViewModel : INotifyPropertyChanged
     {
         private readonly IPOIRepository _poiRepository;
-        private string _statusMessage = "Chu?n b? qu�t...";
+        private string _statusMessage = "Chu?n b? quï¿½t...";
         private bool _isScanning;
      private bool _isProcessing;
  private POI? _scannedPOI;
@@ -80,7 +80,7 @@ namespace VinhKhanhstreetfoods.ViewModels
    try
       {
         IsProcessing = true;
-                StatusMessage = "Đang xử lý...";
+                StatusMessage = "Äang xá»­ lÃ½...";
 
            // Process on background thread
      var result = await Task.Run(async () =>
@@ -111,10 +111,16 @@ namespace VinhKhanhstreetfoods.ViewModels
                         StatusMessage = $"Đã tìm thấy: {result.POI.Name}";
                         QRScanned?.Invoke(this, result);
                     }
+                    else if (result.IsTourQR)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[CameraViewModel] Invoking QRScanned for Tour: {result.TourId}");
+                        StatusMessage = $"Đã tìm thấy lộ trình";
+                        QRScanned?.Invoke(this, result);
+                    }
                     else if (!string.IsNullOrEmpty(result.QRValue))
                     {
                         System.Diagnostics.Debug.WriteLine($"[CameraViewModel] Invoking GenericQRScanned for: {result.QRValue}");
-                        StatusMessage = $"Mã QR: {result.QRValue}";
+                        StatusMessage = $"MÃ£ QR: {result.QRValue}";
                         GenericQRScanned?.Invoke(this, result.QRValue);
                     }
    });
@@ -145,6 +151,8 @@ namespace VinhKhanhstreetfoods.ViewModels
 
             int poiId = -1;
             bool isPoiFound = false;
+            int tourId = -1;
+            bool isTourFound = false;
             bool autoPlay = false;
             string? lang = null;
 
@@ -183,6 +191,48 @@ namespace VinhKhanhstreetfoods.ViewModels
                     System.Diagnostics.Debug.WriteLine($"Failed to parse URI: {ex.Message}");
                 }
             }
+            else if (qrValue.StartsWith("vinhkhanh://tour", StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    var uri = new Uri(qrValue);
+                    var queryStr = uri.Query.TrimStart('?');
+                    var queryParams = queryStr.Split('&')
+                        .Select(p => p.Split('='))
+                        .Where(p => p.Length == 2)
+                        .ToDictionary(p => p[0], p => p[1], StringComparer.OrdinalIgnoreCase);
+
+                    if (queryParams.TryGetValue("id", out var idStr))
+                    {
+                        isTourFound = int.TryParse(idStr, out tourId);
+                    }
+                    if (queryParams.TryGetValue("action", out var actionStr) && actionStr == "play") 
+                    {
+                        autoPlay = true;
+                    }
+                    if (queryParams.TryGetValue("lang", out var langStr)) 
+                    {
+                        lang = langStr;
+                    }
+                }
+                catch (Exception ex)
+                { 
+                    System.Diagnostics.Debug.WriteLine($"Failed to parse URI: {ex.Message}");
+                }
+            }
+
+            if (isTourFound)
+            {
+                System.Diagnostics.Debug.WriteLine($"[CameraViewModel] Found Tour QR: {tourId}");
+                return new QRProcessResult
+                {
+                    IsTourQR = true,
+                    TourId = tourId,
+                    QRValue = qrValue,
+                    AutoPlay = autoPlay,
+                    Language = lang
+                };
+            }
 
             if (isPoiFound)
             {
@@ -211,7 +261,7 @@ namespace VinhKhanhstreetfoods.ViewModels
                             IsPOIQR = true,
                             POI = null,
                             QRValue = qrValue,
-                            ErrorMessage = $"POI #{poiId} kh�ng t?n t?i"
+                            ErrorMessage = $"POI #{poiId} khï¿½ng t?n t?i"
                         };
                     }
                 }
@@ -244,14 +294,14 @@ namespace VinhKhanhstreetfoods.ViewModels
         public void StartScanning()
         {
             IsScanning = true;
-            StatusMessage = "Qu�t m� QR...";
+            StatusMessage = "Quï¿½t mï¿½ QR...";
   System.Diagnostics.Debug.WriteLine("[CameraViewModel] Scanning started");
         }
 
       public void StopScanning()
         {
    IsScanning = false;
-         StatusMessage = "?� d?ng qu�t";
+         StatusMessage = "?ï¿½ d?ng quï¿½t";
 System.Diagnostics.Debug.WriteLine("[CameraViewModel] Scanning stopped");
      }
 
@@ -281,6 +331,8 @@ protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {
             public bool IsPOIQR { get; set; }
             public POI? POI { get; set; }
+            public bool IsTourQR { get; set; }
+            public int TourId { get; set; }
             public string QRValue { get; set; } = string.Empty;
             public string? ErrorMessage { get; set; }
             public bool AutoPlay { get; set; }

@@ -52,8 +52,8 @@ public class NowPlayingViewModel : INotifyPropertyChanged
 
     private void UpdateLocalizationStrings()
     {
-     NearYouText = _localizationManager.GetString("NowPlayingBar_NearYou") ?? "Gần bạn";
-   NoLocationsText = _localizationManager.GetString("NowPlayingBar_NoLocations") ?? "Không có địa điểm nào gần bạn";
+     NearYouText = _localizationManager.GetString("NowPlayingBar_NearYou") ?? "Gáº§n báº¡n";
+   NoLocationsText = _localizationManager.GetString("NowPlayingBar_NoLocations") ?? "KhÃ´ng cÃ³ Ä‘á»‹a Ä‘iá»ƒm nÃ o gáº§n báº¡n";
     }
 
     private async void OnLocationUpdated(object? sender, Location location)
@@ -135,7 +135,7 @@ public class NowPlayingViewModel : INotifyPropertyChanged
         MainThread.BeginInvokeOnMainThread(() =>
         {
      _currentPoi = poi;
-PoiName = poi.Name ?? "Tên quán";
+PoiName = poi.Name ?? "TÃªn quÃ¡n";
             PoiAvatarUrl = poi.AvatarImageUrl ?? "";
           
           var langCode = _settingsService.PreferredLanguage.ToUpper();
@@ -143,6 +143,9 @@ PoiName = poi.Name ?? "Tên quán";
 
             IsPlaying = true;
      IsVisible = true;
+     
+     // Refresh playlist UI to reflect current audio removed from upcoming
+     _ = LoadUpcomingAudiosAsync();
      });
     }
 
@@ -153,6 +156,14 @@ PoiName = poi.Name ?? "Tên quán";
         {
             IsPlaying = false;
         
+            // Check if AudioManager has remaining items natively
+            if (_audioManager.GetQueueItems().Any())
+            {
+                // Just refresh UI, AudioManager handles auto-play internally
+                _ = LoadUpcomingAudiosAsync();
+                return;
+            }
+
             // Auto-play the next item in the upcoming audios list like a playlist
    // Only automatically add to queue if location tracking is currently active
  if (_locationService.IsTracking && UpcomingAudios != null && UpcomingAudios.Count > 0)
@@ -202,6 +213,23 @@ IsVisible = false;
     {
         try
         {
+            var queuePois = _audioManager.GetQueueItems().ToList();
+            if (queuePois.Any())
+            {
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    var existingItems = UpcomingAudios.Select(u => u.Id).ToList();
+                    var newItems = queuePois.Where(p => _currentPoi == null || p.Id != _currentPoi.Id).ToList();
+
+                    if (!existingItems.SequenceEqual(newItems.Select(n => n.Id)))
+                    {
+                        UpcomingAudios.Clear();
+                        foreach (var p in newItems) UpcomingAudios.Add(p);
+                    }
+                });
+                return;
+            }
+
             var location = await _locationService.GetCurrentLocation();
       if (location == null) return;
 
@@ -230,7 +258,7 @@ IsVisible = false;
   {
             UpcomingAudios.Add(p);
         
-       // "để đưa vào hàng đợi âm thanh"
+       // "Ä‘á»ƒ Ä‘Æ°a vÃ o hÃ ng Ä‘á»£i Ã¢m thanh"
    // GeofenceEngine already triggers close ones, 
      // but if we want UpcomingAudios to truly act as a backup queue:
     }

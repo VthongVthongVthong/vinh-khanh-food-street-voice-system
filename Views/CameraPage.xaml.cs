@@ -90,7 +90,7 @@ public partial class CameraPage : ContentPage
             {
                 await MainThread.InvokeOnMainThreadAsync(async () =>
                 {
-                    await DisplayAlert("Lỗi", "Cần quyền camera để quét QR", "OK");
+                    await DisplayAlert("Lá»—i", "Cáº§n quyá»n camera Ä‘á»ƒ quÃ©t QR", "OK");
                     await Navigation.PopAsync();
                 });
                 return;
@@ -131,7 +131,7 @@ public partial class CameraPage : ContentPage
             System.Diagnostics.Debug.WriteLine($"[CameraPage] Error: {ex.Message}");
             await MainThread.InvokeOnMainThreadAsync(async () =>
             {
-                await DisplayAlert("Lỗi Camera", ex.Message, "OK");
+                await DisplayAlert("Lá»—i Camera", ex.Message, "OK");
                 await Navigation.PopAsync();
             });
         }
@@ -178,10 +178,38 @@ public partial class CameraPage : ContentPage
 
     private async void OnPOIQRScanned(object? sender, CameraViewModel.QRProcessResult result)
     {
-        System.Diagnostics.Debug.WriteLine($"[CameraPage] POI QR Scanned: {result.POI?.Name}. AutoPlay: {result.AutoPlay}");
+        System.Diagnostics.Debug.WriteLine($"[CameraPage] QR Scanned: IsPOI={result.IsPOIQR}, IsTour={result.IsTourQR}");
 
         try
         {
+            if (result.IsTourQR)
+            {
+                var tourRepo = MauiProgram.ServiceProvider?.GetService<VinhKhanhstreetfoods.Services.ITourRepository>();
+                var poiRepo = MauiProgram.ServiceProvider?.GetService<VinhKhanhstreetfoods.Services.IPOIRepository>();
+                if (tourRepo != null && poiRepo != null)
+                {
+                    var tourPoisMapping = await tourRepo.GetTourPOIsAsync(result.TourId);
+                    var poiIds = tourPoisMapping.Select(tp => tp.POIId).ToList();
+                    var allPois = await poiRepo.GetAllPOIsAsync();
+                    var tourPois = allPois.Where(p => poiIds.Contains(p.Id))
+                                          .OrderBy(p => tourPoisMapping.FirstOrDefault(tp => tp.POIId == p.Id)?.SortOrder ?? 0)
+                                          .ToList();
+
+                    var audioManager = MauiProgram.ServiceProvider?.GetService<VinhKhanhstreetfoods.Services.AudioManager>();
+                    if (audioManager != null)
+                    {
+                        foreach (var poi in tourPois)
+                        {
+                            audioManager.AddToQueue(poi);
+                        }
+                    }
+                }
+                
+                await Navigation.PopAsync();
+                await Shell.Current.GoToAsync($"///tourdetail?tourId={result.TourId}");
+                return;
+            }
+
             if (result.POI != null)
             {
                 var settingsService = MauiProgram.ServiceProvider?.GetService<VinhKhanhstreetfoods.Services.SettingsService>();
@@ -201,14 +229,14 @@ public partial class CameraPage : ContentPage
                 
                 if (audioManager != null && (audioManager.IsPlaying || audioManager.GetQueueItems().Any()))
                 {
-                    bool playNow = await DisplayAlert("Phát âm thanh", $"Bạn có muốn ưu tiên phát âm thanh của '{result.POI.Name}' ngay không? Hàng đợi đang phát sẽ được chuyển xuống sau.", "Có", "Không");
+                    bool playNow = await DisplayAlert("PhÃ¡t Ã¢m thanh", $"Báº¡n cÃ³ muá»‘n Æ°u tiÃªn phÃ¡t Ã¢m thanh cá»§a '{result.POI.Name}' ngay khÃ´ng? HÃ ng Ä‘á»£i Ä‘ang phÃ¡t sáº½ Ä‘Æ°á»£c chuyá»ƒn xuá»‘ng sau.", "CÃ³", "KhÃ´ng");
                     if (playNow)
                     {
                         audioManager.PlayNowAndPauseCurrent(result.POI);
                     }
                     else
                     {
-                        // Giữ nguyên luồng xử lý bình thường nếu không chọn ưu tiên
+                        // Giá»¯ nguyÃªn luá»“ng xá»­ lÃ½ bÃ¬nh thÆ°á»ng náº¿u khÃ´ng chá»n Æ°u tiÃªn
                         if (result.AutoPlay)
                         {
                             audioManager.AddToQueue(result.POI);
@@ -255,7 +283,7 @@ public partial class CameraPage : ContentPage
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[CameraPage] Navigation error: {ex.Message}");
-            await DisplayAlert("Lỗi", "Không thể mở chi tiết", "OK");
+            await DisplayAlert("Lá»—i", "KhÃ´ng thá»ƒ má»Ÿ chi tiáº¿t", "OK");
         }
     }
 
@@ -265,7 +293,7 @@ public partial class CameraPage : ContentPage
 
         await MainThread.InvokeOnMainThreadAsync(async () =>
         {
-            var result = await DisplayAlert("Mã QR", $"Nội dung: {qrValue}", "Đóng", "Quét tiếp");
+            var result = await DisplayAlert("MÃ£ QR", $"Ná»™i dung: {qrValue}", "ÄÃ³ng", "QuÃ©t tiáº¿p");
 
             if (result)
             {

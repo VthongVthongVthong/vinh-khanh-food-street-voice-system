@@ -63,8 +63,19 @@ public class TourDetailViewModel : INotifyPropertyChanged
             if (_tour == value) return;
             _tour = value;
             OnPropertyChanged();
+            OnPropertyChanged(nameof(QRCodeContent));
         }
     }
+
+    public string QRCodeContent
+    {
+        get
+        {
+            if (_tour == null) return string.Empty;
+            return $"vinhkhanh://tour?id={_tour.Id}&action=play";
+        }
+    }
+
 
     public List<POI> TourPois
     {
@@ -130,13 +141,13 @@ public class TourDetailViewModel : INotifyPropertyChanged
         {
             IsLoading = true;
             _avatarsLoaded = false;
-            StatusMessage = "?ang t?i thÙng tin l? trÏnh...";
+            StatusMessage = "?ang t?i th√¥ng tin l? tr√¨nh...";
 
             // Load tour details
             Tour = await _tourRepository.GetTourByIdAsync(tourId);
             if (Tour == null)
             {
-                StatusMessage = "KhÙng tÏm th?y l? trÏnh";
+                StatusMessage = "Kh√¥ng t√¨m th?y l? tr√¨nh";
                 return;
             }
 
@@ -146,7 +157,7 @@ public class TourDetailViewModel : INotifyPropertyChanged
 
             if (poiIds.Count == 0)
             {
-                StatusMessage = "L? trÏnh khÙng cÛ ?i?m d?ng";
+                StatusMessage = "L? tr√¨nh kh√¥ng c√≥ ?i?m d?ng";
                 return;
             }
 
@@ -162,7 +173,7 @@ public class TourDetailViewModel : INotifyPropertyChanged
 
                 if (TourPois.Count > 0)
                 {
-                    StatusMessage = $"?„ t?i {TourPois.Count} ?i?m d?ng t? b? nh? ??m";
+                    StatusMessage = $"?√£ t?i {TourPois.Count} ?i?m d?ng t? b? nh? ??m";
                     System.Diagnostics.Debug.WriteLine($"[TourDetailViewModel] ? Loaded from cache: {TourPois.Count} POIs");
                     
                     // ? Clear message after short delay to let UI render
@@ -182,7 +193,7 @@ public class TourDetailViewModel : INotifyPropertyChanged
             // ? Update cache with fetched POIs so next tour loads faster
             _poiCache.UpdateCache(allPois);
 
-            StatusMessage = $"?„ t?i {TourPois.Count} ?i?m d?ng";
+            StatusMessage = $"?√£ t?i {TourPois.Count} ?i?m d?ng";
             System.Diagnostics.Debug.WriteLine($"[TourDetailViewModel] Loaded tour '{Tour.Name}' with {TourPois.Count} POIs");
             
             // ? Clear message after short delay to let UI render
@@ -227,7 +238,7 @@ public class TourDetailViewModel : INotifyPropertyChanged
     {
         if (Tour == null || TourPois.Count == 0)
         {
-            StatusMessage = "KhÙng th? b?t ??u l? trÏnh";
+            StatusMessage = "Kh√¥ng th? b?t ??u l? tr√¨nh";
             return;
         }
 
@@ -247,12 +258,12 @@ public class TourDetailViewModel : INotifyPropertyChanged
                 _audioManager.AddToQueue(poi);
             }
 
-            StatusMessage = $"?„ thÍm {TourPois.Count} ?i?m d?ng v‡o h‡ng ch? ph·t";
+            StatusMessage = $"?√£ th√™m {TourPois.Count} ?i?m d?ng v√†o h√†ng ch? ph√°t";
             System.Diagnostics.Debug.WriteLine($"[TourDetailViewModel] Added {TourPois.Count} POIs to audio queue");
         }
         catch (Exception ex)
         {
-            StatusMessage = $"L?i kh?i ??ng l? trÏnh: {ex.Message}";
+            StatusMessage = $"L?i kh?i ??ng l? tr√¨nh: {ex.Message}";
             System.Diagnostics.Debug.WriteLine($"[TourDetailViewModel] Start tour error: {ex.Message}");
         }
     }

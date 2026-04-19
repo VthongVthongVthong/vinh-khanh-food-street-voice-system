@@ -4,6 +4,7 @@
   xmlns:converters="clr-namespace:VinhKhanhstreetfoods.Converters;assembly=VinhKhanhstreetfoods"
      xmlns:local="clr-namespace:VinhKhanhstreetfoods.Models;assembly=VinhKhanhstreetfoods"
 xmlns:components="clr-namespace:VinhKhanhstreetfoods.Views.Components"
+    xmlns:zxing="clr-namespace:ZXing.Net.Maui.Controls;assembly=ZXing.Net.Maui.Controls"
   x:Class="VinhKhanhstreetfoods.Views.TourDetailPage"
       Shell.NavBarIsVisible="False"
      BackgroundColor="{StaticResource BgPage}"
@@ -116,10 +117,24 @@ Text="{Binding StatusMessage}"
    </DataTemplate>
     </CollectionView.EmptyViewTemplate>
 
-   <!-- Footer spacing -->
-     <CollectionView.Footer>
-     <ContentView HeightRequest="20" />
-</CollectionView.Footer>
+    <!-- Footer spacing and QR Code -->
+    <CollectionView.Footer>
+        <ContentView Padding="20">
+            <Border Style="{StaticResource MainCardStyle}" Padding="20">
+                <StackLayout Spacing="10">
+                    <Label Text="Mã QR Lộ Trình" 
+                           Style="{StaticResource CardTitle}"
+                           Margin="0,0,0,0" />
+                    <zxing:BarcodeGeneratorView
+                           Format="QrCode"
+                           Value="{Binding QRCodeContent}"
+                           HeightRequest="200"
+                           WidthRequest="200"
+                           HorizontalOptions="Center" />
+                </StackLayout>
+            </Border>
+        </ContentView>
+    </CollectionView.Footer>
   </CollectionView>
 
       <!-- Start Tour Button -->
