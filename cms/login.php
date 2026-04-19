@@ -16,6 +16,34 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $pdo = $db->getPDO();
 
         try {
+            // ĐỒNG BỘ TỪ FIREBASE XUỐNG LOCAL DB (CPanel) 
+            $firebaseUrl = "https://vinhkhanh-68a4b-default-rtdb.asia-southeast1.firebasedatabase.app/User.json";
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $firebaseUrl);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            $response = curl_exec($ch);
+            curl_close($ch);
+            
+            if ($response) {
+                $firebaseUsers = json_decode($response, true);
+                if (is_array($firebaseUsers)) {
+                    $syncStmt = $pdo->prepare("REPLACE INTO User (id, username, passwordHash, email, phone, role, createdAt, updatedAt) VALUES (:id, :username, :passwordHash, :email, :phone, :role, :createdAt, :updatedAt)");
+                    foreach ($firebaseUsers as $u) {
+                        if (!$u || !isset($u['id'])) continue;
+                        $syncStmt->execute([
+                            ':id' => $u['id'],
+                            ':username' => $u['username'] ?? '',
+                            ':passwordHash' => $u['passwordHash'] ?? '',
+                            ':email' => $u['email'] ?? '',
+                            ':phone' => $u['phone'] ?? null,
+                            ':role' => $u['role'] ?? 'CUSTOMER',
+                            ':createdAt' => $u['createdAt'] ?? date('Y-m-d H:i:s'),
+                            ':updatedAt' => $u['updatedAt'] ?? date('Y-m-d H:i:s')
+                        ]);
+                    }
+                }
+            }
             // Giả định bảng User có các cột: username, password, role
             $stmt = $pdo->prepare("SELECT * FROM User WHERE username = :username LIMIT 1");
             $stmt->execute([':username' => $username]);

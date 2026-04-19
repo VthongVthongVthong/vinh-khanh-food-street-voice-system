@@ -53,4 +53,9 @@ public partial class LoginPage : ContentPage
     {
         await Navigation.PopModalAsync();
     }
+
+    private async void OnRegisterTapped(object sender, EventArgs e)
+    {
+        await Navigation.PushModalAsync(new RegisterPage(_userService));
+    }
 }

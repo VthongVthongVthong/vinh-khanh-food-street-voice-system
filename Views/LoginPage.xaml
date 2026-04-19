@@ -24,6 +24,16 @@
                 <Label x:Name="ErrorLabel" TextColor="Red" IsVisible="False" HorizontalOptions="Center" />
 
                 <Button Text="Đăng nhập" Clicked="OnLoginClicked" BackgroundColor="{StaticResource BrandOrange}" TextColor="White" />
+                
+                <HorizontalStackLayout HorizontalOptions="Center" Spacing="5">
+                    <Label Text="Chưa có tài khoản?" TextColor="Gray" VerticalOptions="Center" />
+                    <Label Text="Đăng ký ngay" TextColor="{StaticResource BrandOrange}" FontAttributes="Bold" VerticalOptions="Center">
+                        <Label.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnRegisterTapped" />
+                        </Label.GestureRecognizers>
+                    </Label>
+                </HorizontalStackLayout>
+
                 <Button Text="Đóng" Clicked="OnCloseClicked" BackgroundColor="Transparent" TextColor="Gray" />
             </VerticalStackLayout>
         </Border>
