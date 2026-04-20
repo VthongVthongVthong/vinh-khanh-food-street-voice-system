@@ -281,8 +281,17 @@ CreatedAt = GetDateTime(item, "createdAt", "created_at") ?? DateTime.Now,
 
     private static int GetIntOrDefault(JsonElement obj, int defaultValue, params string[] names)
     {
-        var val = GetInt(obj, names);
-        return val > 0 ? val : defaultValue;
+        foreach (var name in names)
+        {
+            if (TryGetProperty(obj, name, out var value))
+   {
+    if (value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var intVal))
+        return intVal;
+if (value.ValueKind == JsonValueKind.String && int.TryParse(value.GetString(), out intVal))
+        return intVal;
+}
+        }
+        return defaultValue;
     }
 
     private static int? GetIntOrNull(JsonElement obj, params string[] names)
