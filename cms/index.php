@@ -123,186 +123,228 @@ if (!isset($_SESSION['user_id']) || strtoupper($_SESSION['role']) !== 'ADMIN') {
             </div>
 
             <?php
-            // Kết nối CSDL tạm (sau này sẽ query thực tế)
-            require_once 'db.php';
-            $db = new SQLiteDB();
-            $pdo = $db->getPDO();
-            
-            // Xử lý ngày tuần được chọn để lọc
-            $selectedDateStr = isset($_GET['date']) ? $_GET['date'] : date('Y-m-d');
-            $selectedTime = strtotime($selectedDateStr);
-            $dayOfWeek = date('N', $selectedTime); // 1 = Monday, 7 = Sunday
-            $mondayTime = strtotime('-' . ($dayOfWeek - 1) . ' days', $selectedTime);
-            $mondayDate = date('Y-m-d', $mondayTime);
-            $prevWeek = date('Y-m-d', strtotime('-7 days', $mondayTime));
-            $nextWeek = date('Y-m-d', strtotime('+7 days', $mondayTime));
-            
-            // Lấy danh sách các ngày trong tuần đang xét
-            $weekDays = [];
-            $interactionData = [0, 0, 0, 0, 0, 0, 0];
-            $chartLabels = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
-            for ($i = 0; $i < 7; $i++) {
-                $currentDay = date('Y-m-d', strtotime("+$i days", $mondayTime));
-                $weekDays[] = $currentDay;
-                $chartLabels[$i] .= " (" . date('d/m', strtotime("+$i days", $mondayTime)) . ")";
+// Kết nối CSDL tạm (sau này sẽ query thực tế)
+require_once 'db.php';
+$db = new SQLiteDB();
+$pdo = $db->getPDO();
+
+// Xử lý ngày tuần được chọn để lọc
+$selectedDateStr = isset($_GET['date']) ? $_GET['date'] : date('Y-m-d');
+$selectedTime = strtotime($selectedDateStr);
+$dayOfWeek = date('N', $selectedTime); // 1 = Monday, 7 = Sunday
+$mondayTime = strtotime('-' . ($dayOfWeek - 1) . ' days', $selectedTime);
+$mondayDate = date('Y-m-d', $mondayTime);
+$prevWeek = date('Y-m-d', strtotime('-7 days', $mondayTime));
+$nextWeek = date('Y-m-d', strtotime('+7 days', $mondayTime));
+
+// Lấy danh sách các ngày trong tuần đang xét
+$weekDays = [];
+$interactionData = [0, 0, 0, 0, 0, 0, 0];
+$chartLabels = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+for ($i = 0; $i < 7; $i++) {
+    $currentDay = date('Y-m-d', strtotime("+$i days", $mondayTime));
+    $weekDays[] = $currentDay;
+    $chartLabels[$i] .= " (" . date('d/m', strtotime("+$i days", $mondayTime)) . ")";
+}
+
+// Đếm tổng user
+// Đếm tổng user từ Firebase
+$userCount = 0;
+$ownerCount = 0;
+$adminCount = 0;
+
+try {
+    $firebaseUserUrl = "https://vinhkhanh-68a4b-default-rtdb.asia-southeast1.firebasedatabase.app/User.json"; // Bỏ ?shallow=true để lấy chi tiết role
+    $chu = curl_init();
+    curl_setopt($chu, CURLOPT_URL, $firebaseUserUrl);
+    curl_setopt($chu, CURLOPT_RETURNTRANSFER, 1);
+    curl_setopt($chu, CURLOPT_SSL_VERIFYPEER, false);
+    $respUser = curl_exec($chu);
+    curl_close($chu);
+
+    if ($respUser && $respUser !== 'null') {
+        $userDataObj = json_decode($respUser, true);
+        if (is_array($userDataObj)) {
+            foreach ($userDataObj as $user) {
+                if ($user !== null && isset($user['role'])) {
+                    $role = strtoupper($user['role']);
+                    if ($role === 'ADMIN') {
+                        $adminCount++;
+                    }
+                    elseif ($role === 'OWNER') {
+                        $ownerCount++;
+                    }
+                    elseif ($role === 'CUSTOMER') {
+                        $userCount++;
+                    }
+                }
+            }
+        }
+    }
+}
+catch (Exception $e) {
+}
+
+// Đếm tổng guest từ Firebase
+$guestCount = 0;
+try {
+    $firebaseGuestUrl = "https://vinhkhanh-68a4b-default-rtdb.asia-southeast1.firebasedatabase.app/GuestSession.json?shallow=true";
+    $chg = curl_init();
+    curl_setopt($chg, CURLOPT_URL, $firebaseGuestUrl);
+    curl_setopt($chg, CURLOPT_RETURNTRANSFER, 1);
+    curl_setopt($chg, CURLOPT_SSL_VERIFYPEER, false);
+    $respGuest = curl_exec($chg);
+    curl_close($chg);
+
+    if ($respGuest && $respGuest !== 'null') {
+        $guessDataObj = json_decode($respGuest, true);
+        if (is_array($guessDataObj)) {
+            $guestCount = count($guessDataObj);
+        }
+    }
+}
+catch (Exception $e) {
+}
+$totalUserCount = $userCount + $guestCount + $ownerCount + $adminCount;
+
+// Đếm tổng lượt nghe và Top POI từ Firebase
+$audioPlayCount = 0;
+$topPlacesLabels = [];
+$topPlacesData = [];
+
+try {
+    // Ta cần lấy toàn bộ dữ liệu để đếm tần suất POI và gom nhóm tuần
+    $firebaseUrl = "https://vinhkhanh-68a4b-default-rtdb.asia-southeast1.firebasedatabase.app/AudioPlayLog.json";
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $firebaseUrl);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    $response = curl_exec($ch);
+    curl_close($ch);
+
+    if ($response && $response !== 'null') {
+        $data = json_decode($response, true);
+        if (is_array($data)) {
+            $audioPlayCount = count($data);
+
+            // Xử lý đếm lượt phát POI tổng
+            $poiPlayCounts = [];
+            foreach ($data as $key => $log) {
+                if (is_array($log) && !empty($log['poiId'])) {
+                    $poiId = (int)$log['poiId'];
+                    $poiPlayCounts[$poiId] = ($poiPlayCounts[$poiId] ?? 0) + 1;
+                }
+
+                // Phân loại data theo tuần
+                $timeStr = isset($log['playtime']) ? $log['playtime'] : (isset($log['timestamp']) ? $log['timestamp'] : null);
+                if ($timeStr) {
+                    // Xử lý timestamp millis hoặc chuẩn ngày tháng
+                    $time = is_numeric($timeStr) ? ($timeStr > 10000000000 ? $timeStr / 1000 : $timeStr) : strtotime($timeStr);
+                    $logDate = date('Y-m-d', (int)$time);
+                    $index = array_search($logDate, $weekDays);
+                    if ($index !== false) {
+                        $interactionData[$index]++;
+                    }
+                }
             }
 
-            // Đếm tổng user
-            $userCount = 0;
-            try {
-                $stmt = $pdo->query("SELECT COUNT(id) FROM User");
-                $userCount = $stmt->fetchColumn();
-            } catch (Exception $e) {}
+            // Sắp xếp giảm dần và lấy top 4
+            arsort($poiPlayCounts);
+            $topPoiIds = array_slice($poiPlayCounts, 0, 4, true);
 
-            // Đếm tổng guest từ Firebase
-            $guestCount = 0;
-            try {
-                $firebaseGuestUrl = "https://vinhkhanh-68a4b-default-rtdb.asia-southeast1.firebasedatabase.app/GuestSession.json?shallow=true";
-                $chg = curl_init();
-                curl_setopt($chg, CURLOPT_URL, $firebaseGuestUrl);
-                curl_setopt($chg, CURLOPT_RETURNTRANSFER, 1);
-                curl_setopt($chg, CURLOPT_SSL_VERIFYPEER, false);
-                $respGuest = curl_exec($chg);
-                curl_close($chg);
-                
-                if ($respGuest && $respGuest !== 'null') {
-                    $guessDataObj = json_decode($respGuest, true);
-                    if (is_array($guessDataObj)) {
-                        $guestCount = count($guessDataObj);
-                    }
+            if (!empty($topPoiIds)) {
+                // Lấy tên POI từ database MySQL
+                $idList = implode(',', array_keys($topPoiIds));
+                $stmt = $pdo->query("SELECT id, name FROM POI WHERE id IN ($idList)");
+                $poiNames = [];
+                while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                    $poiNames[$row['id']] = $row['name'];
                 }
-            } catch (Exception $e) {}
-            $totalUserCount = $userCount + $guestCount;
 
-            // Đếm tổng lượt nghe và Top POI từ Firebase
-            $audioPlayCount = 0;
-            $topPlacesLabels = [];
-            $topPlacesData = [];
-
-            try {
-                // Ta cần lấy toàn bộ dữ liệu để đếm tần suất POI và gom nhóm tuần
-                $firebaseUrl = "https://vinhkhanh-68a4b-default-rtdb.asia-southeast1.firebasedatabase.app/AudioPlayLog.json";
-                $ch = curl_init();
-                curl_setopt($ch, CURLOPT_URL, $firebaseUrl);
-                curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-                $response = curl_exec($ch);
-                curl_close($ch);
-                
-                if ($response && $response !== 'null') {
-                    $data = json_decode($response, true);
-                    if (is_array($data)) {
-                        $audioPlayCount = count($data);
-                        
-                        // Xử lý đếm lượt phát POI tổng
-                        $poiPlayCounts = [];
-                        foreach ($data as $key => $log) {
-                            if (is_array($log) && !empty($log['poiId'])) {
-                                $poiId = (int)$log['poiId'];
-                                $poiPlayCounts[$poiId] = ($poiPlayCounts[$poiId] ?? 0) + 1;
-                            }
-                            
-                            // Phân loại data theo tuần
-                            $timeStr = isset($log['playtime']) ? $log['playtime'] : (isset($log['timestamp']) ? $log['timestamp'] : null);
-                            if ($timeStr) {
-                                // Xử lý timestamp millis hoặc chuẩn ngày tháng
-                                $time = is_numeric($timeStr) ? ($timeStr > 10000000000 ? $timeStr/1000 : $timeStr) : strtotime($timeStr);
-                                $logDate = date('Y-m-d', (int)$time);
-                                $index = array_search($logDate, $weekDays);
-                                if ($index !== false) {
-                                    $interactionData[$index]++;
-                                }
-                            }
-                        }
-                        
-                        // Sắp xếp giảm dần và lấy top 4
-                        arsort($poiPlayCounts);
-                        $topPoiIds = array_slice($poiPlayCounts, 0, 4, true);
-                        
-                        if (!empty($topPoiIds)) {
-                            // Lấy tên POI từ database MySQL
-                            $idList = implode(',', array_keys($topPoiIds));
-                            $stmt = $pdo->query("SELECT id, name FROM POI WHERE id IN ($idList)");
-                            $poiNames = [];
-                            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                                $poiNames[$row['id']] = $row['name'];
-                            }
-                            
-                            foreach ($topPoiIds as $pId => $count) {
-                                // Tách chuỗi tên dài thành mảng nhỏ để tooltip biểu đồ đẹp hơn nếu cần
-                                // Ở đây đơn giản lấy tên hoặc ID nếu không tìm thấy
-                                $name = isset($poiNames[$pId]) ? $poiNames[$pId] : "POI $pId";
-                                $topPlacesLabels[] = explode(" ", $name, 2); // Tách 2 dòng cho khớp style chart
-                                $topPlacesData[] = $count;
-                            }
-                        }
-                    }
+                foreach ($topPoiIds as $pId => $count) {
+                    // Tách chuỗi tên dài thành mảng nhỏ để tooltip biểu đồ đẹp hơn nếu cần
+                    // Ở đây đơn giản lấy tên hoặc ID nếu không tìm thấy
+                    $name = isset($poiNames[$pId]) ? $poiNames[$pId] : "POI $pId";
+                    $topPlacesLabels[] = explode(" ", $name, 2); // Tách 2 dòng cho khớp style chart
+                    $topPlacesData[] = $count;
                 }
-            } catch (Exception $e) {}
-
-            // Thêm cả lượt tương tác từ VisitLog
-            try {
-                $firebaseVisitUrl = "https://vinhkhanh-68a4b-default-rtdb.asia-southeast1.firebasedatabase.app/VisitLog.json";
-                $chv = curl_init();
-                curl_setopt($chv, CURLOPT_URL, $firebaseVisitUrl);
-                curl_setopt($chv, CURLOPT_RETURNTRANSFER, 1);
-                curl_setopt($chv, CURLOPT_SSL_VERIFYPEER, false);
-                $responseVisit = curl_exec($chv);
-                curl_close($chv);
-                
-                if ($responseVisit && $responseVisit !== 'null') {
-                    $visitData = json_decode($responseVisit, true);
-                    if (is_array($visitData)) {
-                        foreach ($visitData as $key => $log) {
-                            $timeStr = isset($log['playtime']) ? $log['playtime'] : (isset($log['timestamp']) ? $log['timestamp'] : null);
-                            // Dùng fall-back nếu trường tên là visitTime hoặc time
-                            if (!$timeStr) $timeStr = isset($log['visitTime']) ? $log['visitTime'] : (isset($log['time']) ? $log['time'] : null);
-                            
-                            if ($timeStr) {
-                                $time = is_numeric($timeStr) ? ($timeStr > 10000000000 ? $timeStr/1000 : $timeStr) : strtotime($timeStr);
-                                $logDate = date('Y-m-d', (int)$time);
-                                $index = array_search($logDate, $weekDays);
-                                if ($index !== false) {
-                                    $interactionData[$index]++; // Cộng dồn số lượt vào interaction
-                                }
-                            }
-                        }
-                    }
-                }
-            } catch (Exception $e) {}
-            
-            // Query thử số lượng POI
-            $poiCount = 0;
-            try {
-                $stmt = $pdo->query("SELECT COUNT(id) FROM POI");
-                $poiCount = $stmt->fetchColumn();
-            } catch (Exception $e) {}
-
-            // Đếm tổng Tour
-            $tourCount = 0;
-            try {
-                $stmt = $pdo->query("SELECT COUNT(id) FROM Tour");
-                $tourCount = $stmt->fetchColumn();
-            } catch (Exception $e) {}
-
-            // Nếu là request ajax thì trả về JSON rồi kết thúc
-            if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
-                header('Content-Type: application/json');
-                echo json_encode([
-                    'totalUserCount' => $totalUserCount,
-                    'userCount' => $userCount,
-                    'guestCount' => $guestCount,
-                    'audioPlayCount' => $audioPlayCount,
-                    'poiCount' => $poiCount,
-                    'tourCount' => $tourCount,
-                    'chartLabels' => $chartLabels,
-                    'interactionData' => $interactionData,
-                    'topPlacesLabels' => $topPlacesLabels,
-                    'topPlacesData' => $topPlacesData
-                ]);
-                exit;
             }
-            ?>
+        }
+    }
+}
+catch (Exception $e) {
+}
+
+// Thêm cả lượt tương tác từ VisitLog
+try {
+    $firebaseVisitUrl = "https://vinhkhanh-68a4b-default-rtdb.asia-southeast1.firebasedatabase.app/VisitLog.json";
+    $chv = curl_init();
+    curl_setopt($chv, CURLOPT_URL, $firebaseVisitUrl);
+    curl_setopt($chv, CURLOPT_RETURNTRANSFER, 1);
+    curl_setopt($chv, CURLOPT_SSL_VERIFYPEER, false);
+    $responseVisit = curl_exec($chv);
+    curl_close($chv);
+
+    if ($responseVisit && $responseVisit !== 'null') {
+        $visitData = json_decode($responseVisit, true);
+        if (is_array($visitData)) {
+            foreach ($visitData as $key => $log) {
+                $timeStr = isset($log['playtime']) ? $log['playtime'] : (isset($log['timestamp']) ? $log['timestamp'] : null);
+                // Dùng fall-back nếu trường tên là visitTime hoặc time
+                if (!$timeStr)
+                    $timeStr = isset($log['visitTime']) ? $log['visitTime'] : (isset($log['time']) ? $log['time'] : null);
+
+                if ($timeStr) {
+                    $time = is_numeric($timeStr) ? ($timeStr > 10000000000 ? $timeStr / 1000 : $timeStr) : strtotime($timeStr);
+                    $logDate = date('Y-m-d', (int)$time);
+                    $index = array_search($logDate, $weekDays);
+                    if ($index !== false) {
+                        $interactionData[$index]++; // Cộng dồn số lượt vào interaction
+                    }
+                }
+            }
+        }
+    }
+}
+catch (Exception $e) {
+}
+
+// Query thử số lượng POI
+$poiCount = 0;
+try {
+    $stmt = $pdo->query("SELECT COUNT(id) FROM POI");
+    $poiCount = $stmt->fetchColumn();
+}
+catch (Exception $e) {
+}
+
+// Đếm tổng Tour
+$tourCount = 0;
+try {
+    $stmt = $pdo->query("SELECT COUNT(id) FROM Tour");
+    $tourCount = $stmt->fetchColumn();
+}
+catch (Exception $e) {
+}
+
+// Nếu là request ajax thì trả về JSON rồi kết thúc
+if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
+    header('Content-Type: application/json');
+    echo json_encode([
+        'totalUserCount' => $totalUserCount,
+        'userCount' => $userCount,
+        'guestCount' => $guestCount,
+        'audioPlayCount' => $audioPlayCount,
+        'poiCount' => $poiCount,
+        'tourCount' => $tourCount,
+        'chartLabels' => $chartLabels,
+        'interactionData' => $interactionData,
+        'topPlacesLabels' => $topPlacesLabels,
+        'topPlacesData' => $topPlacesData
+    ]);
+    exit;
+}
+?>
 
             <!-- Stats Grid -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -317,12 +359,21 @@ if (!isset($_SESSION['user_id']) || strtoupper($_SESSION['role']) !== 'ADMIN') {
                             <i class="fas fa-users"></i>
                         </div>
                     </div>
-                    <div class="mt-4 flex items-center justify-between text-sm">
+                    <div class="mt-4 flex flex-wrap items-center gap-4 text-sm">
                         <span id="statGuestCount" class="text-gray-500 flex items-center gap-1" title="Khách vãng lai">
-                           <i class="far fa-user text-gray-400"></i> <?php echo number_format($guestCount, 0, ',', '.'); ?>
+                            <i class="far fa-user text-gray-400"></i> <?php echo number_format($guestCount, 0, ',', '.'); ?>
                         </span>
-                        <span id="statMemberCount" class="text-brand-500 flex items-center gap-1" title="Thành viên">
-                           <i class="fas fa-user-check text-brand-400"></i> <?php echo number_format($userCount, 0, ',', '.'); ?>
+                        
+                        <span id="statCustomerCount" class="text-brand-500 flex items-center gap-1" title="Thành viên">
+                            <i class="fas fa-user-check text-brand-400"></i> <?php echo number_format($userCount, 0, ',', '.'); ?>
+                        </span>
+                        
+                        <span id="statOwnerCount" class="text-blue-500 flex items-center gap-1" title="Chủ quán">
+                            <i class="fas fa-store text-blue-400"></i> <?php echo number_format($ownerCount, 0, ',', '.'); ?>
+                        </span>
+                        
+                        <span id="statAdminCount" class="text-purple-500 flex items-center gap-1" title="Quản trị viên">
+                            <i class="fas fa-user-shield text-purple-400"></i> <?php echo number_format($adminCount, 0, ',', '.'); ?>
                         </span>
                     </div>
                 </div>

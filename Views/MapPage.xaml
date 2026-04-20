@@ -665,5 +665,20 @@
         </StackLayout>
         </ScrollView>
         <components:NowPlayingBar Margin="0,0,0,20" />
+        
+        <!-- Absolute Float Button for Exiting Full Screen, put outside ScrollView to guarantee visibility -->
+        <ImageButton x:Name="ExitFullScreenBtn"
+                Source="back_svgrepo_com.png"
+                BackgroundColor="#F4A950"
+                CornerRadius="20"
+                WidthRequest="40"
+                HeightRequest="40"
+                HorizontalOptions="Start"
+                VerticalOptions="Start"
+                Margin="15,45,0,0"
+                Padding="10"
+                ZIndex="999"
+                IsVisible="False"
+                Clicked="OnToggleFullScreenClicked" />
     </Grid>
 </ContentPage>

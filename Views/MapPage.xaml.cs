@@ -178,15 +178,15 @@ HeaderSubtitleLabel.Text = _resourceManager.GetString("Home_Featured_Desc");
    StatsListenedLabel.Text = _resourceManager.GetString("Home_AudioBadge");
    
      // ? Code-behind for converter binding labels (Time Slider & Radius Slider)
-  TimeSliderLabel.Text = _resourceManager.GetString("Map_TimeSlider_Label") ?? "Khám phá theo gi?";
-  RadiusSliderLabel.Text = _resourceManager.GetString("Map_RadiusSlider_Label") ?? "Bán kính quét xung quanh";
+  TimeSliderLabel.Text = _resourceManager.GetString("Map_TimeSlider_Label") ?? "Khï¿½m phï¿½ theo gi?";
+  RadiusSliderLabel.Text = _resourceManager.GetString("Map_RadiusSlider_Label") ?? "Bï¿½n kï¿½nh quï¿½t xung quanh";
   
   // ? NEW: Code-behind for Empty State labels
-  EmptyStateTitleLabel.Text = _resourceManager.GetString("Map_EmptyState_Title") ?? "Không có POI nào trong bán kính";
-  EmptyStateDescLabel.Text = _resourceManager.GetString("Map_EmptyState_Description") ?? "Hi?n t?i không có POI nào trong bán kính";
+  EmptyStateTitleLabel.Text = _resourceManager.GetString("Map_EmptyState_Title") ?? "Khï¿½ng cï¿½ POI nï¿½o trong bï¿½n kï¿½nh";
+  EmptyStateDescLabel.Text = _resourceManager.GetString("Map_EmptyState_Description") ?? "Hi?n t?i khï¿½ng cï¿½ POI nï¿½o trong bï¿½n kï¿½nh";
   EmptyStateDistanceLabel.Text = _resourceManager.GetString("Map_EmptyState_Distance") ?? "km";
   EmptyStateNearLabel.Text = _resourceManager.GetString("Map_EmptyState_Near") ?? "g?n b?n";
-  EmptyStateHintLabel.Text = _resourceManager.GetString("Map_EmptyState_Hint") ?? "Hãy ki?m tra ??nh v? c?a b?n ho?c t?ng bán kính quét ?? tìm nhà hàng.";
+  EmptyStateHintLabel.Text = _resourceManager.GetString("Map_EmptyState_Hint") ?? "Hï¿½y ki?m tra ??nh v? c?a b?n ho?c t?ng bï¿½n kï¿½nh quï¿½t ?? tï¿½m nhï¿½ hï¿½ng.";
 
         // ? FIX: Update locations count label - count FilteredPOIs (POI in radius only)
   if (BindingContext is MapViewModel vm)
@@ -494,11 +494,16 @@ StatsGrid.IsVisible = false;
 
             MainScrollView.Orientation = ScrollOrientation.Neither;
 
- MapWebView.HeightRequest = DeviceDisplay.MainDisplayInfo.Height / DeviceDisplay.MainDisplayInfo.Density;
-      ToggleFullScreenBtn.Margin = new Thickness(10, 45, 10, 10);
-  }
+            // Use the actual application window height to avoid pushing MapBox 
+            // bottom-right controls (like the zoom out button) off the screen.
+            double safeHeight = this.Window?.Height ?? Application.Current?.MainPage?.Height ?? (DeviceDisplay.MainDisplayInfo.Height / DeviceDisplay.MainDisplayInfo.Density);
+            MapWebView.HeightRequest = safeHeight;
+            
+      ToggleFullScreenBtn.IsVisible = false;
+      ExitFullScreenBtn.IsVisible = true;
+        }
         else
-   {
+        {
             Shell.SetTabBarIsVisible(this, true);
 
     HeaderFrame.IsVisible = true;
@@ -514,7 +519,9 @@ StatsHeaderLabel.IsVisible = true;
             MainScrollView.Orientation = ScrollOrientation.Vertical;
 
             MapWebView.HeightRequest = 350;
-       ToggleFullScreenBtn.Margin = new Thickness(10);
+       
+       ToggleFullScreenBtn.IsVisible = true;
+       ExitFullScreenBtn.IsVisible = false;
       }
     }
 

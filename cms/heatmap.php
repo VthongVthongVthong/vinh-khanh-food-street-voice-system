@@ -126,7 +126,7 @@ if (!isset($_SESSION['user_id']) || strtoupper($_SESSION['role']) !== 'ADMIN') {
                     <p id="lastUpdateText" class="text-xs text-brand-500 mt-1">Cập nhật lần cuối: <?php echo date('H:i:s'); ?></p>
                 </div>
                 
-                <div class="flex items-center gap-2">
+                <div class="flex items-center flex-wrap gap-2">
                     <div class="inline-flex rounded-md shadow-sm" role="group">
                         <button type="button" id="btnToday" onclick="setGlobalFilter('today')" class="px-4 py-2 text-sm font-medium text-brand-600 bg-gray-100 border border-gray-200 rounded-l-lg hover:bg-gray-100 focus:z-10 focus:ring-2 focus:ring-brand-500 transition-colors">
                             Hôm nay
@@ -138,8 +138,12 @@ if (!isset($_SESSION['user_id']) || strtoupper($_SESSION['role']) !== 'ADMIN') {
                             Tháng này
                         </button>
                     </div>
-                    <button class="p-2 bg-white border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50"><i class="fas fa-filter"></i></button>
-                    <button class="p-2 bg-white border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50"><i class="fas fa-download"></i></button>
+                    
+                    <div class="relative flex items-center">
+                        <input type="date" id="globalDatePicker" title="Chọn ngày cụ thể" class="p-2 bg-white border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 focus:ring-2 focus:ring-brand-500 outline-none cursor-pointer" value="<?php echo date('Y-m-d'); ?>" onchange="setCustomDateFilter(this.value)">
+                    </div>
+
+                    <button class="p-2 bg-white border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50" title="Tải xuống báo cáo"><i class="fas fa-download"></i></button>
                 </div>
             </div>
 
@@ -245,11 +249,7 @@ if (!isset($_SESSION['user_id']) || strtoupper($_SESSION['role']) !== 'ADMIN') {
                 <div class="flex justify-between items-start mb-4">
                     <div>
                         <h3 class="text-lg font-bold text-gray-800">Hoạt Động Theo Khung Giờ</h3>
-                        <p class="text-xs text-gray-500">So sánh lượng khách và lượt nghe audio trong ngày</p>
-                    </div>
-                    <div class="flex items-center gap-2 text-sm text-brand-500 font-medium bg-brand-50 px-3 py-1.5 rounded-lg border border-brand-100">
-                        <i class="far fa-calendar-alt"></i> 
-                        <input type="date" id="hourlyDatePicker" class="bg-transparent border-none outline-none text-brand-600 font-medium cursor-pointer" value="<?php echo date('Y-m-d'); ?>" onchange="updateHourlyChart()">
+                        <p class="text-xs text-gray-500">Mật độ khách và lượt nghe audio trong thời gian lọc</p>
                     </div>
                 </div>
                 <div class="h-64 w-full relative mt-2">
@@ -382,19 +382,47 @@ if (!isset($_SESSION['user_id']) || strtoupper($_SESSION['role']) !== 'ADMIN') {
             const date = new Date(timestamp);
             
             now.setHours(0,0,0,0);
+            const dateHoursZero = new Date(date).setHours(0,0,0,0);
             
             if (filter === 'today') {
                 return date >= now;
             } else if (filter === 'week') {
                 const day = now.getDay();
                 const diff = now.getDate() - day + (day == 0 ? -6:1);
-                const startOfWeek = new Date(now.setDate(diff));
+                const startOfWeek = new Date(new Date(now).setDate(diff));
+                startOfWeek.setHours(0,0,0,0);
                 return date >= startOfWeek;
             } else if (filter === 'month') {
                 const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
                 return date >= startOfMonth;
+            } else if (filter === 'custom') {
+                const customDateEl = document.getElementById('globalDatePicker').value;
+                if (!customDateEl) return true;
+                
+                // Adjust for local time zone comparison
+                const [y, m, d] = customDateEl.split('-');
+                const targetDate = new Date(y, m - 1, d);
+                return dateHoursZero === targetDate.getTime();
             }
             return true;
+        }
+
+        function setCustomDateFilter(val) {
+            if(!val) return;
+            currentFilter = 'custom';
+            
+            // Un-highlight all global filter buttons
+            const activeClasses = ['text-brand-600', 'bg-gray-100'];
+            const inactiveClasses = ['text-gray-900', 'bg-white'];
+            
+            ['btnToday', 'btnThisWeek', 'btnThisMonth'].forEach(id => {
+                const el = document.getElementById(id);
+                el.classList.remove(...activeClasses);
+                el.classList.add(...inactiveClasses);
+            });
+            
+            updateDashboard();
+            updateHourlyChart();
         }
 
         // Tải dữ liệu Firebase thực tế
@@ -451,12 +479,11 @@ if (!isset($_SESSION['user_id']) || strtoupper($_SESSION['role']) !== 'ADMIN') {
             const inactiveClasses = ['text-gray-900', 'bg-white'];
             
             // Reset all
-            document.getElementById('btnToday').classList.remove(...activeClasses);
-            document.getElementById('btnToday').classList.add(...inactiveClasses);
-            document.getElementById('btnThisWeek').classList.remove(...activeClasses);
-            document.getElementById('btnThisWeek').classList.add(...inactiveClasses);
-            document.getElementById('btnThisMonth').classList.remove(...activeClasses);
-            document.getElementById('btnThisMonth').classList.add(...inactiveClasses);
+            ['btnToday', 'btnThisWeek', 'btnThisMonth'].forEach(id => {
+                const el = document.getElementById(id);
+                el.classList.remove(...activeClasses);
+                el.classList.add(...inactiveClasses);
+            });
 
             // Active clicked
             let activeBtn;
@@ -464,27 +491,31 @@ if (!isset($_SESSION['user_id']) || strtoupper($_SESSION['role']) !== 'ADMIN') {
             if(filter === 'week') activeBtn = document.getElementById('btnThisWeek');
             if(filter === 'month') activeBtn = document.getElementById('btnThisMonth');
             
-            activeBtn.classList.remove(...inactiveClasses);
-            activeBtn.classList.add(...activeClasses);
+            if(activeBtn) {
+                activeBtn.classList.remove(...inactiveClasses);
+                activeBtn.classList.add(...activeClasses);
+            }
+
+            // Sync date picker
+            if(filter === 'today') {
+                const now = new Date();
+                const todayStr = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+                document.getElementById('globalDatePicker').value = todayStr;
+            } else {
+                document.getElementById('globalDatePicker').value = '';
+            }
 
             updateDashboard();
+            updateHourlyChart();
         }
 
         function updateHourlyChart() {
-            const dateStr = document.getElementById('hourlyDatePicker').value;
-            if(!dateStr) return;
-            
-            const targetDate = new Date(dateStr);
-            const y = targetDate.getFullYear();
-            const m = targetDate.getMonth();
-            const d = targetDate.getDate();
-
             const hourlyCounts = { '18:00': 0, '19:00': 0, '20:00': 0, '21:00': 0, '22:00': 0 };
             
             Object.values(FB_DATA.audio).forEach(a => {
                 if(!a || !a.playTime) return;
                 const dt = new Date(a.playTime);
-                if(dt.getFullYear() === y && dt.getMonth() === m && dt.getDate() === d) {
+                if (checkDateFilter(dt, currentFilter)) {
                     const hour = dt.getHours();
                     if(hour >= 18 && hour <= 22) {
                         hourlyCounts[hour + ':00'] = (hourlyCounts[hour + ':00'] || 0) + 1;
@@ -495,7 +526,7 @@ if (!isset($_SESSION['user_id']) || strtoupper($_SESSION['role']) !== 'ADMIN') {
             Object.values(FB_DATA.visit).forEach(v => {
                 if(!v || !v.visitTime) return;
                 const dt = new Date(v.visitTime);
-                if(dt.getFullYear() === y && dt.getMonth() === m && dt.getDate() === d) {
+                if (checkDateFilter(dt, currentFilter)) {
                     const hour = dt.getHours();
                     if(hour >= 18 && hour <= 22) {
                         hourlyCounts[hour + ':00'] = (hourlyCounts[hour + ':00'] || 0) + 1;
